@@ -119,6 +119,7 @@ const ICONS = {
   rocket: `<path d="M12 3c3 2.2 4.5 5.5 4.5 9.5l-2 3.5h-5l-2-3.5C7.5 8.5 9 5.2 12 3Z" ${D}/><circle cx="12" cy="9.5" r="1.8" /><path d="M7.5 12.5 5 15.5l3 1M16.5 12.5l2.5 3-3 1M10.5 18.5l1.5 2.5 1.5-2.5" />`,
   chip: `<circle cx="12" cy="12" r="8.5" ${D}/><circle cx="12" cy="12" r="4.5" /><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3" />`,
   arrow: `<path d="M5 12h14M13 6l6 6-6 6" />`,
+  quiz: `<rect x="5" y="3" width="14" height="18" rx="2.5" ${D}/><rect x="7.5" y="5.5" width="9" height="4" rx="1" /><g fill="currentColor" stroke="none"><circle cx="9" cy="13" r="1.1"/><circle cx="12" cy="13" r="1.1"/><circle cx="15" cy="13" r="1.1"/><circle cx="9" cy="17" r="1.1"/><circle cx="12" cy="17" r="1.1"/><circle cx="15" cy="17" r="1.1"/></g>`,
   send: `<path d="M21 3 3 10.5l7 2.8L21 3Z" ${D}/><path d="m10 13.3 2.8 7.2L21 3" ${D}/><path d="M10 13.3 21 3" />`,
   chart: `<path d="M3.5 20.5h17" /><path d="M4 16l4.5-5 3.5 3 4-6 4 3" ${D}/><circle cx="20" cy="11" r="1.4" fill="currentColor" stroke="none"/>`,
   close: `<path d="M6 6l12 12M18 6 6 18" />`,
@@ -194,4 +195,12 @@ export function bananaTileSVG() {
 }
 export function bombTileSVG() {
   return `<svg viewBox="0 0 100 100" class="tile-svg" aria-hidden="true"><circle cx="46" cy="58" r="28" fill="#1e1414" stroke="#000" stroke-width="3"/><circle cx="36" cy="48" r="8" fill="#fff" opacity=".18"/><rect x="58" y="24" width="14" height="12" rx="3" transform="rotate(40 65 30)" fill="#5a5a5a"/><path d="M70 26 Q78 14 88 16" stroke="#c8a060" stroke-width="4" fill="none"/><g fill="#ffd34d"><circle cx="88" cy="15" r="5"/></g><path d="M88 6v4M88 20v4M79 15h4M93 15h4" stroke="#ff8a3d" stroke-width="3" stroke-linecap="round"/></svg>`;
+}
+
+export function quizArtSVG() {
+  return `<svg viewBox="0 0 200 145" class="art-quiz" aria-hidden="true">
+    <rect x="30" y="22" width="140" height="62" rx="14" fill="#0b120e" stroke="#2f7a35" stroke-width="2"/>
+    <text x="100" y="64" text-anchor="middle" font-family="Bungee, sans-serif" font-size="28" fill="#f5f5f5">7×8=<tspan fill="#f5c542">?</tspan></text>
+    <rect x="30" y="98" width="140" height="10" rx="5" fill="#1d3126"/><rect x="30" y="98" width="92" height="10" rx="5" fill="#3ddc84"/>
+    <g fill="#3ddc84">${[0, 1, 2, 3, 4, 5].map((i) => `<circle cx="${62 + i * 15}" cy="124" r="4.5" ${i > 3 ? 'fill="#2f4a3a"' : ''}/>`).join('')}</g></svg>`;
 }

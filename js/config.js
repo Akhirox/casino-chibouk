@@ -10,6 +10,10 @@ export const CONFIG = {
   LEADERBOARD_SIZE: 15,
   INBOX_INTERVAL_MS: 90000,     // vérification des Brundles reçus toutes les 90 s (1 lecture si rien de neuf)
   BREAKER_REWARD: 100,          // gain par niveau terminé
+  QUIZ_PER_CORRECT: 10,         // calcul mental : gain par bonne réponse
+  QUIZ_PERFECT_BONUS: 50,       // bonus si 10/10
+  QUIZ_QUESTIONS: 10,
+  QUIZ_SECONDS: 10,
   FIREBASE_SDK_VERSION: '10.12.2',
 };
 

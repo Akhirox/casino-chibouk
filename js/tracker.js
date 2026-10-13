@@ -34,7 +34,7 @@ export function createTracker(wallet, toggleBtn) {
   const off = wallet.on((evt) => {
     if (!evt) return;
     if (evt.type === 'bet') record(-evt.amount, true);
-    else if (evt.type === 'win' || evt.type === 'breaker') record(evt.amount, false);
+    else if (evt.type === 'win' || evt.type === 'breaker' || evt.type === 'free') record(evt.amount, false);
     else if (evt.type === 'refund') { record(evt.amount, false); if (st && st.active) { st.wagered = Math.max(0, st.wagered - evt.amount); st.rounds = Math.max(0, st.rounds - 1); save(); } }
   });
 

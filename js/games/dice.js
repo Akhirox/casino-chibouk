@@ -115,7 +115,7 @@ export function mount(view, { wallet }) {
     const r = randInt(10001) / 100; // 0,00 … 100,00
     const win = mode === 'under' ? r < target : r > target;
     const payout = win ? Math.floor(amount * mult) : 0;
-    if (payout) wallet.win('dice', payout);
+    if (payout) wallet.win('dice', payout, amount);
     wallet.round('dice', payout > amount ? payout : 0);
 
     // animation : défilement des chiffres puis le marqueur glisse sur le résultat

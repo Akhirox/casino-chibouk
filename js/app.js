@@ -3,7 +3,7 @@ import { CONFIG } from './config.js';
 import { createBackend } from './backend.js';
 import { Wallet, msUntilParisMidnight } from './wallet.js';
 import { h, $, $$, fmt, money, esc, toast, modal, coinRain, CUR } from './ui.js';
-import { monkeySVG, goldMonkeySVG, hangingMonkeySVG, coinSVG, symbolSVG, icon, plinkoArtSVG, crashArtSVG, towerArtSVG, minesArtSVG, diceArtSVG } from './art.js';
+import { monkeySVG, goldMonkeySVG, hangingMonkeySVG, coinSVG, symbolSVG, icon, plinkoArtSVG, crashArtSVG, towerArtSVG, minesArtSVG, diceArtSVG, quizArtSVG } from './art.js';
 import { sfx } from './sfx.js';
 import * as Slots from './games/slots.js';
 import * as Blackjack from './games/blackjack.js';
@@ -14,6 +14,8 @@ import * as Crash from './games/crash.js';
 import * as Tower from './games/tower.js';
 import * as Mines from './games/mines.js';
 import * as Dice from './games/dice.js';
+import * as Quiz from './games/quiz.js';
+import { mountBoard } from './gameboard.js';
 import * as Stats from './stats.js';
 import { createTracker } from './tracker.js';
 import { getPlayers } from './players.js';
@@ -39,8 +41,12 @@ const ROUTES = {
   mines: { label: 'Mines', icon: 'mines', mount: Mines.mount },
   dice: { label: 'Dice', icon: 'dice', mount: Dice.mount },
   breaker: { label: 'Briques', icon: 'breaker', mount: Breaker.mount },
+  quiz: { label: 'Calcul', icon: 'quiz', mount: Quiz.mount },
   stats: { label: 'Stats', icon: 'stats', mount: Stats.mount },
 };
+
+// Jeux qui affichent leur classement à côté (clé de stats -> nom affiché)
+const BOARD_GAMES = { slots: 'Chibouk Slot', blackjack: 'Blackjack', roulette: 'Roulette', plinko: 'Plinkoko', crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice' };
 
 /* ============================== DÉMARRAGE ============================== */
 async function boot() {
@@ -311,7 +317,17 @@ function route() {
   if (act && window.innerWidth <= 760) { const nav = act.parentElement; nav.scrollTo({ left: act.offsetLeft - nav.clientWidth / 2 + act.clientWidth / 2, behavior: 'smooth' }); }
   window.scrollTo(0, 0);
   const ctx = { wallet, backend, navigate: (k) => (location.hash = '#/' + k) };
-  cleanupView = r.mount(view, ctx) || null;
+  const boardTitle = BOARD_GAMES[key];
+  if (boardTitle) {
+    // jeu + classement du jeu à côté
+    view.classList.add('has-board');
+    view.innerHTML = '<div class="with-board"><div class="game-main"></div><aside class="game-board"></aside></div>';
+    const c1 = r.mount($('.game-main', view), ctx);
+    const c2 = mountBoard($('.game-board', view), key, boardTitle, ctx);
+    cleanupView = () => { try { c1 && c1(); } finally { c2(); } };
+  } else {
+    cleanupView = r.mount(view, ctx) || null;
+  }
 }
 
 /* ================================ LOBBY ================================ */
@@ -358,6 +374,7 @@ function mountLobby(view, { wallet: w }) {
       ${card('tower', 'Tower', 'Grimpe étage par étage : chaque banane fait monter le multi, une bombe et tout explose.', 'RTP 99 %', towerArtSVG())}
       ${card('mines', 'Mines', 'Choisis le nombre de mines : plus il y en a, plus chaque banane trouvée rapporte.', 'RTP 99 %', minesArtSVG())}
       ${card('dice', 'Dice', 'Choisis ta chance de 0,01 % à 98 % : plus elle est faible, plus le dé paie.', 'RTP 99 %', diceArtSVG())}
+      ${card('quiz', 'Calcul mental', `${CONFIG.QUIZ_QUESTIONS} calculs, ${CONFIG.QUIZ_SECONDS} s chacun : +${CONFIG.QUIZ_PER_CORRECT} ${CUR} par bonne réponse, bonus pour un sans-faute.`, 'Gratuit', quizArtSVG())}
       ${card('breaker', 'Casse-briques', `Casse toutes les briques d'un niveau : +${CONFIG.BREAKER_REWARD} ${CUR}. Gratuit, sans mise.`, 'Gratuit',
         `<div class="mini-bricks">${Array.from({ length: 15 }, (_, i) => `<i style="--h:${(i * 37) % 360}"></i>`).join('')}</div>`)}
     </section>

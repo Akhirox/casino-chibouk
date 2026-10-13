@@ -132,7 +132,7 @@ export function mount(view, { wallet }) {
     const m = towerMult(game.level, game.floor);
     const payout = Math.floor(game.bet * m);
     game.over = true; game.cashed = true;
-    wallet.win('tower', payout);
+    wallet.win('tower', payout, game.bet);
     wallet.round('tower', payout > game.bet ? payout : 0);
     if (!alive) return;
     render();

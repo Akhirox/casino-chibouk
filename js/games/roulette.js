@@ -323,7 +323,7 @@ export function mount(view, { wallet }) {
     // paiement calculé immédiatement (si on quitte la page, le gain est quand même crédité)
     let win = 0;
     for (const [k, a] of Object.entries(bets)) win += a * payoutFor(k, n);
-    if (win > 0) wallet.win('roulette', win);
+    if (win > 0) wallet.win('roulette', win, t);
     wallet.round('roulette', win > t ? win : 0);
 
     await animateTo(n, false);

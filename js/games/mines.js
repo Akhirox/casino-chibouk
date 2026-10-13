@@ -125,7 +125,7 @@ export function mount(view, { wallet }) {
     const m = minesMult(game.mines, game.revealed.size);
     const payout = Math.floor(game.bet * m);
     game.over = true;
-    wallet.win('mines', payout);
+    wallet.win('mines', payout, game.bet);
     wallet.round('mines', payout > game.bet ? payout : 0);
     if (!alive) return;
     render();

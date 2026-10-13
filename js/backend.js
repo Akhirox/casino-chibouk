@@ -3,13 +3,14 @@ import { firebaseConfig } from './firebase-config.js';
 import { CONFIG, PSEUDO_DOMAIN, PSEUDO_RE } from './config.js';
 
 export function emptyStats() {
-  const g = () => ({ wagered: 0, won: 0, rounds: 0, wins: 0, biggestWin: 0 });
+  const g = () => ({ wagered: 0, won: 0, rounds: 0, wins: 0, biggestWin: 0, bestMult: 0 });
   return {
     totalWagered: 0, totalWon: 0, rounds: 0, biggestWin: 0, biggestWinGame: '',
     peakBalance: CONFIG.START_BALANCE,
     dailyClaims: 0, dailyTotal: 0,
     breakerLevels: 0, breakerTotal: 0,
     transfersSent: 0, transfersReceived: 0,
+    quizRounds: 0, quizTotal: 0, quizCorrect: 0, quizPerfect: 0,
     games: {
       slots: { ...g(), bonuses: 0 },
       blackjack: { ...g(), blackjacks: 0, pushes: 0 },
@@ -135,7 +136,11 @@ async function createFirebaseBackend() {
       const batch = F.writeBatch(db);
       batch.update(F.doc(db, 'users', t.from), { balance: F.increment(-t.amount), updatedAt: Date.now() });
       batch.set(F.doc(F.collection(db, 'transfers')), { ...t, claimed: false, createdAt: Date.now() });
-      try { await batch.commit(); } catch (e) { throw new Error('Transfert refusé : ' + (e.code || e.message)); }
+      try { await batch.commit(); } catch (e) {
+        const c = (e && e.code) || '';
+        if (c.includes('permission-denied')) throw new Error("Transfert refusé par Firebase. Vérifie que la dernière version de firestore.rules est bien publiée (Firestore → Règles → Publier), puis réessaie dans une minute.");
+        throw new Error('Transfert impossible : ' + (c || e.message));
+      }
     },
     async fetchInbox(uid) {
       const q = F.query(F.collection(db, 'transfers'), F.where('to', '==', uid), F.where('claimed', '==', false));

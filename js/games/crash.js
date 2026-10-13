@@ -122,7 +122,7 @@ export function mount(view, { wallet }) {
     round.cashed = true;
     round.cashMult = m;
     round.payout = Math.floor(round.bet * m);
-    wallet.win('crash', round.payout);
+    wallet.win('crash', round.payout, round.bet);
     wallet.round('crash', round.payout > round.bet ? round.payout : 0);
     if (!alive) return;
     view.querySelector('.crash-stage').classList.add('cashed');

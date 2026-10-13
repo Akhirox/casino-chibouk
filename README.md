@@ -5,6 +5,7 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 - Connexion par **pseudo + mot de passe**, sans email.
 - **1 000 Brundles offerts** à la création du compte, puis **1 000 par jour** avec le bouton cadeau (une fois par jour, remise à zéro à minuit heure de Paris).
 - **Aucune mise maximum** : mise libre + bouton MAX (Slot, Plinkoko, Crashibouk, Tower, Mines, Dice), jetons jusqu'à 25k + « Tapis » (blackjack), jetons jusqu'à 25k empilables (roulette).
+- **Classement à côté de chaque jeu** : top 5 des plus gros parieurs (volume misé), du meilleur multiplicateur et du plus gros gain sur ce jeu.
 - **Stats** par jeu (misé, gagné, bilan, RTP réel, plus gros gain…), un **classement** des soldes et un **classement des meilleures wins par jeu** (top 3).
 - **Suivi de session** (bouton graphique dans la barre du haut) : courbe des gains/pertes qui part de 0 au lancement, verte au-dessus de 0 et rouge en dessous. Il continue quand on change de jeu ou qu'on recharge la page, jusqu'au reset. Seuls les jeux comptent (pas le bonus quotidien ni les transferts).
 - **Envoi de Brundles** entre joueurs (bouton avion en papier, ou menu du pseudo). Le destinataire les reçoit automatiquement dans les 90 secondes, avec une notification.
@@ -15,13 +16,14 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 | Jeu | Principe | RTP |
 |---|---|---|
 | **Chibouk Slot** | Machine à sous 5×3, 21 lignes. 3 WILD n'importe où = tours gratuits avec gains ×2 (re-déclenchables). | ≈ 100 % |
-| **Blackjack du Singe** | 6 jeux, blackjack payé 3:2, croupier reste sur 17, doubler et séparer (4 mains), cartes 3D. | ≈ 99,5 % |
+| **Blackjack du Singe** | 6 jeux, blackjack payé 3:2, croupier reste sur 17, doubler, séparer **n'importe quelles cartes** (4 mains), cartes 3D. Mises annexes **Perfect Pairs** (6:1 / 15:1 / 25:1, RTP 99,7 %) et **21+3** (couleur 5:1, suite 11:1, brelan 30:1, quinte flush 45:1, brelan couleur 100:1, RTP 99,5 %). | ≈ 99,5 % |
 | **Roulette Banane** | Roulette européenne à un zéro, roue et bille animées. | 97,3 % |
 | **Plinkoko** | 8, 12 ou 16 rangées, risque faible / moyen / élevé, jusqu'à ×1000, billes multiples. | 99 % |
 | **Crashibouk** | Le multiplicateur grimpe, encaisse avant l'explosion. Encaissement auto possible. | 99 % |
 | **Tower** | 9 étages, 5 difficultés (de 1 bombe sur 4 cases à 3 bombes sur 4). Chaque étage monte le multi, encaisse quand tu veux. | 99 % |
 | **Mines** | Grille 5×5, 1 à 24 mines. Chaque banane trouvée augmente le multi, encaisse avant de tomber sur une mine. | 99 % |
 | **Dice** | Tirage de 0,00 à 100,00. Choisis « en dessous » ou « au-dessus » et ta chance (0,01 % à 98 %) : multi = 99 ÷ chance. | 99 % |
+| **Calcul mental** | Gratuit : 10 calculs (additions, soustractions, tables, divisions), 10 s chacun. +10 Brundles par bonne réponse, +50 de bonus pour un sans-faute. | — |
 | **Casse-briques** | Gratuit, sans mise, accessible à tout moment : +100 Brundles par niveau terminé (6 niveaux en boucle, de plus en plus durs). | — |
 
 Si tu quittes la page au milieu d'une partie de Tower ou de Mines, elle est encaissée automatiquement au palier atteint (ou la mise est remboursée si aucune case n'a été choisie). Pareil pour le Crash (encaissement au multiplicateur du moment) et le Blackjack (la main est terminée en restant).
@@ -170,6 +172,8 @@ js/games/crash.js          Crashibouk
 js/games/tower.js          Tower
 js/games/mines.js          Mines
 js/games/dice.js           Dice
+js/games/quiz.js           Calcul mental
+js/gameboard.js            classement affiché à côté de chaque jeu
 firestore.rules            règles de sécurité à publier
 tools/simulate-rtp.mjs     simulateur de RTP
 ```

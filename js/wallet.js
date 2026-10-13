@@ -102,13 +102,18 @@ export class Wallet {
     this.touch({ type: 'round', game });
   }
 
-  win(game, amount) {
+  // bet (facultatif) = mise correspondant à ce gain, pour retenir le meilleur multiplicateur
+  win(game, amount, bet = 0) {
     amount = Math.floor(amount);
     if (amount <= 0) return;
     const s = this.p.stats, g = s.games[game];
     this.p.balance += amount;
     s.totalWon += amount;
-    if (g) { g.won += amount; if (amount > g.biggestWin) g.biggestWin = amount; }
+    if (g) {
+      g.won += amount;
+      if (amount > g.biggestWin) g.biggestWin = amount;
+      if (bet > 0) { const m = Math.floor((amount / bet) * 100) / 100; if (m > (g.bestMult || 0)) g.bestMult = m; }
+    }
     if (amount > s.biggestWin) { s.biggestWin = amount; s.biggestWinGame = game; }
     this.touch({ type: 'win', game, amount });
   }
@@ -151,6 +156,18 @@ export class Wallet {
     this.p.stats.breakerLevels += 1;
     this.p.stats.breakerTotal += CONFIG.BREAKER_REWARD;
     this.touch({ type: 'breaker', amount: CONFIG.BREAKER_REWARD });
+    this.flush();
+  }
+
+  // Récompense d'un jeu gratuit (calcul mental…) — comptée à part, comme le casse-briques
+  freeReward(kind, amount, extra = {}) {
+    amount = Math.floor(amount);
+    const s = this.p.stats;
+    s[kind + 'Rounds'] = (s[kind + 'Rounds'] || 0) + 1;
+    s[kind + 'Total'] = (s[kind + 'Total'] || 0) + Math.max(0, amount);
+    for (const [k, v] of Object.entries(extra)) s[kind + k] = (s[kind + k] || 0) + v;
+    if (amount > 0) this.p.balance += amount;
+    this.touch({ type: 'free', game: kind, amount: Math.max(0, amount) });
     this.flush();
   }
 

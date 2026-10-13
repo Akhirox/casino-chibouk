@@ -133,7 +133,7 @@ export function mount(view, { wallet }) {
 
   function land(b) {
     b.done = true;
-    if (b.payout > 0) wallet.win('plinko', b.payout);
+    if (b.payout > 0) wallet.win('plinko', b.payout, b.amount);
     wallet.round('plinko', b.payout > b.amount ? b.payout : 0);
     if (!alive) return;
     if (b.rows === rows) binPulse[b.bin] = 1;

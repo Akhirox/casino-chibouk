@@ -234,7 +234,7 @@ export function mount(view, { wallet }) {
     // Le résultat est crédité tout de suite (même si le joueur quitte la page pendant l'animation)
     const mult = isFree ? FREE_SPIN_MULT : 1;
     const win = ev.total * lb * mult;
-    if (win > 0) wallet.win('slots', win);
+    if (win > 0) wallet.win('slots', win, lb * LINE_COUNT);
     if (!isFree) wallet.round('slots', win);
     if (isFree) fs.won += win;
     if (ev.freeSpins) {
