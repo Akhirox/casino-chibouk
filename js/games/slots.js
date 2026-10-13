@@ -1,18 +1,19 @@
 // Machine à sous "Jungle Chibouk" — 5 rouleaux, 3 rangées, 21 lignes, tours gratuits x2
 import { STRIPS, PAYTABLE, PAYLINES, LINE_COUNT, SYMBOLS, FREE_SPINS_AWARD, FREE_SPIN_MULT, spinGrid, evaluate, randInt } from './slots-math.js';
-import { symbolSVG, monkeySVG, goldMonkeySVG } from '../art.js';
+import { symbolSVG, monkeySVG, goldMonkeySVG, icon } from '../art.js';
 import { h, $, $$, fmt, money, modal, toast, countUp, coinRain, sleep, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
 
-const LINE_BETS = [1, 2, 5, 10, 20, 50, 100];
+// Paliers des boutons − / + (aucune limite : on peut aussi taper n'importe quel montant ou cliquer MAX)
+const STEPS = [1, 2, 5, 10, 20, 50, 100, 200, 500, 1000, 2000, 5000, 10000, 20000, 50000, 100000];
 const SYM_ORDER = ['W', 'M', 'S', 'B', 'C', 'P', 'R', 'N', 'L', 'K'];
 const lineColor = (i) => `hsl(${(i * 137.5 + 40) % 360} 90% 60%)`;
 const cache = {};
 const sym = (s) => (cache[s] ||= symbolSVG(s));
 
 export function mount(view, { wallet }) {
-  let lineBetIdx = 2;
-  try { const v = +localStorage.getItem('chibouk_slot_bet'); if (LINE_BETS.includes(v)) lineBetIdx = LINE_BETS.indexOf(v); } catch {}
+  let curLineBet = 5;
+  try { const v = Math.floor(+localStorage.getItem('chibouk_slot_bet')); if (v >= 1) curLineBet = v; } catch {}
   let spinning = false, turbo = false, autoLeft = 0, alive = true;
   let cycleTimer = null;
   let grid = spinGrid().grid; // grille de départ décorative
@@ -21,7 +22,7 @@ export function mount(view, { wallet }) {
   view.innerHTML = `
   <div class="slot-wrap">
     <div class="game-head"><h1>Jungle <span>Chibouk</span></h1>
-      <div class="actions"><button class="btn btn-ghost btn-sm" id="paytable">📜 Table des gains</button></div></div>
+      <div class="actions"><button class="btn btn-ghost btn-sm" id="paytable">${icon('scroll')}Table des gains</button></div></div>
     <div class="slot-machine">
       <div class="slot-top">
         ${monkeySVG({ cls: 'st-monkey left' })}
@@ -41,14 +42,14 @@ export function mount(view, { wallet }) {
       <div class="slot-controls">
         <div class="bet-box">
           <div class="bet-label">Mise / ligne</div>
-          <div class="bet-ctrl"><button class="btn btn-ghost btn-sm" id="bet-down">−</button><b id="line-bet"></b><button class="btn btn-ghost btn-sm" id="bet-up">+</button></div>
+          <div class="bet-ctrl"><button class="btn btn-ghost btn-sm" id="bet-down">−</button><input id="line-bet" class="bet-input" type="number" min="1" step="1" inputmode="numeric" aria-label="Mise par ligne"><button class="btn btn-ghost btn-sm" id="bet-up">+</button><button class="btn btn-ghost btn-sm max-btn" id="bet-max">MAX</button></div>
           <div class="bet-total">${LINE_COUNT} lignes · Total <b id="total-bet"></b></div>
         </div>
         <button class="spin-btn" id="spin" title="Espace"><span>SPIN</span></button>
         <div class="auto-box">
           <div class="bet-label">Auto</div>
           <div class="auto-btns"><button class="btn btn-ghost btn-sm" data-auto="10">10</button><button class="btn btn-ghost btn-sm" data-auto="25">25</button><button class="btn btn-ghost btn-sm" data-auto="50">50</button></div>
-          <label class="turbo"><input type="checkbox" id="turbo"> Turbo ⚡</label>
+          <label class="turbo"><input type="checkbox" id="turbo"> Turbo ${icon('bolt')}</label>
         </div>
       </div>
     </div>
@@ -85,22 +86,28 @@ export function mount(view, { wallet }) {
   renderStatic();
 
   /* ---------- mises ---------- */
-  const lineBet = () => (fs && fs.left > 0 ? fs.lineBet : LINE_BETS[lineBetIdx]);
+  const lineBet = () => (fs && fs.left > 0 ? fs.lineBet : curLineBet);
   const totalBet = () => lineBet() * LINE_COUNT;
   function updateBet() {
-    $('#line-bet', view).innerHTML = money(lineBet());
+    const inp = $('#line-bet', view);
+    if (document.activeElement !== inp) inp.value = lineBet();
     $('#total-bet', view).innerHTML = money(totalBet());
     const locked = spinning || (fs && fs.left > 0);
-    $('#bet-down', view).disabled = locked || lineBetIdx === 0;
-    $('#bet-up', view).disabled = locked || lineBetIdx === LINE_BETS.length - 1;
+    $('#bet-down', view).disabled = locked || curLineBet <= 1;
+    $('#bet-up', view).disabled = locked;
+    $('#bet-max', view).disabled = locked;
+    inp.disabled = locked;
     spinBtn.disabled = (spinning && !autoLeft) || (fs && fs.left > 0);
     spinBtn.classList.toggle('stop', autoLeft > 0);
     spinBtn.querySelector('span').textContent = autoLeft > 0 ? `STOP (${autoLeft})` : 'SPIN';
     $$('[data-auto]', view).forEach((b) => (b.disabled = spinning || autoLeft > 0 || (fs && fs.left > 0)));
   }
-  $('#bet-down', view).onclick = () => { if (lineBetIdx > 0) { lineBetIdx--; sfx.click(); saveBet(); updateBet(); } };
-  $('#bet-up', view).onclick = () => { if (lineBetIdx < LINE_BETS.length - 1) { lineBetIdx++; sfx.click(); saveBet(); updateBet(); } };
-  const saveBet = () => { try { localStorage.setItem('chibouk_slot_bet', LINE_BETS[lineBetIdx]); } catch {} };
+  const setLineBet = (v) => { curLineBet = Math.max(1, Math.floor(v) || 1); try { localStorage.setItem('chibouk_slot_bet', curLineBet); } catch {} updateBet(); };
+  $('#bet-down', view).onclick = () => { const prev = [...STEPS].reverse().find((x) => x < curLineBet); setLineBet(prev || Math.max(1, Math.floor(curLineBet / 2))); sfx.click(); };
+  $('#bet-up', view).onclick = () => { const next = STEPS.find((x) => x > curLineBet); setLineBet(next || curLineBet * 2); sfx.click(); };
+  $('#bet-max', view).onclick = () => { setLineBet(Math.max(1, Math.floor(wallet.balance / LINE_COUNT))); sfx.click(); };
+  $('#line-bet', view).onchange = (e) => setLineBet(+e.target.value);
+  $('#line-bet', view).oninput = (e) => { const v = Math.floor(+e.target.value); if (v >= 1) { curLineBet = v; $('#total-bet', view).innerHTML = money(v * LINE_COUNT); } };
   $('#turbo', view).onchange = (e) => { turbo = e.target.checked; };
   $$('[data-auto]', view).forEach((b) => (b.onclick = () => { autoLeft = +b.dataset.auto; updateBet(); loopAuto(); }));
   spinBtn.onclick = () => {
@@ -207,7 +214,7 @@ export function mount(view, { wallet }) {
     const lb = lineBet();
     if (!isFree) {
       if (!wallet.bet('slots', lb * LINE_COUNT)) {
-        toast(wallet.balance < lb * LINE_COUNT ? `Pas assez de ${CUR} 🙈 Baisse la mise${wallet.balance < 100 ? ' ou va au casse-briques' : ''}` : 'Mise impossible', 'error');
+        toast(wallet.balance < lb * LINE_COUNT ? `Pas assez de ${CUR}. Baisse la mise${wallet.balance < 100 ? ' ou va au casse-briques' : ''}` : 'Mise impossible', 'error');
         return null;
       }
     } else {
@@ -246,12 +253,12 @@ export function mount(view, { wallet }) {
       showWins(ev, mult);
       const ratio = win / (lb * LINE_COUNT);
       sfx.win(ratio >= 10);
-      msg.innerHTML = `${ev.wins.length} ligne${ev.wins.length > 1 ? 's' : ''} gagnante${ev.wins.length > 1 ? 's' : ''} !${mult > 1 ? ' Gains ×2 🐒' : ''}`;
+      msg.innerHTML = `${ev.wins.length} ligne${ev.wins.length > 1 ? 's' : ''} gagnante${ev.wins.length > 1 ? 's' : ''} !${mult > 1 ? ' Gains ×2' : ''}`;
       const p = countUp(winAmt, win, { ms: Math.min(2500, 400 + ratio * 60) });
       if (ratio >= 15) await bigWinShow(win, ratio);
       await p;
     } else if (!ev.freeSpins) {
-      msg.textContent = isFree ? `Rien sur ce tour… ${fs.left} tour${fs.left > 1 ? 's' : ''} gratuit${fs.left > 1 ? 's' : ''} restant${fs.left > 1 ? 's' : ''}` : pick(['Raté ! Le singe se moque de toi 🐒', 'Pas cette fois…', 'Les bananes sont pas mûres', 'Encore un ?', 'La jungle est cruelle']);
+      msg.textContent = isFree ? `Rien sur ce tour… ${fs.left} tour${fs.left > 1 ? 's' : ''} gratuit${fs.left > 1 ? 's' : ''} restant${fs.left > 1 ? 's' : ''}` : pick(['Raté ! Le singe se moque de toi', 'Pas cette fois…', 'Les bananes sont pas mûres', 'Encore un ?', 'La jungle est cruelle']);
     }
 
     let bonus = false;
@@ -260,10 +267,10 @@ export function mount(view, { wallet }) {
       ev.wildCells.forEach(([r, row]) => cellEl(r, row)?.classList.add('wild-hit'));
       sfx.bonus();
       if (isFree) {
-        toast(`+${ev.freeSpins} tours gratuits ! 🐒👑`, 'win');
+        toast(`+${ev.freeSpins} tours gratuits !`, 'win');
       } else {
         await sleep(900);
-        await modal({ title: '👑 BONUS DU ROI SINGE 👑', html: `<div class="bonus-pop">${goldMonkeySVG('bonus-monkey')}<p><b>${ev.wilds} WILD</b> !</p><p class="big">${ev.freeSpins} TOURS GRATUITS</p><p>Tous les gains <b>×${FREE_SPIN_MULT}</b></p></div>`, buttons: [{ label: "C'est parti ! 🍌", value: true, primary: true }], dismissable: false });
+        await modal({ title: 'BONUS DU ROI SINGE', html: `<div class="bonus-pop">${goldMonkeySVG('bonus-monkey')}<p><b>${ev.wilds} WILD</b> !</p><p class="big">${ev.freeSpins} TOURS GRATUITS</p><p>Tous les gains <b>×${FREE_SPIN_MULT}</b></p></div>`, buttons: [{ label: "C'est parti !", value: true, primary: true }], dismissable: false });
       }
     }
     spinning = false;
@@ -314,10 +321,10 @@ export function mount(view, { wallet }) {
       title: 'Table des gains', cls: 'wide', html: `
       <p class="muted">Gains pour ta mise actuelle de <b>${money(lb)}</b> par ligne (${money(lb * LINE_COUNT)} au total). Les symboles doivent être alignés <b>depuis le rouleau de gauche</b> sur une ligne.</p>
       <div class="pt">${rows}</div>
-      <h3>👑 Le Roi Singe (WILD)</h3>
+      <h3>Le Roi Singe (WILD)</h3>
       <ul class="muted"><li>Remplace n'importe quel symbole sur les lignes.</li>
       <li><b>3, 4 ou 5 WILD n'importe où</b> = <b>${FREE_SPINS_AWARD[3]}, ${FREE_SPINS_AWARD[4]} ou ${FREE_SPINS_AWARD[5]} tours gratuits</b>, tous les gains <b>×${FREE_SPIN_MULT}</b>. Re-déclenchable pendant le bonus !</li>
-      <li>Taux de redistribution théorique (RTP) : <b>≈ 102 %</b>, simulé sur 20 millions de tours. L'avantage est au joueur 😎</li></ul>
+      <li>Taux de redistribution théorique (RTP) : <b>≈ 102 %</b>, simulé sur 20 millions de tours. L'avantage est au joueur.</li></ul>
       <h3>Les ${LINE_COUNT} lignes</h3><div class="paylines">${lines}</div>`,
       buttons: [{ label: 'Fermer', value: true, primary: true }],
     });
@@ -327,7 +334,7 @@ export function mount(view, { wallet }) {
   updateFsBanner();
   if (fs && fs.left > 0) {
     setTimeout(async () => {
-      await modal({ title: 'Tours gratuits en attente', html: `<p>Il te reste <b>${fs.left} tours gratuits ×${FREE_SPIN_MULT}</b> (mise ${money(fs.lineBet)}/ligne). On reprend !</p>`, buttons: [{ label: 'Reprendre 🍌', value: true, primary: true }], dismissable: false });
+      await modal({ title: 'Tours gratuits en attente', html: `<p>Il te reste <b>${fs.left} tours gratuits ×${FREE_SPIN_MULT}</b> (mise ${money(fs.lineBet)}/ligne). On reprend !</p>`, buttons: [{ label: 'Reprendre', value: true, primary: true }], dismissable: false });
       if (alive) spin();
     }, 300);
   }

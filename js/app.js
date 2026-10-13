@@ -3,12 +3,14 @@ import { CONFIG } from './config.js';
 import { createBackend } from './backend.js';
 import { Wallet, msUntilParisMidnight } from './wallet.js';
 import { h, $, $$, fmt, money, esc, toast, modal, coinRain, CUR } from './ui.js';
-import { monkeySVG, goldMonkeySVG, hangingMonkeySVG, coinSVG, symbolSVG } from './art.js';
+import { monkeySVG, goldMonkeySVG, hangingMonkeySVG, coinSVG, symbolSVG, icon, plinkoArtSVG, crashArtSVG } from './art.js';
 import { sfx } from './sfx.js';
 import * as Slots from './games/slots.js';
 import * as Blackjack from './games/blackjack.js';
 import * as Roulette from './games/roulette.js';
 import * as Breaker from './games/breaker.js';
+import * as Plinko from './games/plinko.js';
+import * as Crash from './games/crash.js';
 import * as Stats from './stats.js';
 
 const app = $('#app');
@@ -20,12 +22,14 @@ let authToken = 0;
 let headerTimer = null;
 
 const ROUTES = {
-  lobby: { label: 'Accueil', icon: '🏠', mount: mountLobby },
-  slots: { label: 'Machine à sous', icon: '🎰', mount: Slots.mount },
-  blackjack: { label: 'Blackjack', icon: '🃏', mount: Blackjack.mount },
-  roulette: { label: 'Roulette', icon: '🎡', mount: Roulette.mount },
-  breaker: { label: 'Casse-briques', icon: '🧱', mount: Breaker.mount },
-  stats: { label: 'Stats', icon: '📊', mount: Stats.mount },
+  lobby: { label: 'Accueil', icon: 'home', mount: mountLobby },
+  slots: { label: 'Slots', icon: 'slots', mount: Slots.mount },
+  blackjack: { label: 'Blackjack', icon: 'blackjack', mount: Blackjack.mount },
+  roulette: { label: 'Roulette', icon: 'roulette', mount: Roulette.mount },
+  plinko: { label: 'Plinko', icon: 'plinko', mount: Plinko.mount },
+  crash: { label: 'Crash', icon: 'crash', mount: Crash.mount },
+  breaker: { label: 'Briques', icon: 'breaker', mount: Breaker.mount },
+  stats: { label: 'Stats', icon: 'stats', mount: Stats.mount },
 };
 
 /* ============================== DÉMARRAGE ============================== */
@@ -102,7 +106,7 @@ function renderAuth() {
         <p class="form-error" role="alert"></p>
         <button class="btn btn-gold btn-lg" type="submit">Entrer dans la jungle</button>
       </form>
-      <p class="fineprint">Argent 100 % fictif, juste pour s'amuser entre potes. 🐒</p>
+      <p class="fineprint">Argent 100 % fictif, juste pour s'amuser entre potes.</p>
     </div></div>`);
   app.append(v);
   const form = $('form', v), err = $('.form-error', v), submit = $('button[type=submit]', v);
@@ -139,12 +143,12 @@ function renderShell() {
     ${backend.mode === 'demo' ? `<div class="demo-banner slim">Mode démo local (Firebase non configuré)</div>` : ''}
     <header class="topbar">
       <a class="brand" href="#/lobby">${monkeySVG({ cls: 'brand-monkey' })}<span class="logo-text">Casino <span>Chibouk</span></span></a>
-      <nav class="nav">${Object.entries(ROUTES).map(([k, r]) => `<a href="#/${k}" data-r="${k}"><span class="ni">${r.icon}</span><span class="nl">${r.label}</span></a>`).join('')}</nav>
+      <nav class="nav">${Object.entries(ROUTES).map(([k, r]) => `<a href="#/${k}" data-r="${k}" title="${r.label}"><span class="ni">${icon(r.icon)}</span><span class="nl">${r.label}</span></a>`).join('')}</nav>
       <div class="top-right">
         <button class="daily-btn" title="Bonus quotidien"></button>
         <div class="balance-pill" title="Ton solde">${coinSVG('coin')}<span class="bal-amount">${fmt(wallet.balance)}</span></div>
         <span class="sync-dot saved" title="Sauvegardé"></span>
-        <button class="icon-btn mute-btn" title="Son">${sfx.muted ? '🔇' : '🔊'}</button>
+        <button class="icon-btn mute-btn" title="Son">${icon(sfx.muted ? 'mute' : 'sound')}</button>
         <div class="user-menu"><button class="user-btn">${esc(wallet.pseudo)} ▾</button>
           <div class="user-drop"><a href="#/stats">Mes stats</a><button class="logout">Se déconnecter</button></div></div>
       </div>
@@ -170,7 +174,7 @@ function renderShell() {
   const syncTitles = { saved: 'Sauvegardé', pending: 'Modifications en attente (envoi auto)', saving: 'Sauvegarde…', error: 'Échec de sauvegarde, nouvel essai bientôt' };
   wallet.onSync((s) => { dot.className = 'sync-dot ' + s; dot.title = syncTitles[s] || s; });
 
-  $('.mute-btn', shell).onclick = (e) => { const m = sfx.toggle(); e.currentTarget.textContent = m ? '🔇' : '🔊'; };
+  $('.mute-btn', shell).onclick = (e) => { const m = sfx.toggle(); e.currentTarget.innerHTML = icon(m ? 'mute' : 'sound'); };
   const um = $('.user-menu', shell);
   $('.user-btn', shell).onclick = (e) => { e.stopPropagation(); um.classList.toggle('open'); };
   document.addEventListener('click', () => um.classList.remove('open'));
@@ -179,8 +183,8 @@ function renderShell() {
   const daily = $('.daily-btn', shell);
   daily.onclick = claimDaily;
   function updateDaily() {
-    if (wallet.dailyAvailable()) { daily.classList.add('ready'); daily.innerHTML = `🎁 <span>+${fmt(CONFIG.DAILY_BONUS)}</span>`; }
-    else { daily.classList.remove('ready'); daily.innerHTML = `⏳ <span>${countdown()}</span>`; }
+    if (wallet.dailyAvailable()) { daily.classList.add('ready'); daily.innerHTML = `${icon('gift')}<span>+${fmt(CONFIG.DAILY_BONUS)}</span>`; }
+    else { daily.classList.remove('ready'); daily.innerHTML = `${icon('hourglass')}<span>${countdown()}</span>`; }
     const lobbyDaily = $('#lobby-daily');
     if (lobbyDaily) renderLobbyDaily(lobbyDaily);
   }
@@ -198,9 +202,9 @@ function countdown() {
 }
 
 async function claimDaily() {
-  if (!wallet.dailyAvailable()) { toast(`Bonus déjà récupéré aujourd'hui. Reviens dans ${countdown()} 🐒`); return; }
+  if (!wallet.dailyAvailable()) { toast(`Bonus déjà récupéré aujourd'hui. Reviens dans ${countdown()}`); return; }
   const ok = await wallet.claimDaily();
-  if (ok) { sfx.coin(); sfx.win(true); coinRain(40); toast(`+${fmt(CONFIG.DAILY_BONUS)} ${CUR} ! Bonne chance 🍌`, 'win'); }
+  if (ok) { sfx.coin(); sfx.win(true); coinRain(40); toast(`+${fmt(CONFIG.DAILY_BONUS)} ${CUR} ! Bonne chance !`, 'win'); }
 }
 
 /* ================================ ROUTEUR ================================ */
@@ -224,18 +228,24 @@ function renderLobbyDaily(box) {
   if (wallet.dailyAvailable()) {
     if (box.dataset.state !== 'ready') {
       box.dataset.state = 'ready';
-      box.innerHTML = `<div class="daily-icon">🎁</div><div><h3>Ton bonus quotidien est prêt !</h3><p>${fmt(CONFIG.DAILY_BONUS)} ${CUR} offerts, une fois par jour.</p></div><button class="btn btn-gold btn-lg pulse">Récupérer +${fmt(CONFIG.DAILY_BONUS)}</button>`;
+      box.innerHTML = `<div class="daily-icon">${icon('gift')}</div><div><h3>Ton bonus quotidien est prêt !</h3><p>${fmt(CONFIG.DAILY_BONUS)} ${CUR} offerts, une fois par jour.</p></div><button class="btn btn-gold btn-lg pulse">Récupérer +${fmt(CONFIG.DAILY_BONUS)}</button>`;
       $('button', box).onclick = claimDaily;
     }
   } else {
     box.dataset.state = 'wait';
-    box.innerHTML = `<div class="daily-icon">⏳</div><div><h3>Bonus récupéré ✔</h3><p>Prochain bonus dans <b class="mono">${countdown()}</b> (minuit, heure de Paris)</p></div>`;
+    box.innerHTML = `<div class="daily-icon wait">${icon('hourglass')}</div><div><h3>Bonus récupéré</h3><p>Prochain bonus dans <b class="mono">${countdown()}</b> (minuit, heure de Paris)</p></div>`;
   }
+}
+
+function card(key, title, desc, tag, art) {
+  return `<a class="game-card gc-${key}" href="#/${key}">
+    <div class="gc-art">${art}</div>
+    <div class="gc-body"><div class="gc-title"><span class="gc-logo">${icon(ROUTES[key].icon)}</span><h3>${title}</h3></div><p>${desc}</p><span class="gc-tag">${tag}</span></div>
+  </a>`;
 }
 
 function mountLobby(view, { wallet: w }) {
   const s = w.stats;
-  const broke = w.balance < CONFIG.BREAKER_UNLOCK_BELOW;
   view.innerHTML = `
     <section class="hero">
       <div class="hero-text">
@@ -247,29 +257,22 @@ function mountLobby(view, { wallet: w }) {
     </section>
     <section id="lobby-daily" class="daily-card"></section>
     <section class="games-grid">
-      <a class="game-card gc-slots" href="#/slots">
-        <div class="gc-art"><div class="mini-reels">${['S', 'W', 'S'].map((x) => `<div>${symbolSVG(x)}</div>`).join('')}</div></div>
-        <div class="gc-body"><h3>Jungle Chibouk</h3><p>Machine à sous 5×3, 21 lignes. 3 WILD = tours gratuits ×2. RTP ~102 % 🔥</p></div>
-      </a>
-      <a class="game-card gc-bj" href="#/blackjack">
-        <div class="gc-art"><div class="mini-cards"><div class="mc mc1">A<span>♠</span></div><div class="mc mc2 red">K<span>♥</span></div></div></div>
-        <div class="gc-body"><h3>Blackjack du Singe</h3><p>Blackjack classique 6 jeux, paie 3:2. Doubler, séparer, en 3D.</p></div>
-      </a>
-      <a class="game-card gc-roulette" href="#/roulette">
-        <div class="gc-art"><div class="mini-wheel"></div></div>
-        <div class="gc-body"><h3>Roulette Banane</h3><p>Roulette européenne à un zéro, roue animée.</p></div>
-      </a>
-      <a class="game-card gc-breaker ${broke ? '' : 'locked'}" href="#/breaker">
-        <div class="gc-art"><div class="mini-bricks">${Array.from({ length: 15 }, (_, i) => `<i style="--h:${(i * 37) % 360}"></i>`).join('')}</div></div>
-        <div class="gc-body"><h3>Casse-briques de la dèche ${broke ? '' : '🔒'}</h3><p>${broke ? `Tu es à sec ? Casse toutes les briques d'un niveau et gagne ${CONFIG.BREAKER_REWARD} ${CUR} !` : `Se débloque quand ton solde passe sous ${CONFIG.BREAKER_UNLOCK_BELOW} ${CUR}.`}</p></div>
-      </a>
+      ${card('slots', 'Jungle Chibouk', 'Machine à sous 5×3, 21 lignes. 3 WILD = tours gratuits ×2.', 'RTP ≈ 102 %',
+        `<div class="mini-reels">${['S', 'W', 'S'].map((x) => `<div>${symbolSVG(x)}</div>`).join('')}</div>`)}
+      ${card('blackjack', 'Blackjack du Singe', 'Blackjack 6 jeux, paie 3:2. Doubler, séparer, cartes en 3D.', 'RTP ≈ 99,5 %',
+        `<div class="mini-cards"><div class="mc mc1">A<span>♠</span></div><div class="mc mc2 red">K<span>♥</span></div></div>`)}
+      ${card('roulette', 'Roulette Banane', 'Roulette européenne à un zéro, roue et bille animées.', 'RTP 97,3 %', `<div class="mini-wheel"></div>`)}
+      ${card('plinko', 'Plinko de la Canopée', 'Lâche des noix de coco, 3 niveaux de risque, jusqu\'à ×1000.', 'RTP 99 %', plinkoArtSVG())}
+      ${card('crash', 'Fusée Chibouk', 'Le multiplicateur grimpe : encaisse avant que la fusée explose.', 'RTP 99 %', crashArtSVG())}
+      ${card('breaker', 'Casse-briques', `Casse toutes les briques d'un niveau : +${CONFIG.BREAKER_REWARD} ${CUR}. Gratuit, sans mise.`, 'Gratuit',
+        `<div class="mini-bricks">${Array.from({ length: 15 }, (_, i) => `<i style="--h:${(i * 37) % 360}"></i>`).join('')}</div>`)}
     </section>
     <section class="mini-stats">
       <div><span>Total misé</span><b>${money(s.totalWagered)}</b></div>
       <div><span>Total gagné</span><b>${money(s.totalWon)}</b></div>
       <div><span>Bilan</span><b class="${s.totalWon - s.totalWagered >= 0 ? 'pos' : 'neg'}">${s.totalWon - s.totalWagered >= 0 ? '+' : ''}${fmt(s.totalWon - s.totalWagered)}</b></div>
       <div><span>Plus gros gain</span><b>${money(s.biggestWin)}</b></div>
-      <a class="btn btn-ghost" href="#/stats">Stats & classement →</a>
+      <a class="btn btn-ghost" href="#/stats">Stats & classement ${icon('arrow')}</a>
     </section>`;
   renderLobbyDaily($('#lobby-daily', view));
   const off = w.on(() => { const hb = $('.hero-bal', view); if (hb) hb.innerHTML = `Ton solde : ${money(w.balance)}`; });

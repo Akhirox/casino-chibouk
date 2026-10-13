@@ -1,13 +1,13 @@
 // Blackjack du Singe — 6 jeux, croupier reste sur 17 (soft 17 inclus), blackjack paie 3:2
 // Doubler sur 2 cartes, séparer jusqu'à 4 mains (As séparés : une carte chacun)
 import { randInt } from './slots-math.js';
-import { monkeySVG } from '../art.js';
+import { monkeySVG, icon } from '../art.js';
 import { h, $, $$, fmt, money, toast, sleep, coinRain, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
-const CHIPS = [5, 10, 25, 100, 500, 1000];
+const CHIPS = [5, 25, 100, 500, 1000, 5000, 25000]; // aucune mise max : on empile les jetons ou on fait tapis
 const DECKS = 6;
 
 const cardValue = (c) => (c.r === 'A' ? 11 : ['J', 'Q', 'K'].includes(c.r) ? 10 : +c.r);
@@ -57,7 +57,7 @@ export function mount(view, { wallet }) {
   view.innerHTML = `
   <div class="bj-wrap">
     <div class="game-head"><h1>Blackjack <span>du Singe</span></h1>
-      <div class="actions"><button class="btn btn-ghost btn-sm" id="bj-rules">📜 Règles</button></div></div>
+      <div class="actions"><button class="btn btn-ghost btn-sm" id="bj-rules">${icon('scroll')}Règles</button></div></div>
     <div class="bj-table">
       <div class="shoe"><div class="shoe-cards"></div><span>SABOT</span></div>
       <div class="discard"></div>
@@ -77,7 +77,9 @@ export function mount(view, { wallet }) {
         <div class="bet-actions">
           <button class="btn btn-ghost" id="clear">Effacer</button>
           <button class="btn btn-ghost" id="rebet">Remiser</button>
+          <button class="btn btn-ghost" id="half-bet">½</button>
           <button class="btn btn-ghost" id="double-bet">×2</button>
+          <button class="btn btn-ghost" id="allin">Tapis</button>
           <button class="btn btn-gold btn-lg" id="deal">Distribuer</button>
         </div>
       </div>
@@ -116,13 +118,15 @@ export function mount(view, { wallet }) {
       if (phase !== 'bet' && phase !== 'done') return;
       if (phase === 'done') resetTable();
       const v = +c.dataset.v;
-      if (bet + v > wallet.balance) { toast(`Solde insuffisant 🙈`, 'error'); return; }
+      if (bet + v > wallet.balance) { toast(`Solde insuffisant`, 'error'); return; }
       bet += v; selChip = v; sfx.chip(); renderBet(); updateControls();
     };
   });
   $('#clear', view).onclick = () => { if (phase === 'done') resetTable(); bet = 0; renderBet(); updateControls(); };
   $('#rebet', view).onclick = () => { if (phase === 'done') resetTable(); if (lastBet && lastBet <= wallet.balance) { bet = lastBet; sfx.chip(); renderBet(); updateControls(); } else toast('Solde insuffisant pour remiser', 'error'); };
   $('#double-bet', view).onclick = () => { if (phase === 'done') resetTable(); if (bet && bet * 2 <= wallet.balance) { bet *= 2; sfx.chip(); renderBet(); updateControls(); } };
+  $('#half-bet', view).onclick = () => { if (phase === 'done') resetTable(); bet = Math.floor(bet / 2); sfx.chip(); renderBet(); updateControls(); };
+  $('#allin', view).onclick = () => { if (phase === 'done') resetTable(); bet = Math.floor(wallet.balance); sfx.chip(); renderBet(); updateControls(); };
   $('#deal', view).onclick = () => deal();
   $('#hit', view).onclick = () => hit();
   $('#stand', view).onclick = () => stand();
@@ -290,7 +294,7 @@ export function mount(view, { wallet }) {
     const dealerBJ = isBJ(dealer);
     const playerBJ = isBJ(p.cards);
     if ((up.r === 'A' || cardValue(up) === 10) && !playerBJ) {
-      say('Le croupier vérifie… 🧐'); await sleep(800); hush();
+      say('Le croupier vérifie…'); await sleep(800); hush();
     }
     if (dealerBJ || playerBJ) {
       phase = 'dealer';
@@ -423,10 +427,10 @@ export function mount(view, { wallet }) {
     });
     const net = payout - staked;
     const dv = handValue(dealer).total;
-    if (hands.some((hd) => hd.result === 'bj')) { say(`🐒 BLACKJACK ! +${fmt(net)} ${CUR}`, 'win'); sfx.win(true); coinRain(25); }
-    else if (net > 0) { say(`${dv > 21 ? 'Le croupier saute ! ' : ''}Tu gagnes +${fmt(net)} ${CUR} 🍌`, 'win'); sfx.win(); }
+    if (hands.some((hd) => hd.result === 'bj')) { say(`BLACKJACK ! +${fmt(net)} ${CUR}`, 'win'); sfx.win(true); coinRain(25); }
+    else if (net > 0) { say(`${dv > 21 ? 'Le croupier saute ! ' : ''}Tu gagnes +${fmt(net)} ${CUR}`, 'win'); sfx.win(); }
     else if (net === 0 && payout > 0) { say('Égalité, mise rendue', ''); sfx.click(); }
-    else { say(isBJ(dealer) ? 'Blackjack du croupier… 🙈' : 'Le croupier gagne cette main', 'lose'); sfx.lose(); }
+    else { say(isBJ(dealer) ? 'Blackjack du croupier…' : 'Le croupier gagne cette main', 'lose'); sfx.lose(); }
     phase = 'done';
     if (bet > wallet.balance) bet = 0;
     updateControls();

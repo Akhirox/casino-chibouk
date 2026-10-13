@@ -8,7 +8,6 @@ export const CONFIG = {
   SYNC_INTERVAL_MS: 30000,      // envoi du solde/stats vers Firebase au maximum toutes les 30 s
   LEADERBOARD_CACHE_MS: 120000, // le classement n'est relu qu'au bout de 2 min
   LEADERBOARD_SIZE: 15,
-  BREAKER_UNLOCK_BELOW: 100,    // casse-briques accessible quand le solde est sous ce seuil
   BREAKER_REWARD: 100,          // gain par niveau terminé
   FIREBASE_SDK_VERSION: '10.12.2',
 };

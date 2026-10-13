@@ -1,11 +1,12 @@
 // Roulette Banane — roulette européenne (un seul zéro), roue animée sur canvas
 import { randInt } from './slots-math.js';
+import { icon } from '../art.js';
 import { h, $, $$, fmt, money, toast, sleep, coinRain, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
 const REDS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]);
-const CHIPS = [1, 5, 10, 25, 100, 500];
+const CHIPS = [1, 5, 25, 100, 500, 1000, 5000, 25000]; // aucune mise max
 const colorOf = (n) => (n === 0 ? 'green' : REDS.has(n) ? 'red' : 'black');
 const TAU = Math.PI * 2;
 const STEP = TAU / 37;
@@ -31,7 +32,7 @@ const BET_NAMES = { dz: (v) => `${v}${v === '1' ? 're' : 'e'} douzaine`, col: (v
 export function mount(view, { wallet }) {
   let alive = true;
   let spinning = false;
-  let selChip = 10;
+  let selChip = 5;
   let bets = {};        // clé -> montant
   let undo = [];        // historique des jetons posés
   let lastBets = null;
@@ -47,7 +48,7 @@ export function mount(view, { wallet }) {
   view.innerHTML = `
   <div class="rl-wrap">
     <div class="game-head"><h1>Roulette <span>Banane</span></h1>
-      <div class="actions"><button class="btn btn-ghost btn-sm" id="rl-rules">📜 Paiements</button></div></div>
+      <div class="actions"><button class="btn btn-ghost btn-sm" id="rl-rules">${icon('scroll')}Paiements</button></div></div>
     <div class="rl-top">
       <div class="wheel-box">
         <canvas id="wheel" width="600" height="600"></canvas>
@@ -73,13 +74,13 @@ export function mount(view, { wallet }) {
       <button class="rl-spot out" data-k="high" style="grid-row:5;grid-column:12 / span 2">19-36</button>
     </div></div>
     <div class="rl-controls">
-      <div class="chip-row">${CHIPS.map((v) => `<button class="chip ${v === selChip ? 'sel' : ''}" data-v="${v}">${v}</button>`).join('')}</div>
+      <div class="chip-row">${CHIPS.map((v) => `<button class="chip ${v === selChip ? 'sel' : ''}" data-v="${v}">${v >= 1000 ? v / 1000 + 'k' : v}</button>`).join('')}</div>
       <div class="bet-actions">
-        <button class="btn btn-ghost" id="rl-undo">↶ Annuler</button>
+        <button class="btn btn-ghost" id="rl-undo">${icon('undo')}Annuler</button>
         <button class="btn btn-ghost" id="rl-clear">Effacer</button>
         <button class="btn btn-ghost" id="rl-rebet">Remiser</button>
         <button class="btn btn-ghost" id="rl-double">×2</button>
-        <button class="btn btn-gold btn-lg" id="rl-spin">Lancer la bille 🎱</button>
+        <button class="btn btn-gold btn-lg" id="rl-spin">Lancer la bille</button>
       </div>
       <p class="hint">Clic = poser un jeton · Clic droit (ou appui long) = retirer la mise d'une case</p>
     </div>
@@ -114,7 +115,7 @@ export function mount(view, { wallet }) {
 
   function place(key, amount) {
     if (spinning) return;
-    if (total() + amount > wallet.balance) { toast(`Solde insuffisant 🙈`, 'error'); return; }
+    if (total() + amount > wallet.balance) { toast(`Solde insuffisant`, 'error'); return; }
     bets[key] = (bets[key] || 0) + amount;
     undo.push([key, amount]);
     sfx.chip();
@@ -206,7 +207,9 @@ export function mount(view, { wallet }) {
     w.fillStyle = gold;
     for (let i = 0; i < 4; i++) { w.save(); w.rotate(i * Math.PI / 2); w.beginPath(); w.roundRect(-7, -70, 14, 70, 7); w.fill(); w.beginPath(); w.arc(0, -70, 11, 0, TAU); w.fill(); w.restore(); }
     w.beginPath(); w.arc(0, 0, 30, 0, TAU); w.fill();
-    w.font = '28px serif'; w.textAlign = 'center'; w.textBaseline = 'middle'; w.fillText('🍌', 0, 2);
+    // petite banane dorée au centre
+    w.save(); w.rotate(-0.5); w.beginPath(); w.moveTo(-14, -9); w.bezierCurveTo(-15, 7, 2, 15, 15, 6); w.bezierCurveTo(16, 4, 15, 2, 13, 3);
+    w.bezierCurveTo(2, 8, -7, 1, -8, -9); w.closePath(); w.fillStyle = '#ffe14a'; w.fill(); w.lineWidth = 2; w.strokeStyle = '#8a5a00'; w.stroke(); w.restore();
   })();
 
   // Bol extérieur fixe
@@ -314,7 +317,7 @@ export function mount(view, { wallet }) {
     $$('.rl-spot.won, .rl-spot.hit', view).forEach((s) => s.classList.remove('won', 'hit'));
     $('.rl-result', view).classList.remove('show');
     renderBets();
-    $('.rl-msg', view).textContent = 'Rien ne va plus… 🎱';
+    $('.rl-msg', view).textContent = 'Rien ne va plus…';
     sfx.spinStart();
     const n = randInt(37);
     // paiement calculé immédiatement (si on quitte la page, le gain est quand même crédité)
@@ -338,11 +341,11 @@ export function mount(view, { wallet }) {
     const net = win - t;
     $('.rl-lastwin', view).innerHTML = win ? money(win) : '0';
     if (win > 0) {
-      $('.rl-msg', view).innerHTML = `<b>${n} ${colName}</b> : tu remportes ${money(win)} ${net > 0 ? `(+${fmt(net)})` : ''} 🍌<br><small>${winners.map((k) => { const [a, b] = k.split(':'); return BET_NAMES[a](b); }).join(', ')}</small>`;
+      $('.rl-msg', view).innerHTML = `<b>${n} ${colName}</b> : tu remportes ${money(win)} ${net > 0 ? `(+${fmt(net)})` : ''}<br><small>${winners.map((k) => { const [a, b] = k.split(':'); return BET_NAMES[a](b); }).join(', ')}</small>`;
       sfx.win(win >= t * 10);
       if (win >= t * 10) coinRain(35);
     } else {
-      $('.rl-msg', view).innerHTML = `<b>${n} ${colName}</b>… perdu cette fois 🙈`;
+      $('.rl-msg', view).innerHTML = `<b>${n} ${colName}</b>… perdu cette fois`;
       sfx.lose();
     }
     spinning = false;

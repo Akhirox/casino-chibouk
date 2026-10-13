@@ -13,6 +13,8 @@ export function emptyStats() {
       slots: { ...g(), bonuses: 0 },
       blackjack: { ...g(), blackjacks: 0, pushes: 0 },
       roulette: { ...g() },
+      plinko: { ...g() },
+      crash: { ...g() },
     },
   };
 }
@@ -69,7 +71,7 @@ async function createFirebaseBackend() {
 
   const errMsg = (e) => {
     const c = e && e.code || '';
-    if (c.includes('email-already-in-use')) return 'Ce pseudo est déjà pris 🙈';
+    if (c.includes('email-already-in-use')) return 'Ce pseudo est déjà pris';
     if (c.includes('invalid-credential') || c.includes('wrong-password') || c.includes('user-not-found')) return 'Pseudo ou mot de passe incorrect';
     if (c.includes('weak-password')) return 'Mot de passe trop court (6 caractères minimum)';
     if (c.includes('too-many-requests')) return 'Trop de tentatives, réessaie dans quelques minutes';
@@ -147,7 +149,7 @@ function createDemoBackend() {
       const bad = validatePseudo(pseudo); if (bad) throw new Error(bad);
       if (!password || password.length < 6) throw new Error('Mot de passe trop court (6 caractères minimum)');
       const users = read(K_USERS, {});
-      if (users[pseudo.toLowerCase()]) throw new Error('Ce pseudo est déjà pris 🙈');
+      if (users[pseudo.toLowerCase()]) throw new Error('Ce pseudo est déjà pris');
       const uid = 'demo_' + Math.random().toString(36).slice(2, 10);
       users[pseudo.toLowerCase()] = { uid, pseudo, pw: await hash(password) };
       write(K_USERS, users);

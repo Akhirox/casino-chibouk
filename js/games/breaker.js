@@ -80,31 +80,18 @@ export function mount(view, { wallet, navigate }) {
   }
   function hud() {
     $('.bk-level', view).textContent = `Niveau ${levelNum() + 1} · ${LEVELS[levelIdx].name}`;
-    $('.bk-lives', view).textContent = '🥥'.repeat(Math.max(0, lives));
+    $('.bk-lives', view).innerHTML = Array.from({ length: Math.max(0, lives) }, () => '<i class="coco"></i>').join('');
     $('.bk-left', view).textContent = `${bricks.length} briques`;
   }
 
   function showOverlay(html) { overlay.innerHTML = html; overlay.classList.add('show'); }
   function hideOverlay() { overlay.classList.remove('show'); }
 
-  function checkLock() {
-    if (wallet.balance >= CONFIG.BREAKER_UNLOCK_BELOW) {
-      state = 'locked';
-      showOverlay(`<div class="bk-card">${monkeySVG({ wink: true })}<h2>Tu as encore des ${CUR} !</h2>
-        <p>Le casse-briques s'ouvre quand ton solde passe sous <b>${fmt(CONFIG.BREAKER_UNLOCK_BELOW)} ${CUR}</b>.<br>Ton solde : ${money(wallet.balance)}</p>
-        <button class="btn btn-gold" data-go="slots">Retourner jouer 🎰</button></div>`);
-      overlay.querySelector('[data-go]').onclick = () => navigate('slots');
-      return true;
-    }
-    return false;
-  }
-
   function intro() {
-    if (checkLock()) { drawFrame(); return; }
     buildLevel();
     state = 'ready';
-    showOverlay(`<div class="bk-card">${monkeySVG({})}<h2>À sec ? Pas de panique.</h2>
-      <p>Casse <b>toutes les briques</b> du niveau ${levelNum() + 1} pour gagner <b>${money(CONFIG.BREAKER_REWARD)}</b>.<br>3 noix de coco, pas de mise. Bonne chance !</p>
+    showOverlay(`<div class="bk-card">${monkeySVG({})}<h2>Niveau ${levelNum() + 1} · ${LEVELS[levelIdx].name}</h2>
+      <p>Casse <b>toutes les briques</b> pour gagner <b>${money(CONFIG.BREAKER_REWARD)}</b>.<br>3 noix de coco, aucune mise. Bonne chance !</p>
       <button class="btn btn-gold btn-lg" id="bk-go">Jouer</button></div>`);
     $('#bk-go', view).onclick = () => { hideOverlay(); state = 'serve'; sfx.click(); };
     drawFrame();
@@ -227,7 +214,7 @@ export function mount(view, { wallet, navigate }) {
       state = 'over';
       showOverlay(`<div class="bk-card">${monkeySVG({})}<h2>Plus de noix de coco !</h2><p>Pas grave, le niveau est gratuit. On recommence ?</p>
         <button class="btn btn-gold btn-lg" id="bk-retry">Réessayer</button></div>`);
-      $('#bk-retry', view).onclick = () => { if (checkLock()) return; buildLevel(); hideOverlay(); state = 'serve'; };
+      $('#bk-retry', view).onclick = () => { buildLevel(); hideOverlay(); state = 'serve'; };
     } else { resetBall(); state = 'serve'; }
   }
 
@@ -235,16 +222,21 @@ export function mount(view, { wallet, navigate }) {
     state = 'won';
     wallet.breakerReward();
     sfx.win(true); coinRain(30);
-    const stillBroke = wallet.balance < CONFIG.BREAKER_UNLOCK_BELOW;
     showOverlay(`<div class="bk-card">${monkeySVG({ crown: true, fur: '#c98a00', face: '#ffe6a6', ear: '#ffd36b' })}<h2>Niveau terminé !</h2>
       <p>+${money(CONFIG.BREAKER_REWARD)} ajoutés à ton solde.<br>Solde : ${money(wallet.balance)}</p>
-      ${stillBroke ? `<button class="btn btn-gold btn-lg" id="bk-next">Niveau suivant</button>` : `<button class="btn btn-gold btn-lg" data-go="slots">Retour au casino 🎰</button> <button class="btn btn-ghost" data-go="blackjack">Blackjack 🃏</button>`}</div>`);
+      <button class="btn btn-gold btn-lg" id="bk-next">Niveau suivant</button> <button class="btn btn-ghost" data-go="lobby">Retour au casino</button></div>`);
     overlay.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => navigate(b.dataset.go)));
     const nx = $('#bk-next', view);
     if (nx) nx.onclick = () => { buildLevel(); hideOverlay(); state = 'serve'; };
   }
 
   /* ---------------- rendu ---------------- */
+  function drawBanana(c) {
+    c.beginPath(); c.moveTo(-12, -9); c.bezierCurveTo(-13, 6, 2, 14, 14, 6); c.bezierCurveTo(15, 4, 14, 2, 12, 3);
+    c.bezierCurveTo(2, 7, -6, 1, -7, -9); c.closePath();
+    c.fillStyle = '#ffd93b'; c.fill(); c.lineWidth = 1.5; c.strokeStyle = '#b38300'; c.stroke();
+    c.fillStyle = '#6b4a1a'; c.fillRect(-13, -13, 6, 5);
+  }
   function roundRect(x, y, w, hh, r) { g.beginPath(); g.roundRect(x, y, w, hh, r); }
   function drawFrame() {
     g.drawImage(bg, 0, 0);
@@ -261,7 +253,7 @@ export function mount(view, { wallet, navigate }) {
     }
     for (const p of particles) { g.globalAlpha = Math.max(0, p.life); g.fillStyle = `hsl(${p.hue} 90% 60%)`; g.fillRect(p.x - 3, p.y - 3, 6, 6); }
     g.globalAlpha = 1;
-    for (const d of drops) { g.save(); g.translate(d.x, d.y); g.rotate(d.rot); g.font = '26px serif'; g.textAlign = 'center'; g.textBaseline = 'middle'; g.fillText('🍌', 0, 0); g.restore(); }
+    for (const d of drops) { g.save(); g.translate(d.x, d.y); g.rotate(d.rot); drawBanana(g); g.restore(); }
     // raquette (planche de bois + liane)
     const px = paddle.x - paddle.w / 2, py = paddle.y;
     const wood = g.createLinearGradient(0, py, 0, py + 16);

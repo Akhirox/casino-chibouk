@@ -7,7 +7,10 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 - 🎰 **Jungle Chibouk** : machine à sous 5×3 avec les 21 lignes de ton schéma. **3 WILD n'importe où** donnent des **tours gratuits avec gains ×2**, qui peuvent se redéclencher. RTP d'environ **102 %**, donc l'avantage est au joueur.
 - 🃏 **Blackjack du Singe** : 6 jeux, blackjack payé 3:2, le croupier reste sur 17. Tu peux doubler et séparer (jusqu'à 4 mains). Les cartes ont des animations 3D.
 - 🎡 **Roulette Banane** : roulette européenne à un zéro, avec une roue animée et une bille qui rebondit.
-- 🧱 **Casse-briques de la dèche** : il s'ouvre quand le solde passe **sous 100 Brundles**. Chaque niveau terminé rapporte **+100 Brundles**. Il y a 6 niveaux, et la difficulté augmente.
+- 🔻 **Plinko de la Canopée** : 8, 12 ou 16 rangées, 3 niveaux de risque (faible, moyen, élevé), jusqu'à ×1000. Plusieurs billes en même temps, lâcher en série. RTP 99 %.
+- 🚀 **Fusée Chibouk** (crash) : le multiplicateur grimpe, tu encaisses quand tu veux avant l'explosion. Encaissement auto possible. RTP 99 %.
+- 🧱 **Casse-briques** : accessible à tout moment, sans mise. Chaque niveau terminé rapporte **+100 Brundles**. Il y a 6 niveaux, et la difficulté augmente.
+- **Aucune mise maximum** : mise libre + bouton MAX (slots, plinko, crash), jetons jusqu'à 25k + « Tapis » (blackjack), jetons jusqu'à 25k empilables (roulette).
 - 📊 **Stats** par jeu (misé, gagné, bilan, RTP réel, plus gros gain…) et un **classement** des joueurs.
 - Sauvegarde **groupée toutes les 30 s** pour économiser les quotas Firebase (voir plus bas).
 
@@ -81,7 +84,6 @@ Une copie de secours est aussi gardée dans le navigateur (`localStorage`). Si u
 | `DAILY_BONUS` | 1000 | Bonus quotidien |
 | `SYNC_INTERVAL_MS` | 30000 | Fréquence max des sauvegardes |
 | `LEADERBOARD_CACHE_MS` | 120000 | Durée du cache du classement |
-| `BREAKER_UNLOCK_BELOW` | 100 | Seuil de solde sous lequel le casse-briques s'ouvre |
 | `BREAKER_REWARD` | 100 | Gain par niveau de casse-briques |
 
 ---
@@ -110,6 +112,10 @@ node tools/simulate-rtp.mjs 2000000
 
 Le blackjack (avantage maison ~0,5 %) et la roulette (2,7 %) gardent les règles classiques d'un vrai casino.
 
+**Plinko** : la case d'arrivée suit une loi binomiale (50/50 à chaque cheville). Les tables de `js/games/plinko-math.js` donnent un RTP exact de 99 % pour chacune des 9 combinaisons rangées × risque.
+
+**Crash** : le point d'explosion suit P(crash ≥ x) = 0,99 / x, donc le RTP vaut 99 % quel que soit le moment où tu encaisses. Le multiplicateur suit e^(0,1·t) : ×2 en ~7 s, ×10 en ~23 s.
+
 ---
 
 ## 7. Limites à connaître
@@ -125,19 +131,22 @@ Le blackjack (avantage maison ~0,5 %) et la roulette (2,7 %) gardent les règles
 ```
 index.html
 css/style.css              thème sombre jungle + tous les jeux
-js/firebase-config.js      ← À REMPLIR
+js/firebase-config.js      config Firebase (déjà remplie avec ton projet)
 js/config.js               réglages
 js/app.js                  connexion, navigation, lobby, bonus quotidien
 js/backend.js              Firebase (Auth + Firestore) / mode démo
 js/wallet.js               solde, stats, sauvegarde groupée
 js/stats.js                page stats + classement
-js/art.js                  singes et symboles en SVG
+js/art.js                  singes, symboles, icônes et illustrations en SVG
 js/sfx.js                  effets sonores synthétisés
 js/games/slots-math.js     maths de la machine à sous (RNG, lignes, gains)
 js/games/slots.js          machine à sous
 js/games/blackjack.js      blackjack 3D
 js/games/roulette.js       roulette animée
 js/games/breaker.js        casse-briques
+js/games/plinko-math.js    tables et probabilités du plinko
+js/games/plinko.js         plinko
+js/games/crash.js          crash (fusée)
 firestore.rules            règles de sécurité à publier
 tools/simulate-rtp.mjs     simulateur de RTP
 ```
