@@ -842,3 +842,60 @@ table.tbl { width: 100%; border-collapse: collapse; font-variant-numeric: tabula
   .mn-grid { gap: 6px; }
   .dc-stage { padding: 22px 14px 16px; }
 }
+
+/* ============================== SUIVI DE BALANCE ============================== */
+.icon-btn.on { color: #3a2600; background: var(--gold-grad); border-color: transparent; }
+.icon-btn.active-bg { color: var(--gold); border-color: #5a4a14; }
+.tracker {
+  position: fixed; right: 16px; bottom: 16px; z-index: 120; width: 320px; padding: 12px 14px 10px; border-radius: 18px;
+  background: rgba(16, 25, 20, .96); backdrop-filter: blur(10px); border: 1px solid var(--line); box-shadow: 0 18px 40px rgba(0, 0, 0, .6);
+  animation: tkIn .25s ease-out;
+}
+@keyframes tkIn { from { transform: translateY(16px); opacity: 0; } }
+.tk-head { display: flex; align-items: center; justify-content: space-between; }
+.tk-title { display: flex; align-items: center; gap: 6px; font-size: .78rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+.tk-title .ic { color: var(--gold); }
+.tk-actions { display: flex; gap: 4px; }
+.tk-btn { width: 30px; height: 30px; border-radius: 9px; border: 1px solid var(--line); background: rgba(255, 255, 255, .04); color: var(--muted); cursor: pointer; display: grid; place-items: center; }
+.tk-btn:hover { color: var(--text); background: rgba(255, 255, 255, .1); }
+.tk-btn .ic { width: 16px; height: 16px; }
+.tk-net { font-family: var(--font-title); font-size: 1.9rem; line-height: 1.1; margin: 6px 0 4px; font-variant-numeric: tabular-nums; color: var(--text); }
+.tk-chart { display: block; width: 100%; aspect-ratio: 300 / 120; height: auto; border-radius: 10px; background: rgba(0, 0, 0, .25); }
+.tk-foot { display: flex; justify-content: space-between; gap: 8px; margin-top: 8px; font-size: .78rem; color: var(--muted); }
+.tk-foot b { color: var(--text); font-variant-numeric: tabular-nums; }
+.tk-foot b.pos { color: var(--green); } .tk-foot b.neg { color: var(--red); }
+.tk-stop { display: block; margin: 8px auto 0; background: none; border: 0; color: var(--muted); font-size: .75rem; cursor: pointer; text-decoration: underline; }
+.tk-stop:hover { color: var(--red); }
+
+/* ============================== TRANSFERTS ============================== */
+.tr-form { display: grid; gap: 12px; }
+.tr-form > p { margin: 0; }
+.tr-form label { display: grid; gap: 5px; font-size: .85rem; color: var(--muted); font-weight: 600; }
+.tr-form input { background: #0b120e; border: 1px solid var(--line); border-radius: 11px; padding: 11px 13px; color: var(--text); font: inherit; font-size: 1rem; }
+.tr-form input:focus { outline: none; border-color: var(--gold2); box-shadow: 0 0 0 3px rgba(245, 197, 66, .18); }
+.tr-hist { list-style: none; padding: 0; margin: 0; display: grid; gap: 4px; }
+.tr-hist li { display: flex; justify-content: space-between; padding: 7px 10px; border-radius: 9px; background: #0005; font-size: .88rem; }
+.tr-hist li.in > b { color: var(--green); } .tr-hist li.out > b { color: #ff9aa4; }
+
+/* ============================== MEILLEURES WINS ============================== */
+.bw-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 12px; }
+.bw-card { padding: 12px 14px; border-radius: 14px; background: #0005; border: 1px solid var(--line); }
+.bw-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+.bw-head .ic { color: var(--gold); }
+.bw-card ol { list-style: none; padding: 0; margin: 0; display: grid; gap: 6px; }
+.bw-card li { display: grid; grid-template-columns: 28px 1fr auto; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 9px; font-size: .9rem; }
+.bw-card li.me { background: rgba(245, 197, 66, .1); }
+.bw-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.bw-empty { margin: 0; font-size: .85rem; }
+
+@media (max-width: 760px) {
+  .tracker { right: 10px; left: 10px; width: auto; bottom: calc(76px + env(safe-area-inset-bottom)); padding: 8px 10px; display: grid; grid-template-columns: auto 1fr; grid-template-areas: "head head" "net chart" "foot foot"; column-gap: 10px; }
+  .tk-head { grid-area: head; }
+  .tk-net { grid-area: net; font-size: 1.3rem; align-self: center; margin: 0; }
+  .tk-chart { grid-area: chart; aspect-ratio: auto; height: 54px; }
+  .tk-foot { grid-area: foot; margin-top: 4px; }
+  .tk-stop { display: none; }
+  .tk-btn { width: 26px; height: 26px; }
+  body.tk-open .foot { padding-bottom: 240px; }
+  .send-btn { display: none; }
+}

@@ -21,7 +21,7 @@ export class Wallet {
     this.p = profile;
     this.dirty = false;
     this.lastSync = Date.now();
-    this.syncing = false;
+    this.syncPromise = null;
     this.listeners = new Set();
     this.syncListeners = new Set();
     this.backupKey = 'chibouk_backup_' + uid;
@@ -161,25 +161,94 @@ export class Wallet {
     return JSON.parse(JSON.stringify(o));
   }
 
+  // Exécute fn() en exclusivité avec les sauvegardes (pas d'écriture concurrente)
+  async exclusive(fn) {
+    while (this.syncPromise) { try { await this.syncPromise; } catch {} }
+    let result;
+    this.syncPromise = (async () => { result = await fn(); })();
+    try { await this.syncPromise; } finally { this.syncPromise = null; }
+    return result;
+  }
+
   async flush() {
-    if (!this.dirty || this.syncing || this.disabled) return;
-    this.syncing = true;
-    this.emitSync('saving');
-    const snapshot = this.pick();
-    const stamp = this.p.updatedAt;
-    try {
-      await this.backend.saveProfile(this.uid, snapshot);
-      if (this.p.updatedAt === stamp) {
-        this.dirty = false;
-        try { localStorage.setItem(this.backupKey, JSON.stringify({ dirty: false, profile: snapshot })); } catch {}
+    if (!this.dirty || this.disabled) return;
+    return this.exclusive(async () => {
+      if (!this.dirty) return;
+      this.emitSync('saving');
+      const snapshot = this.pick();
+      const stamp = this.p.updatedAt;
+      try {
+        await this.backend.saveProfile(this.uid, snapshot);
+        if (this.p.updatedAt === stamp) {
+          this.dirty = false;
+          try { localStorage.setItem(this.backupKey, JSON.stringify({ dirty: false, profile: snapshot })); } catch {}
+        }
+        this.lastSync = Date.now();
+        this.emitSync(this.dirty ? 'pending' : 'saved');
+      } catch (e) {
+        console.warn('Synchronisation échouée, nouvel essai plus tard', e);
+        this.emitSync('error');
       }
-      this.lastSync = Date.now();
-      this.emitSync(this.dirty ? 'pending' : 'saved');
+    });
+  }
+
+  /* ---------- Transferts de Brundles entre joueurs ---------- */
+  logTransfer(entry) {
+    const key = 'chibouk_transfers_' + this.uid;
+    try {
+      const list = JSON.parse(localStorage.getItem(key) || '[]');
+      list.unshift({ ...entry, at: Date.now() });
+      localStorage.setItem(key, JSON.stringify(list.slice(0, 50)));
+    } catch {}
+  }
+  transferHistory() {
+    try { return JSON.parse(localStorage.getItem('chibouk_transfers_' + this.uid) || '[]'); } catch { return []; }
+  }
+
+  async sendTo(target, amount) {
+    amount = Math.floor(amount);
+    if (!(amount > 0)) throw new Error('Montant invalide');
+    if (target.uid === this.uid) throw new Error('Tu ne peux pas t\'envoyer des Brundles à toi-même');
+    if (amount > this.p.balance) throw new Error('Solde insuffisant');
+    await this.flush(); // le serveur doit connaître ton solde à jour avant le transfert
+    return this.exclusive(async () => {
+      if (this.dirty) {
+        // une partie a modifié le solde entre-temps : on sauvegarde d'abord
+        await this.backend.saveProfile(this.uid, this.pick());
+        this.dirty = false;
+      }
+      if (amount > this.p.balance) throw new Error('Solde insuffisant');
+      await this.backend.sendTransfer({ from: this.uid, fromPseudo: this.p.pseudo, to: target.uid, toPseudo: target.pseudo, amount });
+      this.p.balance -= amount;
+      this.p.stats.transfersSent = (this.p.stats.transfersSent || 0) + amount;
+      this.logTransfer({ dir: 'out', pseudo: target.pseudo, amount });
+      this.touch({ type: 'transfer-out', amount });
+      return true;
+    });
+  }
+
+  // Récupère les Brundles reçus (appelé à l'ouverture puis toutes les ~90 s)
+  async checkInbox() {
+    if (this.disabled || this.inboxBusy) return [];
+    this.inboxBusy = true;
+    const received = [];
+    try {
+      const list = await this.backend.fetchInbox(this.uid);
+      for (const t of list) {
+        await this.exclusive(async () => {
+          await this.backend.claimTransfer(this.uid, t);
+          this.p.balance += t.amount;
+          this.p.stats.transfersReceived = (this.p.stats.transfersReceived || 0) + t.amount;
+          this.logTransfer({ dir: 'in', pseudo: t.fromPseudo, amount: t.amount });
+          this.touch({ type: 'transfer-in', amount: t.amount, from: t.fromPseudo });
+          received.push(t);
+        });
+      }
     } catch (e) {
-      console.warn('Synchronisation échouée, nouvel essai plus tard', e);
-      this.emitSync('error');
+      console.warn('Lecture des transferts impossible', e);
     } finally {
-      this.syncing = false;
+      this.inboxBusy = false;
     }
+    return received;
   }
 }

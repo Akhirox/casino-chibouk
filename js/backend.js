@@ -9,6 +9,7 @@ export function emptyStats() {
     peakBalance: CONFIG.START_BALANCE,
     dailyClaims: 0, dailyTotal: 0,
     breakerLevels: 0, breakerTotal: 0,
+    transfersSent: 0, transfersReceived: 0,
     games: {
       slots: { ...g(), bonuses: 0 },
       blackjack: { ...g(), blackjacks: 0, pushes: 0 },
@@ -124,6 +125,30 @@ async function createFirebaseBackend() {
       const snap = await F.getDocs(q);
       return snap.docs.map((d) => ({ uid: d.id, ...normalizeProfile(d.data()) }));
     },
+    // Tous les joueurs (petit groupe d'amis) : sert au classement, aux meilleures wins et aux transferts
+    async listPlayers(n = 200) {
+      const snap = await F.getDocs(F.query(F.collection(db, 'users'), F.limit(n)));
+      return snap.docs.map((d) => ({ uid: d.id, ...normalizeProfile(d.data()) }));
+    },
+    // Envoi : en une seule écriture atomique, on débite l'expéditeur et on crée le transfert
+    async sendTransfer(t) {
+      const batch = F.writeBatch(db);
+      batch.update(F.doc(db, 'users', t.from), { balance: F.increment(-t.amount), updatedAt: Date.now() });
+      batch.set(F.doc(F.collection(db, 'transfers')), { ...t, claimed: false, createdAt: Date.now() });
+      try { await batch.commit(); } catch (e) { throw new Error('Transfert refusé : ' + (e.code || e.message)); }
+    },
+    async fetchInbox(uid) {
+      const q = F.query(F.collection(db, 'transfers'), F.where('to', '==', uid), F.where('claimed', '==', false));
+      const snap = await F.getDocs(q);
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    },
+    // Réception : on marque le transfert comme encaissé et on crédite son propre compte, atomiquement
+    async claimTransfer(uid, t) {
+      const batch = F.writeBatch(db);
+      batch.update(F.doc(db, 'transfers', t.id), { claimed: true, claimedAt: Date.now() });
+      batch.update(F.doc(db, 'users', uid), { balance: F.increment(t.amount), updatedAt: Date.now() });
+      await batch.commit();
+    },
   };
 }
 
@@ -133,6 +158,7 @@ async function createFirebaseBackend() {
 function createDemoBackend() {
   const K_USERS = 'chibouk_demo_users';
   const K_SESSION = 'chibouk_demo_session';
+  const K_TRANSFERS = 'chibouk_demo_transfers';
   const kProfile = (uid) => 'chibouk_demo_profile_' + uid;
   const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
   const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -180,6 +206,31 @@ function createDemoBackend() {
       const users = Object.values(read(K_USERS, {}));
       return users.map((u) => ({ uid: u.uid, ...normalizeProfile(read(kProfile(u.uid), newProfile(u.pseudo))) }))
         .sort((a, b) => b.balance - a.balance).slice(0, n);
+    },
+    async listPlayers(n = 200) {
+      const users = Object.values(read(K_USERS, {}));
+      return users.slice(0, n).map((u) => ({ uid: u.uid, ...normalizeProfile(read(kProfile(u.uid), newProfile(u.pseudo))) }));
+    },
+    async sendTransfer(t) {
+      const p = read(kProfile(t.from), null);
+      if (!p || p.balance < t.amount) throw new Error('Solde insuffisant');
+      p.balance -= t.amount; p.updatedAt = Date.now();
+      write(kProfile(t.from), p);
+      const list = read(K_TRANSFERS, []);
+      list.push({ ...t, id: 'tr_' + Math.random().toString(36).slice(2, 10), claimed: false, createdAt: Date.now() });
+      write(K_TRANSFERS, list);
+    },
+    async fetchInbox(uid) {
+      return read(K_TRANSFERS, []).filter((t) => t.to === uid && !t.claimed);
+    },
+    async claimTransfer(uid, t) {
+      const list = read(K_TRANSFERS, []);
+      const x = list.find((y) => y.id === t.id);
+      if (!x || x.claimed) throw new Error('Déjà encaissé');
+      x.claimed = true; x.claimedAt = Date.now();
+      write(K_TRANSFERS, list);
+      const p = read(kProfile(uid), null);
+      if (p) { p.balance += t.amount; p.updatedAt = Date.now(); write(kProfile(uid), p); }
     },
   };
 }

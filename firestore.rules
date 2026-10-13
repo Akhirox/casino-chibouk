@@ -29,6 +29,35 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Transferts de Brundles entre joueurs
+    match /transfers/{id} {
+      // On ne voit que les transferts qu'on a envoyés ou reçus
+      allow read: if request.auth != null
+        && (resource.data.to == request.auth.uid || resource.data.from == request.auth.uid);
+
+      // Création : c'est bien moi l'expéditeur, montant entier positif, destinataire existant,
+      // et mon solde est débité du même montant dans la même écriture atomique
+      allow create: if request.auth != null
+        && request.resource.data.from == request.auth.uid
+        && request.resource.data.to is string
+        && request.resource.data.to != request.auth.uid
+        && request.resource.data.amount is int
+        && request.resource.data.amount > 0
+        && request.resource.data.claimed == false
+        && exists(/databases/$(database)/documents/users/$(request.resource.data.to))
+        && getAfter(/databases/$(database)/documents/users/$(request.auth.uid)).data.balance
+           == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.balance - request.resource.data.amount;
+
+      // Encaissement : seul le destinataire peut passer "claimed" à true, une seule fois
+      allow update: if request.auth != null
+        && resource.data.to == request.auth.uid
+        && resource.data.claimed == false
+        && request.resource.data.claimed == true
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['claimed', 'claimedAt']);
+
+      allow delete: if false;
+    }
+
     // Tout le reste est fermé
     match /{document=**} {
       allow read, write: if false;

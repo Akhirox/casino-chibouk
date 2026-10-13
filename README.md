@@ -5,7 +5,9 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 - Connexion par **pseudo + mot de passe**, sans email.
 - **1 000 Brundles offerts** à la création du compte, puis **1 000 par jour** avec le bouton cadeau (une fois par jour, remise à zéro à minuit heure de Paris).
 - **Aucune mise maximum** : mise libre + bouton MAX (Slot, Plinkoko, Crashibouk, Tower, Mines, Dice), jetons jusqu'à 25k + « Tapis » (blackjack), jetons jusqu'à 25k empilables (roulette).
-- **Stats** par jeu (misé, gagné, bilan, RTP réel, plus gros gain…) et un **classement** des joueurs.
+- **Stats** par jeu (misé, gagné, bilan, RTP réel, plus gros gain…), un **classement** des soldes et un **classement des meilleures wins par jeu** (top 3).
+- **Suivi de session** (bouton graphique dans la barre du haut) : courbe des gains/pertes qui part de 0 au lancement, verte au-dessus de 0 et rouge en dessous. Il continue quand on change de jeu ou qu'on recharge la page, jusqu'au reset. Seuls les jeux comptent (pas le bonus quotidien ni les transferts).
+- **Envoi de Brundles** entre joueurs (bouton avion en papier, ou menu du pseudo). Le destinataire les reçoit automatiquement dans les 90 secondes, avec une notification.
 - Sauvegarde **groupée toutes les 30 s** pour économiser les quotas Firebase (voir plus bas).
 
 ### Les jeux
@@ -45,7 +47,7 @@ python -m http.server 8000
 1. Va sur <https://console.firebase.google.com> et clique sur **Ajouter un projet**. Google Analytics n'est pas nécessaire.
 2. **Authentication** → *Commencer* → *Sign-in method* → active **Adresse e-mail/Mot de passe**.
 3. **Firestore Database** → *Créer une base de données*. Choisis le **mode production** et une région en Europe, par exemple `europe-west1`.
-4. **Firestore Database → Règles** : copie-colle le contenu du fichier `firestore.rules`, puis clique sur **Publier**.
+4. **Firestore Database → Règles** : copie-colle le contenu du fichier `firestore.rules`, puis clique sur **Publier**. À refaire à chaque fois que ce fichier change (c'est le cas avec l'ajout des transferts).
 5. **Paramètres du projet** (roue dentée) → *Vos applications* → icône **Web `</>`**. Enregistre l'app sans activer Firebase Hosting, puis copie le bloc `firebaseConfig` dans **`js/firebase-config.js`**.
 6. **Authentication → Paramètres → Domaines autorisés** → ajoute `tonpseudo.github.io`.
 
@@ -76,9 +78,13 @@ Le plan gratuit Spark offre **50 000 lectures et 20 000 écritures par jour**. L
 | Jouer (spins, mains, lancers…) | **0** : tout est calculé en local |
 | Sauvegarde du solde et des stats | 1 écriture **toutes les 30 s max**, seulement s'il y a eu un changement |
 | Fermeture de l'onglet, bonus quotidien, niveau de casse-briques | 1 écriture immédiate |
-| Page Stats (classement) | ~15 lectures, gardées en cache 2 min |
+| Page Stats, liste des destinataires d'un transfert | 1 lecture par joueur inscrit, gardée en cache 2 min |
+| Vérification des Brundles reçus | 1 lecture toutes les 90 s (seulement quand l'onglet est visible) |
+| Envoi ou réception d'un transfert | 2 écritures |
 
-Un joueur qui joue 2 h sans pause fait au maximum ~240 écritures. Même à 20 potes, tu restes très loin des limites.
+Un joueur qui joue 2 h sans pause fait au maximum ~240 écritures et ~80 lectures. Même à 20 potes, tu restes très loin des limites.
+
+**Transferts :** l'expéditeur est débité et le transfert créé dans une seule écriture atomique, vérifiée par les règles Firestore (montant entier positif, destinataire existant, débit exact du même montant). Seul le destinataire peut encaisser un transfert, et une seule fois.
 
 Une copie de secours est aussi gardée dans le navigateur (`localStorage`). Si une sauvegarde échoue (onglet fermé brutalement, réseau coupé…), elle est renvoyée à la connexion suivante.
 
@@ -148,7 +154,9 @@ js/config.js               réglages
 js/app.js                  connexion, navigation, lobby, bonus quotidien
 js/backend.js              Firebase (Auth + Firestore) / mode démo
 js/wallet.js               solde, stats, sauvegarde groupée
-js/stats.js                page stats + classement
+js/stats.js                page stats, classement, meilleures wins par jeu
+js/players.js              liste des joueurs (cache partagé)
+js/tracker.js              suivi de session en graphique
 js/art.js                  singes, symboles, icônes et illustrations en SVG
 js/sfx.js                  effets sonores synthétisés
 js/games/slots-math.js     maths de la machine à sous (RNG, lignes, gains)

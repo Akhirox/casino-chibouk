@@ -15,6 +15,8 @@ import * as Tower from './games/tower.js';
 import * as Mines from './games/mines.js';
 import * as Dice from './games/dice.js';
 import * as Stats from './stats.js';
+import { createTracker } from './tracker.js';
+import { getPlayers } from './players.js';
 
 const app = $('#app');
 let backend = null;
@@ -23,6 +25,8 @@ let cleanupView = null;
 let signupPromise = null;
 let authToken = 0;
 let headerTimer = null;
+let tracker = null;
+let inboxTimer = null;
 
 const ROUTES = {
   lobby: { label: 'Accueil', icon: 'home', mount: mountLobby },
@@ -51,6 +55,8 @@ async function boot() {
   setupTabGuard();
   backend.onAuth(async (user) => {
     const token = ++authToken;
+    if (tracker) { tracker.destroy(); tracker = null; }
+    clearInterval(inboxTimer);
     if (wallet) { await wallet.stop(); wallet = null; }
     if (!user) { renderAuth(); return; }
     let hint = user.pseudo;
@@ -154,9 +160,11 @@ function renderShell() {
         <button class="daily-btn" title="Bonus quotidien"></button>
         <div class="balance-pill" title="Ton solde">${coinSVG('coin')}<span class="bal-amount">${fmt(wallet.balance)}</span></div>
         <span class="sync-dot saved" title="Sauvegardé"></span>
+        <button class="icon-btn send-btn" title="Envoyer des ${CUR}">${icon('send')}</button>
+        <button class="icon-btn tracker-btn" title="Suivi de balance">${icon('chart')}</button>
         <button class="icon-btn mute-btn" title="Son">${icon(sfx.muted ? 'mute' : 'sound')}</button>
         <div class="user-menu"><button class="user-btn">${esc(wallet.pseudo)} ▾</button>
-          <div class="user-drop"><a href="#/stats">Mes stats</a><button class="logout">Se déconnecter</button></div></div>
+          <div class="user-drop"><a href="#/stats">Mes stats</a><button class="send-menu">Envoyer des ${CUR}</button><button class="logout">Se déconnecter</button></div></div>
       </div>
     </header>
     <main id="view"></main>
@@ -180,6 +188,10 @@ function renderShell() {
   const syncTitles = { saved: 'Sauvegardé', pending: 'Modifications en attente (envoi auto)', saving: 'Sauvegarde…', error: 'Échec de sauvegarde, nouvel essai bientôt' };
   wallet.onSync((s) => { dot.className = 'sync-dot ' + s; dot.title = syncTitles[s] || s; });
 
+  tracker = createTracker(wallet, $('.tracker-btn', shell));
+  $('.send-btn', shell).onclick = openTransfer;
+  $('.send-menu', shell).onclick = openTransfer;
+  startInbox();
   $('.mute-btn', shell).onclick = (e) => { const m = sfx.toggle(); e.currentTarget.innerHTML = icon(m ? 'mute' : 'sound'); };
   const um = $('.user-menu', shell);
   $('.user-btn', shell).onclick = (e) => { e.stopPropagation(); um.classList.toggle('open'); };
@@ -205,6 +217,77 @@ function countdown() {
   const s = Math.floor(msUntilParisMidnight() / 1000);
   const p = (n) => String(n).padStart(2, '0');
   return `${p(Math.floor(s / 3600))}:${p(Math.floor((s % 3600) / 60))}:${p(s % 60)}`;
+}
+
+/* ============================ TRANSFERTS ============================ */
+function startInbox() {
+  const check = async () => {
+    if (!wallet || document.visibilityState === 'hidden') return;
+    const got = await wallet.checkInbox();
+    for (const t of got) {
+      toast(`${esc(t.fromPseudo)} t'a envoyé <b>${fmt(t.amount)} ${CUR}</b> !`, 'win', 5000);
+    }
+    if (got.length) { sfx.coin(); coinRain(Math.min(40, 10 + got.length * 8)); }
+  };
+  clearInterval(inboxTimer);
+  inboxTimer = setInterval(check, CONFIG.INBOX_INTERVAL_MS);
+  if (window.__inboxVis) document.removeEventListener('visibilitychange', window.__inboxVis);
+  window.__inboxVis = () => { if (document.visibilityState === 'visible') check(); };
+  document.addEventListener('visibilitychange', window.__inboxVis);
+  setTimeout(check, 1500);
+}
+
+async function openTransfer() {
+  const w = wallet;
+  if (!w) return;
+  const hist = w.transferHistory().slice(0, 8);
+  const m = h(`<div class="modal-backdrop"><div class="modal" role="dialog" aria-modal="true">
+    <h2 class="modal-title">Envoyer des ${CUR}</h2>
+    <div class="modal-body tr-form">
+      <p class="muted">Ton solde : ${money(w.balance)}</p>
+      <label>Destinataire<input id="tr-to" list="tr-players" autocomplete="off" placeholder="Pseudo du joueur"><datalist id="tr-players"></datalist></label>
+      <label>Montant<input id="tr-amount" type="number" min="1" step="1" inputmode="numeric" placeholder="ex : 500"></label>
+      <div class="auto-row">${[100, 500, 1000, 5000].map((v) => `<button type="button" class="btn btn-ghost btn-sm" data-q="${v}">${fmt(v)}</button>`).join('')}<button type="button" class="btn btn-ghost btn-sm" data-q="half">½</button><button type="button" class="btn btn-ghost btn-sm max-btn" data-q="max">MAX</button></div>
+      <p class="form-error" id="tr-err"></p>
+      ${hist.length ? `<h3>Derniers transferts</h3><ul class="tr-hist">${hist.map((x) => `<li class="${x.dir}"><span>${x.dir === 'in' ? 'Reçu de' : 'Envoyé à'} <b>${esc(x.pseudo)}</b></span><b>${x.dir === 'in' ? '+' : '−'}${fmt(x.amount)}</b></li>`).join('')}</ul>` : ''}
+    </div>
+    <div class="modal-actions"><button class="btn btn-ghost" data-x>Annuler</button><button class="btn btn-gold" id="tr-send">${icon('send')}Envoyer</button></div>
+  </div></div>`);
+  document.body.append(m);
+  requestAnimationFrame(() => m.classList.add('show'));
+  const close = () => { m.classList.remove('show'); setTimeout(() => m.remove(), 250); };
+  m.addEventListener('click', (e) => { if (e.target === m || e.target.closest('[data-x]')) close(); });
+  const toIn = $('#tr-to', m), amIn = $('#tr-amount', m), err = $('#tr-err', m), sendBtn = $('#tr-send', m);
+  m.querySelectorAll('[data-q]').forEach((b) => (b.onclick = () => {
+    const q = b.dataset.q;
+    amIn.value = q === 'max' ? Math.floor(w.balance) : q === 'half' ? Math.floor(w.balance / 2) : q;
+  }));
+  let players = [];
+  getPlayers(backend, w).then((list) => {
+    players = list.filter((p) => p.uid !== w.uid).sort((a, b) => a.pseudo.localeCompare(b.pseudo));
+    $('#tr-players', m).innerHTML = players.map((p) => `<option value="${esc(p.pseudo)}"></option>`).join('');
+  }).catch(() => {});
+  toIn.focus();
+  sendBtn.onclick = async () => {
+    err.textContent = '';
+    const name = toIn.value.trim().toLowerCase();
+    const amount = Math.floor(+amIn.value);
+    if (!players.length) { try { players = (await getPlayers(backend, w, true)).filter((p) => p.uid !== w.uid); } catch {} }
+    const target = players.find((p) => p.pseudo.toLowerCase() === name);
+    if (!target) { err.textContent = name === w.pseudo.toLowerCase() ? 'Tu ne peux pas t\'envoyer des Brundles à toi-même' : 'Joueur introuvable'; return; }
+    if (!(amount > 0)) { err.textContent = 'Montant invalide'; return; }
+    if (amount > w.balance) { err.textContent = 'Solde insuffisant'; return; }
+    sendBtn.disabled = true;
+    try {
+      await w.sendTo(target, amount);
+      sfx.coin();
+      toast(`${fmt(amount)} ${CUR} envoyés à <b>${esc(target.pseudo)}</b>`, 'win');
+      close();
+    } catch (e) {
+      err.textContent = e.message;
+      sendBtn.disabled = false;
+    }
+  };
 }
 
 async function claimDaily() {
