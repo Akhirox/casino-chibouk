@@ -1,0 +1,37 @@
+rules_version = '2';
+
+// Règles de sécurité Firestore pour Casino Chibouk
+// À coller dans : Console Firebase → Firestore Database → Règles → Publier
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    match /users/{uid} {
+      // Tout joueur connecté peut lire les profils (nécessaire pour le classement)
+      allow read: if request.auth != null;
+
+      // Création de son propre profil uniquement, avec le solde de départ
+      // (si tu changes START_BALANCE dans js/config.js, change aussi 1000 ici)
+      allow create: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.balance == 1000
+        && request.resource.data.pseudo is string
+        && request.resource.data.pseudo.size() >= 3
+        && request.resource.data.pseudo.size() <= 16;
+
+      // Mise à jour de son propre profil uniquement, pseudo non modifiable, solde plausible
+      allow update: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.data.pseudo == resource.data.pseudo
+        && request.resource.data.balance is number
+        && request.resource.data.balance >= 0
+        && request.resource.data.balance <= 100000000;
+
+      allow delete: if false;
+    }
+
+    // Tout le reste est fermé
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

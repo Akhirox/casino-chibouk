@@ -1,0 +1,463 @@
+// Blackjack du Singe — 6 jeux, croupier reste sur 17 (soft 17 inclus), blackjack paie 3:2
+// Doubler sur 2 cartes, séparer jusqu'à 4 mains (As séparés : une carte chacun)
+import { randInt } from './slots-math.js';
+import { monkeySVG } from '../art.js';
+import { h, $, $$, fmt, money, toast, sleep, coinRain, CUR } from '../ui.js';
+import { sfx } from '../sfx.js';
+
+const SUITS = ['♠', '♥', '♦', '♣'];
+const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K'];
+const CHIPS = [5, 10, 25, 100, 500, 1000];
+const DECKS = 6;
+
+const cardValue = (c) => (c.r === 'A' ? 11 : ['J', 'Q', 'K'].includes(c.r) ? 10 : +c.r);
+function handValue(cards) {
+  let total = 0, aces = 0;
+  for (const c of cards) { total += cardValue(c); if (c.r === 'A') aces++; }
+  while (total > 21 && aces) { total -= 10; aces--; }
+  return { total, soft: aces > 0 };
+}
+const isBJ = (cards) => cards.length === 2 && handValue(cards).total === 21;
+
+function newShoe() {
+  const shoe = [];
+  for (let d = 0; d < DECKS; d++) for (const s of SUITS) for (const r of RANKS) shoe.push({ r, s });
+  for (let i = shoe.length - 1; i > 0; i--) { const j = randInt(i + 1); [shoe[i], shoe[j]] = [shoe[j], shoe[i]]; }
+  return shoe;
+}
+
+function faceHTML(c) {
+  const red = c.s === '♥' || c.s === '♦';
+  let center;
+  if (c.r === 'K') center = `<div class="court">${monkeySVG({ crown: true, fur: red ? '#8a3a2a' : '#5a3a22' })}</div>`;
+  else if (c.r === 'Q') center = `<div class="court">${monkeySVG({ flower: true, fur: red ? '#a0522d' : '#6b4a2a' })}</div>`;
+  else if (c.r === 'J') center = `<div class="court">${monkeySVG({ cap: true, fur: red ? '#8a4a2a' : '#4e3420' })}</div>`;
+  else if (c.r === 'A') center = `<div class="ace">${c.s}</div>`;
+  else center = `<div class="pips n${c.r}">${Array.from({ length: +c.r }, () => `<i>${c.s}</i>`).join('')}</div>`;
+  return `<div class="face front ${red ? 'red' : ''}">
+    <div class="corner tl"><b>${c.r}</b><span>${c.s}</span></div>${center}<div class="corner br"><b>${c.r}</b><span>${c.s}</span></div></div>`;
+}
+const backHTML = () => `<div class="face back"><div class="back-inner">${monkeySVG({ fur: '#c98a00', face: '#ffe6a6', ear: '#ffd36b' })}</div></div>`;
+
+export function mount(view, { wallet }) {
+  let shoe = newShoe();
+  let cut = Math.floor(shoe.length * 0.25);
+  let alive = true;
+  let phase = 'bet'; // bet | deal | play | dealer | done
+  let bet = 0, lastBet = 0;
+  let selChip = 25;
+  let dealer = [];
+  let hands = []; // { cards, bet, done, doubled, splitAces, el, result }
+  let active = 0;
+  let holeEl = null;
+  let settled = true; // la main en cours a-t-elle déjà été payée ?
+
+  try { lastBet = +localStorage.getItem('chibouk_bj_bet') || 0; } catch {}
+
+  view.innerHTML = `
+  <div class="bj-wrap">
+    <div class="game-head"><h1>Blackjack <span>du Singe</span></h1>
+      <div class="actions"><button class="btn btn-ghost btn-sm" id="bj-rules">📜 Règles</button></div></div>
+    <div class="bj-table">
+      <div class="shoe"><div class="shoe-cards"></div><span>SABOT</span></div>
+      <div class="discard"></div>
+      <div class="dealer-zone">
+        <div class="hand-label">Croupier <span class="total" id="dealer-total"></span></div>
+        <div class="hand dealer-hand" id="dealer-hand"></div>
+      </div>
+      <div class="felt-text"><span>BLACKJACK PAIE 3 CONTRE 2</span><small>Le croupier tire jusqu'à 16 et reste sur tous les 17</small></div>
+      <div class="table-monkey">${monkeySVG({ wink: true })}</div>
+      <div class="player-zone"><div class="hands" id="player-hands"></div></div>
+      <div class="bet-spot" id="bet-spot"><div class="bet-stack"></div><div class="bet-amt"></div></div>
+      <div class="bj-msg" id="bj-msg"></div>
+    </div>
+    <div class="bj-controls">
+      <div class="ctrl-bet">
+        <div class="chip-row">${CHIPS.map((v) => `<button class="chip" data-v="${v}">${v >= 1000 ? v / 1000 + 'k' : v}</button>`).join('')}</div>
+        <div class="bet-actions">
+          <button class="btn btn-ghost" id="clear">Effacer</button>
+          <button class="btn btn-ghost" id="rebet">Remiser</button>
+          <button class="btn btn-ghost" id="double-bet">×2</button>
+          <button class="btn btn-gold btn-lg" id="deal">Distribuer</button>
+        </div>
+      </div>
+      <div class="ctrl-play">
+        <button class="btn btn-green btn-lg" id="hit">Tirer <kbd>H</kbd></button>
+        <button class="btn btn-red btn-lg" id="stand">Rester <kbd>S</kbd></button>
+        <button class="btn btn-gold btn-lg" id="dbl">Doubler <kbd>D</kbd></button>
+        <button class="btn btn-blue btn-lg" id="split">Séparer <kbd>P</kbd></button>
+      </div>
+    </div>
+  </div>`;
+
+  const table = $('.bj-table', view);
+  const dealerHandEl = $('#dealer-hand', view);
+  const handsEl = $('#player-hands', view);
+  const msgEl = $('#bj-msg', view);
+  const shoeEl = $('.shoe', view);
+  const discardEl = $('.discard', view);
+
+  /* -------------------- mise -------------------- */
+  function chipStackHTML(amount) {
+    const out = []; let rest = amount;
+    for (const v of [...CHIPS].reverse()) while (rest >= v && out.length < 12) { out.push(v); rest -= v; }
+    return out.map((v, i) => `<div class="chip mini" data-v="${v}" style="--i:${i}"></div>`).join('');
+  }
+  function renderBet() {
+    if (!alive) return;
+    const spot = $('#bet-spot', view);
+    const amount = phase === 'bet' ? bet : hands.reduce((a, hd) => a + hd.bet, 0);
+    spot.querySelector('.bet-stack').innerHTML = chipStackHTML(amount);
+    spot.querySelector('.bet-amt').innerHTML = amount ? money(amount) : 'Mise';
+    spot.classList.toggle('empty', !amount);
+  }
+  $$('.chip-row .chip', view).forEach((c) => {
+    c.onclick = () => {
+      if (phase !== 'bet' && phase !== 'done') return;
+      if (phase === 'done') resetTable();
+      const v = +c.dataset.v;
+      if (bet + v > wallet.balance) { toast(`Solde insuffisant 🙈`, 'error'); return; }
+      bet += v; selChip = v; sfx.chip(); renderBet(); updateControls();
+    };
+  });
+  $('#clear', view).onclick = () => { if (phase === 'done') resetTable(); bet = 0; renderBet(); updateControls(); };
+  $('#rebet', view).onclick = () => { if (phase === 'done') resetTable(); if (lastBet && lastBet <= wallet.balance) { bet = lastBet; sfx.chip(); renderBet(); updateControls(); } else toast('Solde insuffisant pour remiser', 'error'); };
+  $('#double-bet', view).onclick = () => { if (phase === 'done') resetTable(); if (bet && bet * 2 <= wallet.balance) { bet *= 2; sfx.chip(); renderBet(); updateControls(); } };
+  $('#deal', view).onclick = () => deal();
+  $('#hit', view).onclick = () => hit();
+  $('#stand', view).onclick = () => stand();
+  $('#dbl', view).onclick = () => doubleDown();
+  $('#split', view).onclick = () => split();
+  $('#bj-rules', view).onclick = () => import('../ui.js').then(({ modal }) => modal({ title: 'Règles du Blackjack', html: `
+    <ul class="muted">
+      <li>But : battre le croupier en s'approchant de <b>21</b> sans dépasser.</li>
+      <li><b>Blackjack</b> (As + figure/10 en 2 cartes) paie <b>3 contre 2</b>.</li>
+      <li>Victoire normale paie 1 contre 1, égalité = mise rendue.</li>
+      <li>Le croupier tire jusqu'à 16 et <b>reste sur tous les 17</b>. Il vérifie s'il a un blackjack quand il montre un As ou un 10.</li>
+      <li><b>Doubler</b> : double la mise, une seule carte en plus (sur tes 2 premières cartes).</li>
+      <li><b>Séparer</b> : deux cartes de même valeur → deux mains (jusqu'à 4). As séparés : une carte chacun.</li>
+      <li>Sabot de ${DECKS} jeux, remélangé aux trois quarts.</li>
+      <li>Raccourcis clavier : <b>Espace/Entrée</b> distribuer, <b>H</b> tirer, <b>S</b> rester, <b>D</b> doubler, <b>P</b> séparer.</li>
+    </ul>`, buttons: [{ label: 'Compris', value: true, primary: true }] }));
+
+  function updateControls() {
+    if (!alive) return;
+    view.querySelector('.bj-controls').dataset.phase = phase === 'play' ? 'play' : phase === 'bet' || phase === 'done' ? 'bet' : 'busy';
+    $('#deal', view).disabled = !(phase === 'bet' || phase === 'done') || !(bet > 0) || bet > wallet.balance;
+    $('#deal', view).textContent = phase === 'done' ? 'Rejouer' : 'Distribuer';
+    $$('.chip-row .chip', view).forEach((c) => (c.disabled = +c.dataset.v > wallet.balance));
+    const hd = hands[active];
+    const can = phase === 'play' && hd && !hd.done;
+    $('#hit', view).disabled = !can;
+    $('#stand', view).disabled = !can;
+    $('#dbl', view).disabled = !(can && hd.cards.length === 2 && wallet.balance >= hd.bet);
+    $('#split', view).disabled = !(can && hd.cards.length === 2 && cardValue(hd.cards[0]) === cardValue(hd.cards[1]) && hands.length < 4 && wallet.balance >= hd.bet);
+  }
+
+  /* -------------------- cartes 3D -------------------- */
+  function draw() {
+    if (shoe.length < 10) { shoe = newShoe(); cut = Math.floor(shoe.length * 0.25); toast('Nouveau sabot mélangé 🃏'); }
+    return shoe.pop();
+  }
+
+  function layoutHand(handEl) {
+    const cards = $$('.card', handEl);
+    const n = cards.length;
+    handEl.style.setProperty('--n', n);
+    cards.forEach((c, i) => c.style.setProperty('--i', i));
+  }
+
+  async function dealCard(card, handEl, { hidden = false, rotate = false } = {}) {
+    if (!alive) return null;
+    const el = h(`<div class="card"><div class="card3d ${hidden ? 'hidden' : ''}">${faceHTML(card)}${backHTML()}</div></div>`);
+    handEl.append(el);
+    layoutHand(handEl);
+    const inner = el.firstElementChild;
+    const from = shoeEl.getBoundingClientRect();
+    const to = el.getBoundingClientRect();
+    const dx = from.left + from.width / 2 - (to.left + to.width / 2);
+    const dy = from.top + from.height / 2 - (to.top + to.height / 2);
+    const endFlip = hidden ? 'rotateY(180deg)' : 'rotateY(0deg)';
+    const finalT = `translate(0, 0) rotateZ(${rotate ? 90 : (Math.random() * 4 - 2).toFixed(1)}deg) scale(1)`;
+    el.style.transform = finalT;
+    sfx.card();
+    const anim = el.animate([
+      { transform: `translate(${dx}px, ${dy}px) rotateZ(-70deg) scale(.7)`, opacity: 0.6 },
+      { transform: `translate(${dx * 0.35}px, ${dy * 0.35 - 30}px) rotateZ(-15deg) scale(1.12)`, opacity: 1, offset: 0.6 },
+      { transform: finalT },
+    ], { duration: 520, easing: 'cubic-bezier(.2,.8,.25,1)' });
+    inner.animate([
+      { transform: 'translateZ(0) rotateY(180deg) rotateX(20deg)' },
+      { transform: `translateZ(90px) rotateY(${hidden ? 180 : 90}deg) rotateX(10deg)`, offset: 0.55 },
+      { transform: `translateZ(0) ${endFlip}` },
+    ], { duration: 520, easing: 'cubic-bezier(.3,.7,.3,1)' });
+    await anim.finished.catch(() => {});
+    if (!hidden) setTimeout(() => sfx.flip(), 0);
+    return el;
+  }
+
+  async function flipHole() {
+    if (!holeEl) return;
+    const inner = holeEl.firstElementChild;
+    sfx.flip();
+    const a = inner.animate([
+      { transform: 'translateZ(0) rotateY(180deg)' },
+      { transform: 'translateZ(70px) rotateY(90deg) scale(1.08)', offset: 0.5 },
+      { transform: 'translateZ(0) rotateY(0deg)' },
+    ], { duration: 560, easing: 'ease-in-out' });
+    inner.classList.remove('hidden');
+    await a.finished.catch(() => {});
+  }
+
+  function setTotal(el, cards, hideSecond = false) {
+    if (!cards.length) { el.textContent = ''; return; }
+    const shown = hideSecond ? [cards[0]] : cards;
+    const v = handValue(shown);
+    const lowTotal = v.total - 10;
+    el.textContent = v.soft && v.total < 21 && !hideSecond ? `${lowTotal}/${v.total}` : String(v.total);
+    el.className = 'total' + (v.total > 21 ? ' bust' : v.total === 21 ? ' bj' : '');
+  }
+  function refreshTotals() {
+    if (!alive) return;
+    setTotal($('#dealer-total', view), dealer, phase !== 'dealer' && phase !== 'done');
+    hands.forEach((hd) => setTotal(hd.totalEl, hd.cards));
+    hands.forEach((hd, i) => hd.el.classList.toggle('active', phase === 'play' && i === active && hands.length > 1));
+  }
+
+  function makeHandEl(hd) {
+    const wrap = h(`<div class="phand"><div class="hand"></div><div class="hand-info"><span class="total"></span><span class="hand-bet"></span></div><div class="hand-result"></div></div>`);
+    hd.el = wrap; hd.cardsEl = $('.hand', wrap); hd.totalEl = $('.total', wrap);
+    $('.hand-bet', wrap).innerHTML = money(hd.bet);
+    return wrap;
+  }
+  const updHandBet = (hd) => { $('.hand-bet', hd.el).innerHTML = money(hd.bet); };
+
+  function say(text, cls = '') {
+    if (!alive) return;
+    msgEl.className = 'bj-msg show ' + cls;
+    msgEl.innerHTML = text;
+  }
+  const hush = () => { msgEl.className = 'bj-msg'; };
+
+  /* -------------------- déroulement -------------------- */
+  async function clearCards() {
+    const all = $$('.card', table);
+    if (!all.length) return;
+    const d = discardEl.getBoundingClientRect();
+    await Promise.all(all.map((c, i) => {
+      const r = c.getBoundingClientRect();
+      return c.animate([{ transform: getComputedStyle(c).transform === 'none' ? 'none' : getComputedStyle(c).transform, opacity: 1 },
+        { transform: `translate(${d.left - r.left}px, ${d.top - r.top}px) rotateZ(80deg) scale(.6)`, opacity: 0 }],
+      { duration: 380, delay: i * 30, easing: 'ease-in', fill: 'forwards' }).finished.catch(() => {});
+    }));
+  }
+
+  function resetTable() {
+    $$('.card', table).forEach((c) => c.remove());
+    dealerHandEl.innerHTML = '';
+    handsEl.innerHTML = '';
+    dealer = []; hands = []; holeEl = null; active = 0;
+    $('#dealer-total', view).textContent = '';
+    phase = 'bet';
+    hush();
+    renderBet();
+  }
+
+  async function deal() {
+    if (!(phase === 'bet' || phase === 'done')) return;
+    if (!bet || bet > wallet.balance) { toast('Mise invalide', 'error'); return; }
+    const wasDone = phase === 'done';
+    phase = 'deal'; updateControls(); // verrou : empêche un double clic de lancer deux mains
+    if (wasDone) { await clearCards(); resetTable(); phase = 'deal'; }
+    if (!alive) return;
+    if (!wallet.bet('blackjack', bet)) { phase = 'bet'; updateControls(); toast('Solde insuffisant', 'error'); return; }
+    lastBet = bet;
+    settled = false;
+    try { localStorage.setItem('chibouk_bj_bet', bet); } catch {}
+    if (shoe.length < cut) { shoe = newShoe(); cut = Math.floor(shoe.length * 0.25); toast('Nouveau sabot mélangé 🃏'); }
+    phase = 'deal'; updateControls(); hush();
+    hands = [{ cards: [], bet, done: false, doubled: false, splitAces: false }];
+    handsEl.append(makeHandEl(hands[0]));
+    renderBet();
+    const p = hands[0];
+    p.cards.push(draw()); await dealCard(p.cards[0], p.cardsEl); refreshTotals();
+    dealer.push(draw()); await dealCard(dealer[0], dealerHandEl); refreshTotals();
+    p.cards.push(draw()); await dealCard(p.cards[1], p.cardsEl); refreshTotals();
+    dealer.push(draw()); holeEl = await dealCard(dealer[1], dealerHandEl, { hidden: true }); refreshTotals();
+    if (!alive) return;
+
+    const up = dealer[0];
+    const dealerBJ = isBJ(dealer);
+    const playerBJ = isBJ(p.cards);
+    if ((up.r === 'A' || cardValue(up) === 10) && !playerBJ) {
+      say('Le croupier vérifie… 🧐'); await sleep(800); hush();
+    }
+    if (dealerBJ || playerBJ) {
+      phase = 'dealer';
+      await flipHole(); refreshTotals();
+      return settle();
+    }
+    phase = 'play'; active = 0;
+    refreshTotals(); updateControls();
+  }
+
+  async function nextHand() {
+    while (active < hands.length && hands[active].done) active++;
+    if (active < hands.length) {
+      const hd = hands[active];
+      if (hd.cards.length === 1) { // main issue d'un split : on complète
+        phase = 'deal'; updateControls();
+        hd.cards.push(draw()); await dealCard(hd.cards[1], hd.cardsEl); refreshTotals();
+        if (hd.splitAces || handValue(hd.cards).total === 21) { hd.done = true; return nextHand(); }
+        phase = 'play';
+      }
+      refreshTotals(); updateControls();
+      return;
+    }
+    await dealerPlay();
+  }
+
+  async function hit() {
+    if (phase !== 'play') return;
+    const hd = hands[active];
+    phase = 'deal'; updateControls();
+    hd.cards.push(draw()); await dealCard(hd.cards.at(-1), hd.cardsEl); refreshTotals();
+    phase = 'play';
+    const v = handValue(hd.cards).total;
+    if (v > 21) { hd.done = true; hd.el.classList.add('busted'); sfx.lose(); await sleep(350); return nextHand(); }
+    if (v === 21) { hd.done = true; await sleep(250); return nextHand(); }
+    updateControls();
+  }
+  async function stand() {
+    if (phase !== 'play') return;
+    sfx.click();
+    hands[active].done = true;
+    return nextHand();
+  }
+  async function doubleDown() {
+    if (phase !== 'play') return;
+    const hd = hands[active];
+    if (hd.cards.length !== 2 || !wallet.bet('blackjack', hd.bet)) return;
+    sfx.chip();
+    hd.bet *= 2; hd.doubled = true; updHandBet(hd); renderBet();
+    phase = 'deal'; updateControls();
+    hd.cards.push(draw()); await dealCard(hd.cards.at(-1), hd.cardsEl, { rotate: true }); refreshTotals();
+    phase = 'play';
+    hd.done = true;
+    if (handValue(hd.cards).total > 21) { hd.el.classList.add('busted'); sfx.lose(); }
+    await sleep(300);
+    return nextHand();
+  }
+  async function split() {
+    if (phase !== 'play') return;
+    const hd = hands[active];
+    if (!(hd.cards.length === 2 && cardValue(hd.cards[0]) === cardValue(hd.cards[1]) && hands.length < 4)) return;
+    if (!wallet.bet('blackjack', hd.bet)) return;
+    sfx.chip();
+    const second = hd.cards.pop();
+    const nh = { cards: [second], bet: hd.bet, done: false, doubled: false, splitAces: hd.cards[0].r === 'A' };
+    hd.splitAces = nh.splitAces;
+    hands.splice(active + 1, 0, nh);
+    const nel = makeHandEl(nh);
+    hd.el.after(nel);
+    const lastCard = $$('.card', hd.cardsEl).at(-1);
+    nh.cardsEl.append(lastCard);
+    layoutHand(hd.cardsEl); layoutHand(nh.cardsEl);
+    renderBet();
+    phase = 'deal'; updateControls();
+    hd.cards.push(draw()); await dealCard(hd.cards[1], hd.cardsEl); refreshTotals();
+    phase = 'play';
+    if (hd.splitAces || handValue(hd.cards).total === 21) { hd.done = true; return nextHand(); }
+    refreshTotals(); updateControls();
+  }
+
+  async function dealerPlay() {
+    phase = 'dealer'; updateControls(); refreshTotals();
+    await flipHole(); refreshTotals();
+    const anyLive = hands.some((hd) => handValue(hd.cards).total <= 21);
+    if (anyLive) {
+      while (handValue(dealer).total < 17 && alive) {
+        await sleep(250);
+        dealer.push(draw()); await dealCard(dealer.at(-1), dealerHandEl); refreshTotals();
+      }
+    }
+    return settle();
+  }
+
+  function computeResults() {
+    const dv = handValue(dealer).total;
+    const dBJ = isBJ(dealer);
+    let payout = 0, staked = 0;
+    for (const hd of hands) {
+      staked += hd.bet;
+      const pv = handValue(hd.cards).total;
+      const pBJ = hands.length === 1 && isBJ(hd.cards);
+      let res, pay = 0;
+      if (pBJ && !dBJ) { res = 'bj'; pay = hd.bet * 2.5; }
+      else if (pBJ && dBJ) { res = 'push'; pay = hd.bet; }
+      else if (dBJ) { res = 'lose'; }
+      else if (pv > 21) { res = 'bust'; }
+      else if (dv > 21 || pv > dv) { res = 'win'; pay = hd.bet * 2; }
+      else if (pv === dv) { res = 'push'; pay = hd.bet; }
+      else res = 'lose';
+      hd.result = res; hd.pay = pay;
+      payout += pay;
+    }
+    return { payout: Math.ceil(payout), staked };
+  }
+
+  async function settle() {
+    if (settled) return;
+    settled = true;
+    const { payout, staked } = computeResults();
+    if (payout > 0) wallet.win('blackjack', payout);
+    wallet.round('blackjack', payout > staked ? payout : 0);
+    if (hands.some((hd) => hd.result === 'bj')) wallet.track('blackjack', 'blackjacks');
+    if (hands.every((hd) => hd.result === 'push')) wallet.track('blackjack', 'pushes');
+    if (!alive) return;
+    const labels = { bj: 'BLACKJACK !', win: 'Gagné', push: 'Égalité', lose: 'Perdu', bust: 'Sauté' };
+    hands.forEach((hd) => {
+      const r = $('.hand-result', hd.el);
+      r.className = 'hand-result show r-' + hd.result;
+      r.innerHTML = `${labels[hd.result]}${hd.pay > 0 && hd.result !== 'push' ? ` <b>+${fmt(hd.pay - hd.bet)}</b>` : ''}`;
+    });
+    const net = payout - staked;
+    const dv = handValue(dealer).total;
+    if (hands.some((hd) => hd.result === 'bj')) { say(`🐒 BLACKJACK ! +${fmt(net)} ${CUR}`, 'win'); sfx.win(true); coinRain(25); }
+    else if (net > 0) { say(`${dv > 21 ? 'Le croupier saute ! ' : ''}Tu gagnes +${fmt(net)} ${CUR} 🍌`, 'win'); sfx.win(); }
+    else if (net === 0 && payout > 0) { say('Égalité, mise rendue', ''); sfx.click(); }
+    else { say(isBJ(dealer) ? 'Blackjack du croupier… 🙈' : 'Le croupier gagne cette main', 'lose'); sfx.lose(); }
+    phase = 'done';
+    if (bet > wallet.balance) bet = 0;
+    updateControls();
+  }
+
+  // Si le joueur quitte au milieu d'une main : on la termine automatiquement (en restant)
+  function finishSilently() {
+    if (settled || !hands.length) return;
+    settled = true;
+    for (const hd of hands) { if (hd.cards.length === 1) hd.cards.push(draw()); hd.done = true; }
+    if (hands.some((hd) => handValue(hd.cards).total <= 21)) while (handValue(dealer).total < 17) dealer.push(draw());
+    phase = 'done';
+    const { payout, staked } = computeResults();
+    if (payout > 0) wallet.win('blackjack', payout);
+    wallet.round('blackjack', payout > staked ? payout : 0);
+  }
+
+  const onKey = (e) => {
+    if (e.target.closest('input,textarea') || document.querySelector('.modal-backdrop')) return;
+    const k = e.key.toLowerCase();
+    if ((k === ' ' || k === 'enter') && (phase === 'bet' || phase === 'done')) { e.preventDefault(); deal(); }
+    else if (k === 'h') hit(); else if (k === 's') stand(); else if (k === 'd') doubleDown(); else if (k === 'p') split();
+  };
+  document.addEventListener('keydown', onKey);
+
+  bet = lastBet && lastBet <= wallet.balance ? lastBet : 0;
+  renderBet(); updateControls();
+
+  return () => {
+    alive = false;
+    document.removeEventListener('keydown', onKey);
+    finishSilently();
+  };
+}
