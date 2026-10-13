@@ -5,13 +5,16 @@ import { icon } from './art.js';
 
 let lbCache = { ts: 0, rows: null };
 const GAMES = [
-  { k: 'slots', name: 'Machine à sous' },
+  { k: 'slots', name: 'Chibouk Slot' },
   { k: 'blackjack', name: 'Blackjack' },
   { k: 'roulette', name: 'Roulette' },
-  { k: 'plinko', name: 'Plinko' },
-  { k: 'crash', name: 'Crash' },
+  { k: 'plinko', name: 'Plinkoko' },
+  { k: 'crash', name: 'Crashibouk' },
+  { k: 'tower', name: 'Tower' },
+  { k: 'mines', name: 'Mines' },
+  { k: 'dice', name: 'Dice' },
 ];
-const GAME_LABEL = { slots: 'à la machine à sous', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au plinko', crash: 'au crash' };
+const GAME_LABEL = { slots: 'à la machine à sous', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au Plinkoko', crash: 'au Crashibouk', tower: 'à la Tower', mines: 'aux Mines', dice: 'au Dice' };
 const gname = (g) => `<span class="gname">${icon(g.k)}${g.name}</span>`;
 const pct = (a, b) => (b ? (a / b * 100).toFixed(1).replace('.', ',') + ' %' : '—');
 const signed = (n) => `<span class="${n >= 0 ? 'pos' : 'neg'}">${n >= 0 ? '+' : ''}${fmt(n)}</span>`;

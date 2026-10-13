@@ -119,6 +119,9 @@ const ICONS = {
   rocket: `<path d="M12 3c3 2.2 4.5 5.5 4.5 9.5l-2 3.5h-5l-2-3.5C7.5 8.5 9 5.2 12 3Z" ${D}/><circle cx="12" cy="9.5" r="1.8" /><path d="M7.5 12.5 5 15.5l3 1M16.5 12.5l2.5 3-3 1M10.5 18.5l1.5 2.5 1.5-2.5" />`,
   chip: `<circle cx="12" cy="12" r="8.5" ${D}/><circle cx="12" cy="12" r="4.5" /><path d="M12 3.5v3M12 17.5v3M3.5 12h3M17.5 12h3" />`,
   arrow: `<path d="M5 12h14M13 6l6 6-6 6" />`,
+  tower: `<rect x="4" y="16.5" width="16" height="4" rx="1" ${D}/><rect x="5.5" y="10.5" width="13" height="4" rx="1" ${D}/><rect x="7" y="4.5" width="10" height="4" rx="1" ${D}/><path d="M9.7 16.5v4M14.3 16.5v4M10 10.5v4M14 10.5v4M12 4.5v4" stroke-width="1.3"/>`,
+  mines: `<circle cx="10.5" cy="14" r="6.5" ${D}/><path d="M15 9.5 17 7.5" /><path d="M17.5 7c.5-1.6 1.6-2.6 3-3" /><path d="M20.5 2.8v1.6M19.4 4.6h1.6M8 12a3 3 0 0 1 2.2-2" stroke-width="1.5"/>`,
+  dice: `<rect x="3.5" y="3.5" width="17" height="17" rx="4" ${D}/><g fill="currentColor" stroke="none"><circle cx="8.3" cy="8.3" r="1.5"/><circle cx="15.7" cy="8.3" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="8.3" cy="15.7" r="1.5"/><circle cx="15.7" cy="15.7" r="1.5"/></g>`,
   check: `<path d="m5 12.5 4.5 4.5L19 7.5" />`,
 };
 export function icon(name, cls = '') {
@@ -142,4 +145,48 @@ export function crashArtSVG() {
     <path d="M16 130 C80 128 120 108 158 40" stroke="#3ddc84" stroke-width="4" fill="none" stroke-linecap="round"/>
     <g transform="translate(160 36) rotate(30)"><path d="M0 -20 C9 -12 11 -2 9 8 L-9 8 C-11 -2 -9 -12 0 -20Z" fill="#f5f5f5" stroke="#8a5a00" stroke-width="1.5"/><circle cy="-6" r="4.5" fill="#7a4a28" stroke="#5a321a"/><path d="M-9 4 -15 13 -7 10ZM9 4 15 13 7 10Z" fill="#ff4d5e"/><path d="M-5 9 0 20 5 9Z" fill="#ffc23d"/></g>
     <text x="40" y="58" font-family="Bungee, sans-serif" font-size="26" fill="#ffd34d">4,20×</text></svg>`;
+}
+
+export function towerArtSVG() {
+  let rows = '';
+  for (let r = 0; r < 5; r++) {
+    const y = 118 - r * 24;
+    for (let c = 0; c < 3; c++) {
+      const x = 52 + c * 34;
+      const bomb = (r === 3 && c === 2);
+      const safe = r < 2 && c === (r % 3);
+      rows += `<rect x="${x}" y="${y}" width="30" height="19" rx="5" fill="${bomb ? '#ff4d5e' : safe ? '#3ddc84' : '#3a5242'}" stroke="${bomb ? '#8a1020' : '#22352a'}" stroke-width="1.5"/>`;
+    }
+    rows += `<text x="162" y="${y + 14}" font-family="Rubik, sans-serif" font-weight="800" font-size="11" fill="#f5c542">×${(1.48 ** (r + 1)).toFixed(2).replace('.', ',')}</text>`;
+  }
+  return `<svg viewBox="0 0 200 145" class="art-tower" aria-hidden="true">${rows}
+    <path d="M67 12 l0 14 M67 12 l12 5 l-12 5" stroke="#f5c542" stroke-width="2.5" fill="#f5c542" stroke-linejoin="round"/></svg>`;
+}
+export function minesArtSVG() {
+  let cells = '';
+  const gems = new Set([1, 7, 12, 18]), bombs = new Set([13]);
+  for (let i = 0; i < 25; i++) {
+    const x = 50 + (i % 5) * 21, y = 20 + Math.floor(i / 5) * 21;
+    const fill = bombs.has(i) ? '#ff4d5e' : gems.has(i) ? '#ffd34d' : '#2f4a3a';
+    cells += `<rect x="${x}" y="${y}" width="18" height="18" rx="4" fill="${fill}" stroke="#1a2a20" stroke-width="1"/>`;
+    if (gems.has(i)) cells += `<path d="M${x + 4} ${y + 7} l5 -3 l5 3 l-5 7z" fill="#fff7c2" opacity=".85"/>`;
+    if (bombs.has(i)) cells += `<circle cx="${x + 9}" cy="${y + 10}" r="5" fill="#2a0a0a"/><path d="M${x + 12} ${y + 6} l3 -3" stroke="#ffd34d" stroke-width="1.5"/>`;
+  }
+  return `<svg viewBox="0 0 200 145" class="art-mines" aria-hidden="true">${cells}</svg>`;
+}
+export function diceArtSVG() {
+  return `<svg viewBox="0 0 200 145" class="art-dice" aria-hidden="true">
+    <text x="100" y="62" text-anchor="middle" font-family="Bungee, sans-serif" font-size="34" fill="#3ddc84">57,32</text>
+    <rect x="22" y="88" width="156" height="12" rx="6" fill="#3ddc84"/><rect x="22" y="88" width="105" height="12" rx="6" fill="#ff4d5e"/><rect x="118" y="88" width="9" height="12" fill="#ff4d5e"/>
+    <circle cx="127" cy="94" r="10" fill="#f5f5f5" stroke="#8a5a00" stroke-width="2"/>
+    <path d="M111 76 l6 8 l6 -8z" fill="#ffd34d"/>
+    <text x="22" y="122" font-family="Rubik, sans-serif" font-weight="700" font-size="11" fill="#8fa597">0</text><text x="178" y="122" text-anchor="end" font-family="Rubik, sans-serif" font-weight="700" font-size="11" fill="#8fa597">100</text></svg>`;
+}
+
+// Tuiles des jeux Tower et Mines
+export function bananaTileSVG() {
+  return `<svg viewBox="0 0 100 100" class="tile-svg" aria-hidden="true"><path d="M24 24 C20 62 50 88 84 72 C88 70 86 64 81 65 C55 74 36 56 36 24 Z" fill="#ffd93b" stroke="#b38300" stroke-width="4" stroke-linejoin="round"/><path d="M22 26 L20 14 L34 14 L36 26 Z" fill="#6b4a1a"/><path d="M32 32 C34 52 50 66 72 66" stroke="#fff6b0" stroke-width="4" fill="none" opacity=".7" stroke-linecap="round"/></svg>`;
+}
+export function bombTileSVG() {
+  return `<svg viewBox="0 0 100 100" class="tile-svg" aria-hidden="true"><circle cx="46" cy="58" r="28" fill="#1e1414" stroke="#000" stroke-width="3"/><circle cx="36" cy="48" r="8" fill="#fff" opacity=".18"/><rect x="58" y="24" width="14" height="12" rx="3" transform="rotate(40 65 30)" fill="#5a5a5a"/><path d="M70 26 Q78 14 88 16" stroke="#c8a060" stroke-width="4" fill="none"/><g fill="#ffd34d"><circle cx="88" cy="15" r="5"/></g><path d="M88 6v4M88 20v4M79 15h4M93 15h4" stroke="#ff8a3d" stroke-width="3" stroke-linecap="round"/></svg>`;
 }

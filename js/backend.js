@@ -15,6 +15,9 @@ export function emptyStats() {
       roulette: { ...g() },
       plinko: { ...g() },
       crash: { ...g() },
+      tower: { ...g() },
+      mines: { ...g() },
+      dice: { ...g() },
     },
   };
 }

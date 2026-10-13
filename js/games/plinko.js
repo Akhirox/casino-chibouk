@@ -1,4 +1,4 @@
-// Plinko de la Canopée — 8/12/16 rangées, 3 niveaux de risque, plusieurs billes en même temps
+// Plinkoko — 8/12/16 rangées, 3 niveaux de risque, plusieurs billes en même temps
 import { TABLES, RISKS, ROWS, rtp, probability, dropPath } from './plinko-math.js';
 import { randInt } from './slots-math.js';
 import { icon } from '../art.js';
@@ -34,7 +34,7 @@ export function mount(view, { wallet }) {
 
   view.innerHTML = `
   <div class="plk-wrap">
-    <div class="game-head"><h1>Plinko <span>de la Canopée</span></h1>
+    <div class="game-head"><h1>Plink<span>oko</span></h1>
       <div class="actions"><button class="btn btn-ghost btn-sm" id="plk-rules">${icon('scroll')}Règles</button></div></div>
     <div class="plk-layout">
       <aside class="side-panel">

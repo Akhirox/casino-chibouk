@@ -1,18 +1,28 @@
-# 🐒 Casino Chibouk
+# Casino Chibouk
 
 Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est statique et s'héberge sur **GitHub Pages**. Les comptes et les soldes sont stockés dans **Firebase**, avec le plan gratuit Spark.
 
 - Connexion par **pseudo + mot de passe**, sans email.
-- **1 000 Brundles offerts** à la création du compte, puis **1 000 par jour** avec le bouton 🎁 (une fois par jour, remise à zéro à minuit heure de Paris).
-- 🎰 **Jungle Chibouk** : machine à sous 5×3 avec les 21 lignes de ton schéma. **3 WILD n'importe où** donnent des **tours gratuits avec gains ×2**, qui peuvent se redéclencher. RTP d'environ **102 %**, donc l'avantage est au joueur.
-- 🃏 **Blackjack du Singe** : 6 jeux, blackjack payé 3:2, le croupier reste sur 17. Tu peux doubler et séparer (jusqu'à 4 mains). Les cartes ont des animations 3D.
-- 🎡 **Roulette Banane** : roulette européenne à un zéro, avec une roue animée et une bille qui rebondit.
-- 🔻 **Plinko de la Canopée** : 8, 12 ou 16 rangées, 3 niveaux de risque (faible, moyen, élevé), jusqu'à ×1000. Plusieurs billes en même temps, lâcher en série. RTP 99 %.
-- 🚀 **Fusée Chibouk** (crash) : le multiplicateur grimpe, tu encaisses quand tu veux avant l'explosion. Encaissement auto possible. RTP 99 %.
-- 🧱 **Casse-briques** : accessible à tout moment, sans mise. Chaque niveau terminé rapporte **+100 Brundles**. Il y a 6 niveaux, et la difficulté augmente.
-- **Aucune mise maximum** : mise libre + bouton MAX (slots, plinko, crash), jetons jusqu'à 25k + « Tapis » (blackjack), jetons jusqu'à 25k empilables (roulette).
-- 📊 **Stats** par jeu (misé, gagné, bilan, RTP réel, plus gros gain…) et un **classement** des joueurs.
+- **1 000 Brundles offerts** à la création du compte, puis **1 000 par jour** avec le bouton cadeau (une fois par jour, remise à zéro à minuit heure de Paris).
+- **Aucune mise maximum** : mise libre + bouton MAX (Slot, Plinkoko, Crashibouk, Tower, Mines, Dice), jetons jusqu'à 25k + « Tapis » (blackjack), jetons jusqu'à 25k empilables (roulette).
+- **Stats** par jeu (misé, gagné, bilan, RTP réel, plus gros gain…) et un **classement** des joueurs.
 - Sauvegarde **groupée toutes les 30 s** pour économiser les quotas Firebase (voir plus bas).
+
+### Les jeux
+
+| Jeu | Principe | RTP |
+|---|---|---|
+| **Chibouk Slot** | Machine à sous 5×3, 21 lignes. 3 WILD n'importe où = tours gratuits avec gains ×2 (re-déclenchables). | ≈ 100 % |
+| **Blackjack du Singe** | 6 jeux, blackjack payé 3:2, croupier reste sur 17, doubler et séparer (4 mains), cartes 3D. | ≈ 99,5 % |
+| **Roulette Banane** | Roulette européenne à un zéro, roue et bille animées. | 97,3 % |
+| **Plinkoko** | 8, 12 ou 16 rangées, risque faible / moyen / élevé, jusqu'à ×1000, billes multiples. | 99 % |
+| **Crashibouk** | Le multiplicateur grimpe, encaisse avant l'explosion. Encaissement auto possible. | 99 % |
+| **Tower** | 9 étages, 5 difficultés (de 1 bombe sur 4 cases à 3 bombes sur 4). Chaque étage monte le multi, encaisse quand tu veux. | 99 % |
+| **Mines** | Grille 5×5, 1 à 24 mines. Chaque banane trouvée augmente le multi, encaisse avant de tomber sur une mine. | 99 % |
+| **Dice** | Tirage de 0,00 à 100,00. Choisis « en dessous » ou « au-dessus » et ta chance (0,01 % à 98 %) : multi = 99 ÷ chance. | 99 % |
+| **Casse-briques** | Gratuit, sans mise, accessible à tout moment : +100 Brundles par niveau terminé (6 niveaux en boucle, de plus en plus durs). | — |
+
+Si tu quittes la page au milieu d'une partie de Tower ou de Mines, elle est encaissée automatiquement au palier atteint (ou la mise est remboursée si aucune case n'a été choisie). Pareil pour le Crash (encaissement au multiplicateur du moment) et le Blackjack (la main est terminée en restant).
 
 ---
 
@@ -99,10 +109,10 @@ Simulation sur 20 millions de tours :
 
 | Indicateur | Valeur |
 |---|---|
-| **RTP total** | **≈ 102,3 %** (avantage joueur) |
-| dont tours gratuits | ≈ 29 % |
+| **RTP total** | **≈ 99,9 %** (quasi neutre) |
+| dont tours gratuits | ≈ 28 % |
 | Tours avec un gain | ≈ 35 % |
-| Bonus | ≈ 1 tour sur 62 |
+| Bonus | ≈ 1 tour sur 63 |
 
 Si tu modifies la table des gains (`PAYTABLE`) ou la composition des rouleaux (`REEL_WEIGHTS`) dans `js/games/slots-math.js`, revérifie le RTP avec :
 
@@ -112,9 +122,11 @@ node tools/simulate-rtp.mjs 2000000
 
 Le blackjack (avantage maison ~0,5 %) et la roulette (2,7 %) gardent les règles classiques d'un vrai casino.
 
-**Plinko** : la case d'arrivée suit une loi binomiale (50/50 à chaque cheville). Les tables de `js/games/plinko-math.js` donnent un RTP exact de 99 % pour chacune des 9 combinaisons rangées × risque.
+**Plinkoko** : la case d'arrivée suit une loi binomiale (50/50 à chaque cheville). Les tables de `js/games/plinko-math.js` donnent un RTP exact de 99 % pour chacune des 9 combinaisons rangées × risque.
 
-**Crash** : le point d'explosion suit P(crash ≥ x) = 0,99 / x, donc le RTP vaut 99 % quel que soit le moment où tu encaisses. Le multiplicateur suit e^(0,1·t) : ×2 en ~7 s, ×10 en ~23 s.
+**Crashibouk** : le point d'explosion suit P(crash ≥ x) = 0,99 / x, donc le RTP vaut 99 % quel que soit le moment où tu encaisses. Le multiplicateur suit e^(0,1·t) : ×2 en ~7 s, ×10 en ~23 s.
+
+**Tower** : à l'étage k, multiplicateur = 0,99 × (cases ÷ cases sûres)^k. **Mines** : après k bananes, multiplicateur = 0,99 × C(25, k) ÷ C(25 − mines, k). **Dice** : multiplicateur = 99 ÷ chance. Les trois donnent donc un RTP de 99 % quel que soit le moment où tu t'arrêtes.
 
 ---
 
@@ -144,9 +156,12 @@ js/games/slots.js          machine à sous
 js/games/blackjack.js      blackjack 3D
 js/games/roulette.js       roulette animée
 js/games/breaker.js        casse-briques
-js/games/plinko-math.js    tables et probabilités du plinko
-js/games/plinko.js         plinko
-js/games/crash.js          crash (fusée)
+js/games/plinko-math.js    tables et probabilités du Plinkoko
+js/games/plinko.js         Plinkoko
+js/games/crash.js          Crashibouk
+js/games/tower.js          Tower
+js/games/mines.js          Mines
+js/games/dice.js           Dice
 firestore.rules            règles de sécurité à publier
 tools/simulate-rtp.mjs     simulateur de RTP
 ```

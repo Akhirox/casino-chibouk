@@ -1,4 +1,4 @@
-// Machine à sous "Jungle Chibouk" — 5 rouleaux, 3 rangées, 21 lignes, tours gratuits x2
+// Machine à sous "Chibouk Slot" — 5 rouleaux, 3 rangées, 21 lignes, tours gratuits x2
 import { STRIPS, PAYTABLE, PAYLINES, LINE_COUNT, SYMBOLS, FREE_SPINS_AWARD, FREE_SPIN_MULT, spinGrid, evaluate, randInt } from './slots-math.js';
 import { symbolSVG, monkeySVG, goldMonkeySVG, icon } from '../art.js';
 import { h, $, $$, fmt, money, modal, toast, countUp, coinRain, sleep, CUR } from '../ui.js';
@@ -21,12 +21,12 @@ export function mount(view, { wallet }) {
 
   view.innerHTML = `
   <div class="slot-wrap">
-    <div class="game-head"><h1>Jungle <span>Chibouk</span></h1>
+    <div class="game-head"><h1>Chibouk <span>Slot</span></h1>
       <div class="actions"><button class="btn btn-ghost btn-sm" id="paytable">${icon('scroll')}Table des gains</button></div></div>
     <div class="slot-machine">
       <div class="slot-top">
         ${monkeySVG({ cls: 'st-monkey left' })}
-        <div class="marquee"><div class="bulbs"></div><span>JUNGLE CHIBOUK</span></div>
+        <div class="marquee"><div class="bulbs"></div><span>CHIBOUK SLOT</span></div>
         ${monkeySVG({ cls: 'st-monkey right', wink: true })}
       </div>
       <div class="fs-banner"><span class="fs-title">TOURS GRATUITS</span><span class="fs-count"></span><span class="fs-mult">×${FREE_SPIN_MULT}</span><span class="fs-won"></span></div>
@@ -324,7 +324,7 @@ export function mount(view, { wallet }) {
       <h3>Le Roi Singe (WILD)</h3>
       <ul class="muted"><li>Remplace n'importe quel symbole sur les lignes.</li>
       <li><b>3, 4 ou 5 WILD n'importe où</b> = <b>${FREE_SPINS_AWARD[3]}, ${FREE_SPINS_AWARD[4]} ou ${FREE_SPINS_AWARD[5]} tours gratuits</b>, tous les gains <b>×${FREE_SPIN_MULT}</b>. Re-déclenchable pendant le bonus !</li>
-      <li>Taux de redistribution théorique (RTP) : <b>≈ 102 %</b>, simulé sur 20 millions de tours. L'avantage est au joueur.</li></ul>
+      <li>Taux de redistribution théorique (RTP) : <b>≈ 100 %</b>, simulé sur 20 millions de tours : ni le casino ni les joueurs n'ont l'avantage.</li></ul>
       <h3>Les ${LINE_COUNT} lignes</h3><div class="paylines">${lines}</div>`,
       buttons: [{ label: 'Fermer', value: true, primary: true }],
     });

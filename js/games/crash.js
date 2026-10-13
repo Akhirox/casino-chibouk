@@ -1,4 +1,4 @@
-// Fusée Chibouk — jeu "crash" : le multiplicateur grimpe, encaisse avant l'explosion
+// Crashibouk — jeu "crash" : le multiplicateur grimpe, encaisse avant l'explosion
 // Loi du point de crash : P(crash ≥ x) = 0,99 / x  → RTP de 99 % quelle que soit la stratégie
 import { monkeySVG, icon } from '../art.js';
 import { h, $, $$, fmt, money, toast, modal, coinRain, betFieldHTML, bindBetField, CUR } from '../ui.js';
@@ -31,7 +31,7 @@ export function mount(view, { wallet }) {
 
   view.innerHTML = `
   <div class="crash-wrap">
-    <div class="game-head"><h1>Fusée <span>Chibouk</span></h1>
+    <div class="game-head"><h1>Crash<span>ibouk</span></h1>
       <div class="actions"><button class="btn btn-ghost btn-sm" id="cr-rules">${icon('scroll')}Règles</button></div></div>
     <div class="crash-layout">
       <aside class="side-panel">

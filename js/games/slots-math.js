@@ -1,4 +1,4 @@
-// Mathématiques de la machine à sous "Jungle Chibouk"
+// Mathématiques de la machine à sous "Chibouk Slot"
 // Module pur (sans DOM) : importable par le navigateur et par Node pour la simulation du RTP.
 
 export const SYMBOLS = {
@@ -21,9 +21,9 @@ export const PAYTABLE = {
   S: [40, 160, 600],
   B: [30, 100, 400],
   C: [20, 60, 240],
-  P: [16, 50, 160],
-  R: [12, 36, 120],
-  N: [10, 30, 100],
+  P: [15, 45, 150],
+  R: [11, 33, 110],
+  N: [9, 28, 90],
   L: [8, 22, 70],
   K: [8, 22, 70],
 };

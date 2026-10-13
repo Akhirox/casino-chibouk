@@ -3,7 +3,7 @@ import { CONFIG } from './config.js';
 import { createBackend } from './backend.js';
 import { Wallet, msUntilParisMidnight } from './wallet.js';
 import { h, $, $$, fmt, money, esc, toast, modal, coinRain, CUR } from './ui.js';
-import { monkeySVG, goldMonkeySVG, hangingMonkeySVG, coinSVG, symbolSVG, icon, plinkoArtSVG, crashArtSVG } from './art.js';
+import { monkeySVG, goldMonkeySVG, hangingMonkeySVG, coinSVG, symbolSVG, icon, plinkoArtSVG, crashArtSVG, towerArtSVG, minesArtSVG, diceArtSVG } from './art.js';
 import { sfx } from './sfx.js';
 import * as Slots from './games/slots.js';
 import * as Blackjack from './games/blackjack.js';
@@ -11,6 +11,9 @@ import * as Roulette from './games/roulette.js';
 import * as Breaker from './games/breaker.js';
 import * as Plinko from './games/plinko.js';
 import * as Crash from './games/crash.js';
+import * as Tower from './games/tower.js';
+import * as Mines from './games/mines.js';
+import * as Dice from './games/dice.js';
 import * as Stats from './stats.js';
 
 const app = $('#app');
@@ -23,11 +26,14 @@ let headerTimer = null;
 
 const ROUTES = {
   lobby: { label: 'Accueil', icon: 'home', mount: mountLobby },
-  slots: { label: 'Slots', icon: 'slots', mount: Slots.mount },
+  slots: { label: 'Slot', icon: 'slots', mount: Slots.mount },
   blackjack: { label: 'Blackjack', icon: 'blackjack', mount: Blackjack.mount },
   roulette: { label: 'Roulette', icon: 'roulette', mount: Roulette.mount },
-  plinko: { label: 'Plinko', icon: 'plinko', mount: Plinko.mount },
-  crash: { label: 'Crash', icon: 'crash', mount: Crash.mount },
+  plinko: { label: 'Plinkoko', icon: 'plinko', mount: Plinko.mount },
+  crash: { label: 'Crashibouk', icon: 'crash', mount: Crash.mount },
+  tower: { label: 'Tower', icon: 'tower', mount: Tower.mount },
+  mines: { label: 'Mines', icon: 'mines', mount: Mines.mount },
+  dice: { label: 'Dice', icon: 'dice', mount: Dice.mount },
   breaker: { label: 'Briques', icon: 'breaker', mount: Breaker.mount },
   stats: { label: 'Stats', icon: 'stats', mount: Stats.mount },
 };
@@ -218,6 +224,8 @@ function route() {
   view.innerHTML = '';
   view.className = 'view view-' + (ROUTES[key] ? key : 'lobby');
   $$('.nav a').forEach((a) => a.classList.toggle('active', a.dataset.r === (ROUTES[key] ? key : 'lobby')));
+  const act = $('.nav a.active');
+  if (act && window.innerWidth <= 760) { const nav = act.parentElement; nav.scrollTo({ left: act.offsetLeft - nav.clientWidth / 2 + act.clientWidth / 2, behavior: 'smooth' }); }
   window.scrollTo(0, 0);
   const ctx = { wallet, backend, navigate: (k) => (location.hash = '#/' + k) };
   cleanupView = r.mount(view, ctx) || null;
@@ -257,13 +265,16 @@ function mountLobby(view, { wallet: w }) {
     </section>
     <section id="lobby-daily" class="daily-card"></section>
     <section class="games-grid">
-      ${card('slots', 'Jungle Chibouk', 'Machine à sous 5×3, 21 lignes. 3 WILD = tours gratuits ×2.', 'RTP ≈ 102 %',
+      ${card('slots', 'Chibouk Slot', 'Machine à sous 5×3, 21 lignes. 3 WILD = tours gratuits ×2.', 'RTP ≈ 100 %',
         `<div class="mini-reels">${['S', 'W', 'S'].map((x) => `<div>${symbolSVG(x)}</div>`).join('')}</div>`)}
       ${card('blackjack', 'Blackjack du Singe', 'Blackjack 6 jeux, paie 3:2. Doubler, séparer, cartes en 3D.', 'RTP ≈ 99,5 %',
         `<div class="mini-cards"><div class="mc mc1">A<span>♠</span></div><div class="mc mc2 red">K<span>♥</span></div></div>`)}
       ${card('roulette', 'Roulette Banane', 'Roulette européenne à un zéro, roue et bille animées.', 'RTP 97,3 %', `<div class="mini-wheel"></div>`)}
-      ${card('plinko', 'Plinko de la Canopée', 'Lâche des noix de coco, 3 niveaux de risque, jusqu\'à ×1000.', 'RTP 99 %', plinkoArtSVG())}
-      ${card('crash', 'Fusée Chibouk', 'Le multiplicateur grimpe : encaisse avant que la fusée explose.', 'RTP 99 %', crashArtSVG())}
+      ${card('plinko', 'Plinkoko', 'Lâche des noix de coco, 3 niveaux de risque, jusqu\'à ×1000.', 'RTP 99 %', plinkoArtSVG())}
+      ${card('crash', 'Crashibouk', 'Le multiplicateur grimpe : encaisse avant que la fusée explose.', 'RTP 99 %', crashArtSVG())}
+      ${card('tower', 'Tower', 'Grimpe étage par étage : chaque banane fait monter le multi, une bombe et tout explose.', 'RTP 99 %', towerArtSVG())}
+      ${card('mines', 'Mines', 'Choisis le nombre de mines : plus il y en a, plus chaque banane trouvée rapporte.', 'RTP 99 %', minesArtSVG())}
+      ${card('dice', 'Dice', 'Choisis ta chance de 0,01 % à 98 % : plus elle est faible, plus le dé paie.', 'RTP 99 %', diceArtSVG())}
       ${card('breaker', 'Casse-briques', `Casse toutes les briques d'un niveau : +${CONFIG.BREAKER_REWARD} ${CUR}. Gratuit, sans mise.`, 'Gratuit',
         `<div class="mini-bricks">${Array.from({ length: 15 }, (_, i) => `<i style="--h:${(i * 37) % 360}"></i>`).join('')}</div>`)}
     </section>

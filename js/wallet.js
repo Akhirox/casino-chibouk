@@ -113,6 +113,17 @@ export class Wallet {
     this.touch({ type: 'win', game, amount });
   }
 
+  // Rembourse une mise (partie annulée avant tout risque) : on annule aussi le "misé" des stats
+  refund(game, amount) {
+    amount = Math.floor(amount);
+    if (amount <= 0) return;
+    const s = this.p.stats, g = s.games[game];
+    this.p.balance += amount;
+    s.totalWagered = Math.max(0, s.totalWagered - amount);
+    if (g) g.wagered = Math.max(0, g.wagered - amount);
+    this.touch({ type: 'refund', game, amount });
+  }
+
   track(game, key, inc = 1) {
     const g = this.p.stats.games[game];
     if (g) { g[key] = (g[key] || 0) + inc; this.touch({ type: 'track', game }); }
