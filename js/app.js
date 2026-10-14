@@ -24,6 +24,8 @@ import * as News from './changelog.js';
 import * as Stats from './stats.js';
 import { createTracker } from './tracker.js';
 import { getPlayers } from './players.js';
+import * as Profile from './profile.js';
+import { createTips } from './tips.js';
 
 const app = $('#app');
 let backend = null;
@@ -35,6 +37,7 @@ let headerTimer = null;
 let tracker = null;
 let achievements = null;
 let inboxTimer = null;
+let tips = null;
 
 const ROUTES = {
   lobby: { label: 'Accueil', icon: 'home', mount: mountLobby },
@@ -53,6 +56,7 @@ const ROUTES = {
   achievements: { label: 'Succès', icon: 'medal', mount: AchPage.mount, group: 'me' },
   stats: { label: 'Stats', icon: 'stats', mount: Stats.mount, group: 'me' },
   news: { label: 'Nouveautés', icon: 'scroll', mount: News.mount, nav: false },
+  profile: { label: 'Mon profil', icon: 'user', mount: Profile.mount, nav: false },
 };
 
 // Jeux qui affichent leur classement à côté (clé de stats -> nom affiché)
@@ -69,10 +73,13 @@ async function boot() {
   }
   document.body.addEventListener('pointerdown', () => sfx.unlock(), { once: true });
   setupTabGuard();
+  // clic sur un pseudo (classements) => fiche du joueur
+  Profile.initPlayerCards({ get backend() { return backend; }, get wallet() { return wallet; } });
   backend.onAuth(async (user) => {
     const token = ++authToken;
     if (tracker) { tracker.destroy(); tracker = null; }
     if (achievements) { achievements.destroy(); achievements = null; }
+    if (tips) { tips.destroy(); tips = null; }
     clearInterval(inboxTimer);
     if (wallet) { await wallet.stop(); wallet = null; }
     if (!user) { renderAuth(); return; }
@@ -180,8 +187,8 @@ function renderShell() {
         <button class="icon-btn send-btn" title="Envoyer des ${CUR}">${icon('send')}</button>
         <button class="icon-btn tracker-btn" title="Suivi de balance">${icon('chart')}</button>
         <button class="icon-btn mute-btn" title="Son">${icon(sfx.muted ? 'mute' : 'sound')}</button>
-        <div class="user-menu"><button class="user-btn">${esc(wallet.pseudo)} ▾</button>
-          <div class="user-drop"><a href="#/stats">Mes stats</a><a href="#/achievements">Mes succès</a><a href="#/news">Nouveautés</a><button class="send-menu">Envoyer des ${CUR}</button><button class="logout">Se déconnecter</button></div></div>
+        <div class="user-menu"><button class="user-btn"><span class="ub-av">${Profile.avatarHTML(wallet.p, 'av-xs')}</span><span class="ub-name">${esc(wallet.pseudo)}</span> ▾</button>
+          <div class="user-drop"><a href="#/profile">Mon profil</a><a href="#/stats">Mes stats</a><a href="#/achievements">Mes succès</a><a href="#/news">Nouveautés</a><button class="send-menu">Envoyer des ${CUR}</button><button class="tip-menu">Un conseil du singe</button><button class="tip-toggle"></button><button class="logout">Se déconnecter</button></div></div>
       </div>
     </header>
     <main id="view"></main>
@@ -192,6 +199,7 @@ function renderShell() {
   const balEl = $('.bal-amount', shell), pill = $('.balance-pill', shell);
   let shown = wallet.balance;
   wallet.on((evt) => {
+    if (evt && evt.type === 'profile') $('.ub-av', shell).innerHTML = Profile.avatarHTML(wallet.p, 'av-xs');
     const nb = wallet.balance;
     if (nb !== shown) {
       pill.classList.remove('up', 'down'); void pill.offsetWidth;
@@ -212,12 +220,18 @@ function renderShell() {
     if (a.tier === 'gold' || a.tier === 'legend') coinRain(40);
   });
   setTimeout(() => { if (wallet) News.maybeShowNews(); }, 1200);
+  tips = createTips(wallet);
+  const tipToggle = $('.tip-toggle', shell);
+  const tipLabel = () => { tipToggle.textContent = `Conseils automatiques : ${tips.off ? 'non' : 'oui'}`; };
+  tipLabel();
+  tipToggle.onclick = (e) => { e.stopPropagation(); tips.setOff(!tips.off); tipLabel(); toast(tips.off ? 'Le singe se tait. Tu peux toujours lui demander un conseil depuis ce menu.' : 'Le singe reprend du service !'); };
+  $('.tip-menu', shell).onclick = () => tips.showNow();
   $('.send-btn', shell).onclick = openTransfer;
   $('.send-menu', shell).onclick = openTransfer;
   startInbox();
   $('.mute-btn', shell).onclick = (e) => { const m = sfx.toggle(); e.currentTarget.innerHTML = icon(m ? 'mute' : 'sound'); };
   const um = $('.user-menu', shell);
-  $('.user-btn', shell).onclick = (e) => { e.stopPropagation(); um.classList.toggle('open'); };
+  $('.user-btn', shell).onclick = (e) => { e.stopPropagation(); um.classList.toggle('open'); tipToggle.textContent = `Conseils automatiques : ${tips.off ? 'non' : 'oui'}`; };
   document.addEventListener('click', () => um.classList.remove('open'));
   $('.logout', shell).onclick = async () => { await wallet.flush(); await backend.signOut(); location.hash = '#/lobby'; };
 
@@ -373,15 +387,16 @@ function mountLobby(view, { wallet: w }) {
   view.innerHTML = `
     <section class="hero">
       <div class="hero-text">
-        <h1>Salut <span class="gold">${esc(w.pseudo)}</span> !</h1>
-        <p>Bienvenue au <b>Casino Chibouk</b>, le seul casino tenu par des singes. Mise tes ${CUR}, gagne, perds, recommence.</p>
+        <h1><a href="#/profile" class="hero-av" title="Mon profil">${Profile.avatarHTML(w.p, 'av-md')}</a>Salut <span class="gold">${esc(w.pseudo)}</span> !</h1>
+        <p>Bienvenue au <b>Casino Chibouk</b></p>
         <div class="hero-bal">Ton solde : ${money(w.balance)}</div>
       </div>
       ${hangingMonkeySVG()}
     </section>
-    <h2 class="lobby-cat">${icon('chip')}Jeux de casino</h2>
-    <section class="games-grid">
-      ${card('slots', 'Chibouk Slot', 'Machine à sous 5×3, 21 lignes. 3 WILD = tours gratuits ×2.', 'RTP ≈ 100 %',
+    <section class="lobby-sec" data-sec="casino">
+    <h2 class="lobby-cat"><button type="button" class="lc-toggle" aria-expanded="true">${icon('chip')}Jeux de casino<small class="lc-count">8 jeux</small><span class="lc-chev">${icon('arrow')}</span></button></h2>
+    <div class="lc-body"><section class="games-grid">
+      ${card('slots', 'Chibouk Slot', 'Machine à sous 5×3, 99 lignes, WILD ×2. 3 SCATTER = tours gratuits ×2.', 'RTP ≈ 100 %',
         `<div class="mini-reels">${['S', 'W', 'S'].map((x) => `<div>${symbolSVG(x)}</div>`).join('')}</div>`)}
       ${card('blackjack', 'Blackjack du Singe', 'Blackjack 6 jeux, paie 3:2, mises annexes Perfect Pairs et 21+3, cartes en 3D.', 'RTP ≈ 99,5 %',
         `<div class="mini-cards"><div class="mc mc1">A<span>♠</span></div><div class="mc mc2 red">K<span>♥</span></div></div>`)}
@@ -391,8 +406,10 @@ function mountLobby(view, { wallet: w }) {
       ${card('tower', 'Tower', 'Grimpe étage par étage : chaque banane fait monter le multi, une bombe et tout explose.', 'RTP 99 %', towerArtSVG())}
       ${card('mines', 'Mines', 'Choisis le nombre de mines : plus il y en a, plus chaque banane trouvée rapporte.', 'RTP 99 %', minesArtSVG())}
       ${card('dice', 'Dice', 'Choisis ta chance de 0,01 % à 98 % : plus elle est faible, plus le dé paie.', 'RTP 99 %', diceArtSVG())}
-    </section>
-    <h2 class="lobby-cat free">${icon('gift')}Gagner des ${CUR} gratuitement</h2>
+    </section></div></section>
+    <section class="lobby-sec" data-sec="free">
+    <h2 class="lobby-cat free"><button type="button" class="lc-toggle" aria-expanded="true">${icon('gift')}Gagner des ${CUR} gratuitement<small class="lc-count">bonus, quiz, casse-briques, succès</small><span class="lc-chev">${icon('arrow')}</span></button></h2>
+    <div class="lc-body">
     <section id="lobby-daily" class="daily-card"></section>
     <section class="games-grid free-grid">
       ${card('quiz', 'Calcul mental', `${CONFIG.QUIZ_QUESTIONS} calculs, ${CONFIG.QUIZ_SECONDS} s chacun : +${CONFIG.QUIZ_PER_CORRECT} ${CUR} par bonne réponse, bonus pour un sans-faute.`, 'Gratuit', quizArtSVG())}
@@ -404,7 +421,7 @@ function mountLobby(view, { wallet: w }) {
         <div class="gc-art"><div class="ach-teaser"><b>${achSummary(w).done}</b><span>/ ${achSummary(w).total}</span></div></div>
         <div class="gc-body"><div class="gc-title"><span class="gc-logo">${icon('medal')}</span><h3>Succès</h3></div><p>Relève des défis sur chaque jeu : de +100 à +10 000 ${CUR} par succès débloqué.</p><span class="gc-tag">Récompenses</span></div>
       </a>
-    </section>
+    </section></div></section>
     <section class="mini-stats">
       <div><span>Total misé</span><b>${money(s.totalWagered)}</b></div>
       <div><span>Total gagné</span><b>${money(s.totalWon)}</b></div>
@@ -413,6 +430,15 @@ function mountLobby(view, { wallet: w }) {
       <a class="btn btn-ghost" href="#/stats">Stats & classement ${icon('arrow')}</a>
     </section>`;
   renderLobbyDaily($('#lobby-daily', view));
+  // catégories repliables (état mémorisé)
+  let closed = {};
+  try { closed = JSON.parse(localStorage.getItem('chibouk_lobby_closed') || '{}'); } catch {}
+  $$('.lobby-sec', view).forEach((sec) => {
+    const btn = $('.lc-toggle', sec), k = sec.dataset.sec;
+    const apply = () => { sec.classList.toggle('closed', !!closed[k]); btn.setAttribute('aria-expanded', String(!closed[k])); };
+    apply();
+    btn.onclick = () => { closed[k] = !closed[k]; try { localStorage.setItem('chibouk_lobby_closed', JSON.stringify(closed)); } catch {} sfx.click(); apply(); };
+  });
   const off = w.on(() => { const hb = $('.hero-bal', view); if (hb) hb.innerHTML = `Ton solde : ${money(w.balance)}`; });
   return () => off();
 }

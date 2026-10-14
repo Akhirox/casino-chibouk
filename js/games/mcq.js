@@ -29,16 +29,46 @@ export function makeQ({ label, big, sub = '', right, wrong, reveal = '' }) {
 /**
  * opt = { kind, title, tag, introTitle, introText, seconds, load: async () => data, build: (data, n) => questions }
  */
+// Réponse écrite : minuscules, sans accents, sans article en tête ni ponctuation
+export function normalize(s) {
+  return String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[’'`\-.]/g, ' ').replace(/[^a-z0-9 ]/g, '').replace(/^(la|le|les|l) /, '').replace(/\s+/g, ' ').trim();
+}
+export function lev(a, b) {
+  if (a === b) return 0;
+  const d = Array.from({ length: b.length + 1 }, (_, j) => j);
+  for (let i = 1; i <= a.length; i++) {
+    let prev = d[0]; d[0] = i;
+    for (let j = 1; j <= b.length; j++) { const t = d[j]; d[j] = Math.min(d[j] + 1, d[j - 1] + 1, prev + (a[i - 1] === b[j - 1] ? 0 : 1)); prev = t; }
+  }
+  return d[b.length];
+}
+// Bonne réponse si identique à une forme acceptée, ou à 1 faute près (2 pour les noms longs),
+// sauf si le texte tapé correspond exactement à une autre réponse connue (`reject`)
+export function matches(input, accept, reject = []) {
+  const v = normalize(input);
+  if (!v) return false;
+  const ok = accept.map(normalize);
+  if (ok.includes(v)) return true;
+  if (reject.some((r) => normalize(r) === v)) return false;
+  return ok.some((a) => { const tol = a.length >= 9 ? 2 : a.length >= 5 ? 1 : 0; return tol > 0 && lev(v, a) <= tol; });
+}
+
 export function mountMCQ(view, { wallet }, opt) {
-  const N = CONFIG.QUIZ_QUESTIONS, SECS = opt.seconds || CONFIG.QUIZ_SECONDS;
+  const N = CONFIG.QUIZ_QUESTIONS;
   let alive = true, state = 'intro'; // intro | loading | ask | feedback | done
   let qi = 0, correct = 0, results = [], questions = [], data = null;
+  let mode = opt.modes ? opt.modes[0] : {};
+  try { const k = localStorage.getItem('chibouk_mode_' + opt.kind); if (opt.modes && opt.modes.some((m) => m.key === k)) mode = opt.modes.find((m) => m.key === k); } catch {}
+  const SECS = () => mode.seconds || opt.seconds || CONFIG.QUIZ_SECONDS;
+  const PER = () => mode.perCorrect || CONFIG.QUIZ_PER_CORRECT;
+  const BONUS = () => mode.perfectBonus || CONFIG.QUIZ_PERFECT_BONUS;
   let deadline = 0, raf = null, nextTimer = null, credited = false;
 
   view.innerHTML = `
   <div class="qz-wrap mcq ${opt.kind}">
     <div class="game-head"><h1>${opt.title}</h1>
-      <div class="actions"><span class="gc-tag">Gratuit · ${CONFIG.QUIZ_PER_CORRECT} ${CUR} par bonne réponse</span></div></div>
+      <div class="actions"><span class="gc-tag">Gratuit · ${opt.modes ? `jusqu'à ${Math.max(...opt.modes.map((m) => m.perCorrect || CONFIG.QUIZ_PER_CORRECT))}` : CONFIG.QUIZ_PER_CORRECT} ${CUR} par bonne réponse</span></div></div>
     <div class="qz-stage">
       <div class="qz-dots" id="qz-dots">${Array.from({ length: N }, () => '<i></i>').join('')}</div>
       <div class="qz-body" id="qz-body"></div>
@@ -54,12 +84,20 @@ export function mountMCQ(view, { wallet }, opt) {
 
   function intro() {
     state = 'intro';
+    const modes = opt.modes ? `<div class="mcq-modes">${opt.modes.map((m) => `<button type="button" class="mcq-mode ${m.key === mode.key ? 'on' : ''}" data-m="${m.key}">
+        <b>${m.label}</b><span>${m.desc}</span><small>${m.seconds || opt.seconds} s · +${m.perCorrect || CONFIG.QUIZ_PER_CORRECT} ${CUR} / bonne rép. · +${m.perfectBonus || CONFIG.QUIZ_PERFECT_BONUS} sans-faute</small></button>`).join('')}</div>` : '';
     body.innerHTML = `<div class="qz-card">${monkeySVG({ cap: true })}
-      <h2>${opt.introTitle}</h2>
+      <h2>${typeof opt.introTitle === 'function' ? opt.introTitle(mode) : opt.introTitle}</h2>
       <p>${opt.introText}<br>
-      <b>+${CONFIG.QUIZ_PER_CORRECT} ${CUR}</b> par bonne réponse, <b>+${CONFIG.QUIZ_PERFECT_BONUS} ${CUR}</b> de bonus pour un sans-faute (jusqu'à ${fmt(N * CONFIG.QUIZ_PER_CORRECT + CONFIG.QUIZ_PERFECT_BONUS)}).</p>
+      <b>+${PER()} ${CUR}</b> par bonne réponse, <b>+${BONUS()} ${CUR}</b> de bonus pour un sans-faute (jusqu'à ${fmt(N * PER() + BONUS())}).</p>
+      ${modes}
       <button class="btn btn-gold btn-lg" id="qz-start">Commencer</button></div>`;
     $('#qz-start', view).onclick = start;
+    $$('.mcq-mode', view).forEach((b) => (b.onclick = () => {
+      mode = opt.modes.find((m) => m.key === b.dataset.m);
+      try { localStorage.setItem('chibouk_mode_' + opt.kind, mode.key); } catch {}
+      sfx.click(); intro();
+    }));
     renderDots();
   }
 
@@ -77,7 +115,7 @@ export function mountMCQ(view, { wallet }, opt) {
       }
       if (!alive) return;
     }
-    questions = opt.build(data, N);
+    questions = opt.build(data, N, mode.key);
     qi = 0; correct = 0; results = []; credited = false;
     ask();
   }
@@ -90,18 +128,27 @@ export function mountMCQ(view, { wallet }, opt) {
         <div class="mcq-label">${esc(q.label)}</div>
         <div class="mcq-big">${esc(q.big)}</div>${q.sub ? `<div class="mcq-sub">${esc(q.sub)}</div>` : ''}
         <div class="qz-verdict" id="qz-verdict"></div></div>
-      <div class="qz-timer"><div class="qz-bar" id="qz-bar"></div><span id="qz-sec">${SECS}</span></div>
-      <div class="mcq-choices">${q.choices.map((c, i) => `<button type="button" class="mcq-c" data-i="${i}"><kbd>${'ABCD'[i]}</kbd><span>${esc(c)}</span></button>`).join('')}</div>
+      <div class="qz-timer"><div class="qz-bar" id="qz-bar"></div><span id="qz-sec">${SECS()}</span></div>
+      ${q.type === 'text' ? `<form class="qz-form mcq-text" id="mcq-form" autocomplete="off">
+          <input id="mcq-input" class="bet-input" type="text" maxlength="60" placeholder="${esc(q.placeholder || 'Ta réponse')}" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Ta réponse">
+          <button class="btn btn-gold btn-lg" type="submit">Valider</button></form>`
+        : `<div class="mcq-choices">${q.choices.map((c, i) => `<button type="button" class="mcq-c" data-i="${i}"><kbd>${'ABCD'[i]}</kbd><span>${esc(c)}</span></button>`).join('')}</div>`}
       <div class="mcq-reveal" id="mcq-reveal"></div>`;
     $$('.mcq-c', view).forEach((b) => (b.onclick = () => answer(+b.dataset.i)));
+    const form = $('#mcq-form', view);
+    if (form) {
+      const inp = $('#mcq-input', view);
+      form.onsubmit = (e) => { e.preventDefault(); if (inp.value.trim()) answer(inp.value); };
+      setTimeout(() => alive && inp.focus(), 30);
+    }
     renderDots();
-    deadline = performance.now() + SECS * 1000;
+    deadline = performance.now() + SECS() * 1000;
     cancelAnimationFrame(raf);
     const tick = (now) => {
       if (!alive || state !== 'ask') return;
       const left = Math.max(0, deadline - now);
       const bar = $('#qz-bar', view), sec = $('#qz-sec', view);
-      if (bar) { bar.style.width = (left / (SECS * 1000)) * 100 + '%'; bar.classList.toggle('hurry', left < 3000); }
+      if (bar) { bar.style.width = (left / (SECS() * 1000)) * 100 + '%'; bar.classList.toggle('hurry', left < 3000); }
       if (sec) sec.textContent = Math.ceil(left / 1000);
       if (left <= 0) { answer(null); return; }
       raf = requestAnimationFrame(tick);
@@ -122,17 +169,20 @@ export function mountMCQ(view, { wallet }, opt) {
     cancelAnimationFrame(raf);
     const q = questions[qi];
     const timeout = i === null;
-    const ok = !timeout && i === q.answer;
+    const text = q.type === 'text';
+    const ok = !timeout && (text ? matches(i, q.accept, q.reject) : i === q.answer);
+    const right = text ? q.accept[0] : q.choices[q.answer];
     results.push(ok);
     if (ok) correct++;
     $('.qz-q', view).classList.add(ok ? 'good' : 'bad');
+    if (text) { const inp = $('#mcq-input', view); inp.disabled = true; inp.classList.add(ok ? 'ok' : 'ko'); if (!ok && !timeout) inp.value = i; $$('#mcq-form button', view).forEach((b) => (b.disabled = true)); }
     $$('.mcq-c', view).forEach((b) => {
       const k = +b.dataset.i;
       b.disabled = true;
       if (k === q.answer) b.classList.add('right');
       else if (k === i) b.classList.add('wrong');
     });
-    $('#qz-verdict', view).textContent = ok ? `Bravo ! +${CONFIG.QUIZ_PER_CORRECT}` : timeout ? `Temps écoulé… c'était ${q.choices[q.answer]}` : `Raté, c'était ${q.choices[q.answer]}`;
+    $('#qz-verdict', view).textContent = ok ? `Bravo ! +${PER()}${text && normalize(i) !== normalize(right) ? ` (c'était ${right})` : ''}` : timeout ? `Temps écoulé… c'était ${right}` : `Raté, c'était ${right}`;
     const rv = $('#mcq-reveal', view);
     rv.innerHTML = `${q.reveal || ''}<button class="btn btn-ghost btn-sm" id="mcq-next">${qi + 1 >= N ? 'Résultat' : 'Question suivante'} <kbd>Entrée</kbd></button>`;
     $$('img', rv).forEach((img) => (img.onerror = () => img.remove()));
@@ -146,8 +196,10 @@ export function mountMCQ(view, { wallet }, opt) {
     if (credited) return 0;
     credited = true;
     const perfect = correct === N;
-    const amount = correct * CONFIG.QUIZ_PER_CORRECT + (perfect ? CONFIG.QUIZ_PERFECT_BONUS : 0);
-    wallet.freeReward(opt.kind, amount, { Correct: correct, Perfect: perfect ? 1 : 0 });
+    const amount = correct * PER() + (perfect ? BONUS() : 0);
+    const extra = { Correct: correct, Perfect: perfect ? 1 : 0 };
+    if (mode.stat) { extra[mode.stat + 'Correct'] = correct; extra[mode.stat + 'Perfect'] = perfect ? 1 : 0; }
+    wallet.freeReward(opt.kind, amount, extra);
     return amount;
   }
 
@@ -158,15 +210,16 @@ export function mountMCQ(view, { wallet }, opt) {
     renderDots();
     body.innerHTML = `<div class="qz-card">${monkeySVG(perfect ? { crown: true, fur: '#c98a00', face: '#ffe6a6', ear: '#ffd36b' } : { wink: correct >= N / 2 })}
       <h2>${correct}/${N} bonnes réponses${perfect ? ' : sans-faute !' : ''}</h2>
-      <p>${amount > 0 ? `+${money(amount)} ajoutés à ton solde${perfect ? ` (dont ${CONFIG.QUIZ_PERFECT_BONUS} de bonus)` : ''}.` : 'Pas de Brundles cette fois, retente ta chance !'}</p>
-      <button class="btn btn-gold btn-lg" id="qz-again">Rejouer</button></div>`;
+      <p>${amount > 0 ? `+${money(amount)} ajoutés à ton solde${perfect ? ` (dont ${BONUS()} de bonus)` : ''}.` : 'Pas de Brundles cette fois, retente ta chance !'}</p>
+      <div class="qz-end-btns"><button class="btn btn-gold btn-lg" id="qz-again">Rejouer${opt.modes ? ` (${mode.label})` : ''}</button>${opt.modes ? '<button class="btn btn-ghost" id="qz-modes">Changer de mode</button>' : ''}</div></div>`;
     $('#qz-again', view).onclick = start;
+    if (opt.modes) $('#qz-modes', view).onclick = intro;
     if (amount > 0) { sfx.win(perfect); coinRain(perfect ? 40 : 15); }
   }
 
   const onKey = (e) => {
     if (document.querySelector('.modal-backdrop') || e.target.matches('input, textarea')) return;
-    if (state === 'intro' || state === 'done') { if (e.key === 'Enter') { e.preventDefault(); start(); } return; }
+    if (state === 'intro' || state === 'done') { if (e.key === 'Enter' && !e.target.closest('button')) { e.preventDefault(); start(); } return; }
     if (state === 'feedback' && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); next(); return; }
     if (state !== 'ask') return;
     const k = e.key.toLowerCase();
@@ -184,7 +237,9 @@ export function mountMCQ(view, { wallet }, opt) {
     // partie interrompue : on crédite les bonnes réponses déjà données (sans le bonus)
     if ((state === 'ask' || state === 'feedback') && correct > 0 && !credited) {
       credited = true;
-      wallet.freeReward(opt.kind, correct * CONFIG.QUIZ_PER_CORRECT, { Correct: correct });
+      const extra = { Correct: correct };
+      if (mode.stat) extra[mode.stat + 'Correct'] = correct;
+      wallet.freeReward(opt.kind, correct * PER(), extra);
     }
   };
 }

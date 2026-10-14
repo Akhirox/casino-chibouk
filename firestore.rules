@@ -18,13 +18,16 @@ service cloud.firestore {
         && request.resource.data.pseudo.size() >= 3
         && request.resource.data.pseudo.size() <= 16;
 
-      // Mise à jour de son propre profil uniquement, pseudo non modifiable, solde plausible
+      // Mise à jour de son propre profil uniquement, pseudo non modifiable, solde plausible, photo et bio de taille raisonnable
+      // (avatar = petite image encodée en texte, bio = 160 caractères max côté site)
       allow update: if request.auth != null
         && request.auth.uid == uid
         && request.resource.data.pseudo == resource.data.pseudo
         && request.resource.data.balance is number
         && request.resource.data.balance >= 0
-        && request.resource.data.balance <= 1000000000000000;
+        && request.resource.data.balance <= 1000000000000000
+        && (!('avatar' in request.resource.data) || (request.resource.data.avatar is string && request.resource.data.avatar.size() <= 40000))
+        && (!('bio' in request.resource.data) || (request.resource.data.bio is string && request.resource.data.bio.size() <= 200));
 
       allow delete: if false;
     }

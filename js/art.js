@@ -54,6 +54,19 @@ export function symbolSVG(sym) {
   switch (sym) {
     case 'W':
       return `<div class="sym-wild">${goldMonkeySVG('sym')}<span class="wild-tag">WILD</span></div>`;
+    case 'X':
+      return `<div class="sym-wild sym-wildx">${monkeySVG({ fur: '#7b3fd1', face: '#f1dcff', ear: '#c9a0ff', crown: true, cls: 'sym' })}<span class="x2-badge">×2</span><span class="wild-tag">WILD</span></div>`;
+    case 'F':
+      return `<div class="sym-scatter">` + wrap(`<ellipse cx="50" cy="94" rx="30" ry="5" fill="#000" opacity=".3"/>
+        <path d="M30 10 h40 l-4 14 h-32z" fill="url(#${id})" stroke="#5a2e05" stroke-width="2.5"/>
+        <rect x="26" y="24" width="48" height="34" rx="6" fill="#b5651d" stroke="#5a2e05" stroke-width="3"/>
+        <rect x="28" y="58" width="44" height="32" rx="6" fill="#8b4513" stroke="#5a2e05" stroke-width="3"/>
+        <g fill="#ffd34d" stroke="#5a2e05" stroke-width="2"><circle cx="40" cy="38" r="6"/><circle cx="60" cy="38" r="6"/><circle cx="41" cy="70" r="5"/><circle cx="59" cy="70" r="5"/></g>
+        <g fill="#2a1406"><circle cx="40" cy="38" r="2.5"/><circle cx="60" cy="38" r="2.5"/><circle cx="41" cy="70" r="2"/><circle cx="59" cy="70" r="2"/></g>
+        <path d="M38 49 q12 7 24 0" stroke="#2a1406" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <rect x="40" y="78" width="20" height="6" rx="2" fill="#2a1406"/><path d="M42 78v6M47 78v6M52 78v6M57 78v6" stroke="#f5f5f5" stroke-width="1.6"/>
+        <path d="M26 30 l-12 -6 l4 14z M74 30 l12 -6 l-4 14z" fill="#3fae4b" stroke="#1f5e26" stroke-width="2"/>`,
+        `<defs><linearGradient id="${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff2a8"/><stop offset="1" stop-color="#d49400"/></linearGradient></defs>`) + `<span class="wild-tag scatter-tag">SCATTER</span></div>`;
     case 'M':
       return `<div class="sym-monkey">${monkeySVG({})}</div>`;
     case 'S':
@@ -129,6 +142,9 @@ const ICONS = {
   mines: `<circle cx="10.5" cy="14" r="6.5" ${D}/><path d="M15 9.5 17 7.5" /><path d="M17.5 7c.5-1.6 1.6-2.6 3-3" /><path d="M20.5 2.8v1.6M19.4 4.6h1.6M8 12a3 3 0 0 1 2.2-2" stroke-width="1.5"/>`,
   dice: `<rect x="3.5" y="3.5" width="17" height="17" rx="4" ${D}/><g fill="currentColor" stroke="none"><circle cx="8.3" cy="8.3" r="1.5"/><circle cx="15.7" cy="8.3" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="8.3" cy="15.7" r="1.5"/><circle cx="15.7" cy="15.7" r="1.5"/></g>`,
   check: `<path d="m5 12.5 4.5 4.5L19 7.5" />`,
+  user: `<circle cx="12" cy="8.5" r="4" ${D}/><path d="M4.5 20.5c.8-4 3.8-6.2 7.5-6.2s6.7 2.2 7.5 6.2" ${D}/>`,
+  camera: `<rect x="3" y="7" width="18" height="13" rx="3" ${D}/><path d="M8.5 7 10 4.5h4L15.5 7"/><circle cx="12" cy="13.5" r="3.6"/>`,
+  bulb: `<path d="M9 17.5h6M9.8 20.5h4.4M12 3.5a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2v1.2h5.2v-1.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3.5z" ${D}/>`,
   globe: `<circle cx="12" cy="12" r="8.5" ${D}/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5M12 3.5C9.4 5.9 8.2 8.7 8.2 12s1.2 6.1 3.8 8.5" stroke-width="1.5"/>`,
   film: `<rect x="3.5" y="9" width="17" height="11.5" rx="2" ${D}/><path d="m3.8 9 15.4-4.2-.9-3.3L3 5.7z" ${D}/><path d="m7.6 4.7 2 3M12.4 3.4l2 3" stroke-width="1.5"/><path d="M3.5 13h17" stroke-width="1.3"/>`,
 };

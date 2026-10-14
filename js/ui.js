@@ -21,6 +21,10 @@ export function toast(msg, type = 'info', ms = 3200) {
   if (!box) { box = h('<div id="toasts" aria-live="polite"></div>'); document.body.append(box); }
   const t = h(`<div class="toast toast-${type}">${msg}</div>`);
   box.append(t);
+  // pas plus de 4 notifications à l'écran (3 sur mobile) : les plus anciennes partent
+  const max = window.innerWidth <= 760 ? 3 : 4;
+  const live = [...box.children].filter((x) => !x.classList.contains('gone'));
+  live.slice(0, Math.max(0, live.length - max)).forEach((x) => { x.classList.add('gone'); x.classList.remove('show'); setTimeout(() => x.remove(), 400); });
   requestAnimationFrame(() => t.classList.add('show'));
   setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, ms);
 }

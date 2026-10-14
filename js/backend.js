@@ -11,7 +11,7 @@ export function emptyStats() {
     breakerLevels: 0, breakerTotal: 0,
     transfersSent: 0, transfersReceived: 0,
     quizRounds: 0, quizTotal: 0, quizCorrect: 0, quizPerfect: 0,
-    capitalsRounds: 0, capitalsTotal: 0, capitalsCorrect: 0, capitalsPerfect: 0,
+    capitalsRounds: 0, capitalsTotal: 0, capitalsCorrect: 0, capitalsPerfect: 0, capitalsExpertCorrect: 0, capitalsExpertPerfect: 0,
     moviesRounds: 0, moviesTotal: 0, moviesCorrect: 0, moviesPerfect: 0,
     games: {
       slots: { ...g(), bonuses: 0 },

@@ -2,6 +2,31 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V8 — Nouvelle slot, profils et singe conseiller (14 octobre 2026)
+
+### Chibouk Slot
+
+- 99 lignes au lieu de 21 : toutes les lignes où chaque symbole touche le suivant, en face ou en diagonale, jamais 2 rangées d'écart. Elles sont toutes dessinées dans la table des gains.
+- On choisit maintenant la mise totale du spin (10 minimum), répartie sur les 99 lignes. Les gains de toutes les lignes s'additionnent.
+- Nouveau symbole SCATTER (le Totem) : il paie n'importe où (×2, ×10 ou ×50 la mise) et c'est lui qui déclenche les tours gratuits ×2 (3, 4 ou 5 Totems = 10, 15 ou 20 tours).
+- Le WILD remplace simplement n'importe quel symbole (sauf le SCATTER) et ne déclenche plus le bonus.
+- Nouveau WILD ×2 (le Roi Singe violet), plus rare et seulement sur les rouleaux 2 à 4 : il double le gain de sa ligne (×4 avec deux).
+- Animation des gros gains dès ×10 la mise : le multiplicateur du spin monte en direct, avec 4 paliers (Gros gain, Super gain, Méga gain, Gain énorme). Clic ou Espace pour passer.
+- Le multiplicateur de chaque spin gagnant s'affiche sous le gain. RTP calculé exactement : 100,1 %.
+
+### Nouveautés
+
+- Quiz capitales : deux modes. Facile avec 4 propositions, ou Expert où il faut écrire la réponse (accents et petites fautes tolérés), 15 s par question et gains doublés (+20 par bonne réponse, +100 pour un sans-faute).
+- Profils : photo de profil (ta photo ou un des 12 singes), petite bio, et page « Mon profil » dans le menu de ton pseudo.
+- Clique sur un pseudo dans un classement pour voir la fiche du joueur : photo, bio, solde, jeu préféré et meilleurs succès.
+- Le singe conseiller : de temps en temps, un petit singe donne une astuce sur la page où tu es (succès, profil, paris auto, raccourcis clavier…). On peut le faire taire ou lui demander un conseil depuis le menu de ton pseudo.
+- 5 nouveaux succès : Carte de visite, Allée des totems, Double double, Gain énorme et Géographe de compétition.
+
+### Changements
+
+- Accueil : texte d'accueil raccourci, et les catégories « Jeux de casino » et « Gagner des Brundles gratuitement » se replient d'un clic sur leur titre (ton choix est mémorisé).
+- Les avatars des joueurs apparaissent dans les classements et dans la liste des succès.
+
 ## V7 — Quiz capitales, quiz ciné et succès cliquables (14 octobre 2026)
 
 ### Nouveautés

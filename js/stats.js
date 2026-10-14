@@ -3,6 +3,7 @@ import { CONFIG } from './config.js';
 import { $, fmt, money, esc, toast } from './ui.js';
 import { icon } from './art.js';
 import { getPlayers, playersFresh } from './players.js';
+import { avatarHTML } from './profile.js';
 
 const GAMES = [
   { k: 'slots', name: 'Chibouk Slot' },
@@ -36,7 +37,7 @@ export function mount(view, { wallet, backend }) {
       <div class="stat-card"><span>Bonus quotidiens</span><b>${fmt(s.dailyClaims)}</b><small>${fmt(s.dailyTotal)} ${CONFIG.CURRENCY} reçus</small></div>
       <div class="stat-card"><span>Casse-briques</span><b>${fmt(s.breakerLevels)} niveaux</b><small>${fmt(s.breakerTotal)} ${CONFIG.CURRENCY} gagnés</small></div>
       <div class="stat-card"><span>Calcul mental</span><b>${fmt(s.quizCorrect || 0)} bonnes rép.</b><small>${fmt(s.quizRounds || 0)} parties · ${fmt(s.quizTotal || 0)} ${CONFIG.CURRENCY} gagnés · ${fmt(s.quizPerfect || 0)} sans-faute</small></div>
-      <div class="stat-card"><span>Quiz capitales</span><b>${fmt(s.capitalsCorrect || 0)} bonnes rép.</b><small>${fmt(s.capitalsRounds || 0)} parties · ${fmt(s.capitalsTotal || 0)} ${CONFIG.CURRENCY} gagnés · ${fmt(s.capitalsPerfect || 0)} sans-faute</small></div>
+      <div class="stat-card"><span>Quiz capitales</span><b>${fmt(s.capitalsCorrect || 0)} bonnes rép.</b><small>${fmt(s.capitalsRounds || 0)} parties · ${fmt(s.capitalsTotal || 0)} ${CONFIG.CURRENCY} gagnés · ${fmt(s.capitalsPerfect || 0)} sans-faute${s.capitalsExpertCorrect ? ` · expert : ${fmt(s.capitalsExpertCorrect)} bonnes rép., ${fmt(s.capitalsExpertPerfect || 0)} sans-faute` : ''}</small></div>
       <div class="stat-card"><span>Quiz ciné</span><b>${fmt(s.moviesCorrect || 0)} bonnes rép.</b><small>${fmt(s.moviesRounds || 0)} parties · ${fmt(s.moviesTotal || 0)} ${CONFIG.CURRENCY} gagnés · ${fmt(s.moviesPerfect || 0)} sans-faute</small></div>
       <div class="stat-card"><span>Transferts</span><b>${signed((s.transfersReceived || 0) - (s.transfersSent || 0))}</b><small>Reçus ${fmt(s.transfersReceived || 0)} · envoyés ${fmt(s.transfersSent || 0)}</small></div>
       <div class="stat-card"><span>Tours gratuits déclenchés</span><b>${fmt(s.games.slots.bonuses || 0)}</b><small>Blackjacks : ${fmt(s.games.blackjack.blackjacks || 0)}</small></div>
@@ -80,15 +81,15 @@ export function mount(view, { wallet, backend }) {
     if (!alive || !box) return;
     const rows = [...players].sort((a, b) => b.balance - a.balance).slice(0, CONFIG.LEADERBOARD_SIZE);
     box.innerHTML = `<div class="tbl-scroll"><table class="tbl"><thead><tr><th>#</th><th>Joueur</th><th class="r">Solde</th><th class="r">Total misé</th><th class="r">Plus gros gain</th><th class="r">Bilan jeux</th><th class="r">Succès</th></tr></thead><tbody>
-      ${rows.map((r, i) => `<tr class="${r.uid === wallet.uid ? 'me' : ''}"><td><span class="rank r${i + 1}">${i + 1}</span></td><td>${esc(r.pseudo)}${r.uid === wallet.uid ? ' (toi)' : ''}</td>
+      ${rows.map((r, i) => `<tr class="${r.uid === wallet.uid ? 'me' : ''}"><td><span class="rank r${i + 1}">${i + 1}</span></td><td><button type="button" class="pl-link" data-player="${r.uid}">${avatarHTML(r.uid === wallet.uid ? { ...r, avatar: wallet.p.avatar } : r, 'av-sm')}${esc(r.pseudo)}${r.uid === wallet.uid ? ' (toi)' : ''}</button></td>
       <td class="r"><b>${fmt(r.balance)}</b></td><td class="r">${fmt(r.stats.totalWagered)}</td><td class="r">${fmt(r.stats.biggestWin)}</td><td class="r">${signed(r.stats.totalWon - r.stats.totalWagered)}</td><td class="r">${r.uid === wallet.uid ? Object.keys((wallet.p.ach && wallet.p.ach.u) || {}).length : Object.keys((r.ach && r.ach.u) || {}).length}</td></tr>`).join('')}
       </tbody></table></div>`;
     // Top 3 des plus gros gains, jeu par jeu
     bw.innerHTML = GAMES.map((g) => {
-      const top = players.map((p) => ({ uid: p.uid, pseudo: p.pseudo, v: (p.stats.games[g.k] && p.stats.games[g.k].biggestWin) || 0 }))
+      const top = players.map((p) => ({ uid: p.uid, pseudo: p.pseudo, avatar: p.avatar, v: (p.stats.games[g.k] && p.stats.games[g.k].biggestWin) || 0 }))
         .filter((x) => x.v > 0).sort((a, b) => b.v - a.v).slice(0, 3);
       return `<div class="bw-card"><div class="bw-head">${icon(g.k)}<b>${g.name}</b></div>
-        ${top.length ? `<ol>${top.map((x, i) => `<li class="${x.uid === wallet.uid ? 'me' : ''}"><span class="rank r${i + 1}">${i + 1}</span><span class="bw-name">${esc(x.pseudo)}</span><b>${money(x.v)}</b></li>`).join('')}</ol>`
+        ${top.length ? `<ol>${top.map((x, i) => `<li class="${x.uid === wallet.uid ? 'me' : ''}"><span class="rank r${i + 1}">${i + 1}</span><button type="button" class="bw-name pl-link" data-player="${x.uid}">${avatarHTML(x, 'av-xs')}${esc(x.pseudo)}</button><b>${money(x.v)}</b></li>`).join('')}</ol>`
         : '<p class="muted bw-empty">Personne n\'a encore gagné ici</p>'}</div>`;
     }).join('');
   }

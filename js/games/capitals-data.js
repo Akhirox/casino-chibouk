@@ -40,3 +40,26 @@ export const CAPITALS = [
   // Océanie
   ['Australie', 'Canberra', 'oc', 2], ['Nouvelle-Zélande', 'Wellington', 'oc', 2], ['Fidji', 'Suva', 'oc', 3], ['Papouasie-Nouvelle-Guinée', 'Port Moresby', 'oc', 3],
 ];
+
+// Autres écritures acceptées en mode expert (en plus des fautes de frappe légères)
+export const ALIASES = {
+  'États-Unis': ['USA', 'US', 'Etats Unis d Amerique', 'Amerique'], 'Royaume-Uni': ['Angleterre', 'Grande-Bretagne', 'UK'],
+  'Pays-Bas': ['Hollande'], 'République tchèque': ['Tchéquie', 'Republique Tcheque'], 'Birmanie': ['Myanmar'],
+  'Macédoine du Nord': ['Macédoine'], 'République démocratique du Congo': ['RDC', 'RD Congo', 'Congo Kinshasa'],
+  'République du Congo': ['Congo', 'Congo Brazzaville'], 'Émirats arabes unis': ['EAU', 'Emirats', 'Emirats arabes'],
+  'Biélorussie': ['Bélarus', 'Belarus'], 'Viêt Nam': ['Vietnam'], 'Bosnie-Herzégovine': ['Bosnie'],
+  'Papouasie-Nouvelle-Guinée': ['Papouasie'], 'Fidji': ['Fiji', 'Iles Fidji'], 'Moldavie': ['Moldova'], 'Turquie': ['Turkiye'],
+  'Arabie saoudite': ['Arabie'], 'Corée du Sud': ['Coree sud'], 'Corée du Nord': ['Coree nord'], 'Nouvelle-Zélande': ['NZ'],
+  'Kiev': ['Kyiv'], 'Pékin': ['Beijing'], 'New Delhi': ['Delhi'], 'Mexico': ['Mexico City'], 'Washington': ['Washington DC'],
+  'Dacca': ['Dhaka'], 'Oulan-Bator': ['Ulaanbaatar', 'Ulan Bator'], 'Naypyidaw': ['Naypyitaw', 'Nay Pyi Taw'],
+  'Chisinau': ['Kichinev'], 'Abou Dabi': ['Abu Dhabi', 'Abou Dhabi'], 'Tachkent': ['Tashkent'], 'Sanaa': ['Sana a'],
+  'Mascate': ['Muscat'], 'Addis-Abeba': ['Addis Ababa', 'Addis'], 'Riyad': ['Riyadh'], 'Erevan': ['Yerevan'],
+  'Tbilissi': ['Tbilisi'], 'Bakou': ['Baku'], 'Saint-Domingue': ['Santo Domingo'], 'La Havane': ['Havana'],
+  'La Valette': ['Valletta'], 'Katmandou': ['Kathmandu'], 'Bagdad': ['Baghdad'], 'Kaboul': ['Kabul'],
+  'Varsovie': ['Warszawa', 'Warsaw'], 'Copenhague': ['Copenhagen'], 'Lisbonne': ['Lisboa', 'Lisbon'], 'Bruxelles': ['Brussels'],
+  'Vienne': ['Wien', 'Vienna'], 'Moscou': ['Moskva', 'Moscow'], 'Athènes': ['Athens'], 'Londres': ['London'], 'Berne': ['Bern'],
+  'Bucarest': ['Bucuresti', 'Bucharest'], 'Belgrade': ['Beograd'], 'Nicosie': ['Nicosia'], 'N\'Djaména': ['Ndjamena'],
+  'Port-au-Prince': ['Port au Prince'], 'Phnom Penh': ['Phnom-Penh'], 'Kuala Lumpur': ['KL'], 'Hanoï': ['Hanoi'],
+  'Séoul': ['Seoul'], 'Manille': ['Manila'], 'Le Caire': ['Cairo'], 'Alger': ['Algiers'], 'Damas': ['Damascus'],
+  'Beyrouth': ['Beirut'], 'Prague': ['Praha'], 'Rome': ['Roma'], 'Pretoria': ['Tshwane'],
+};

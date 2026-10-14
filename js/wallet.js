@@ -179,6 +179,14 @@ export class Wallet {
     this.flush();
   }
 
+  // Profil public (photo + bio) : écrit tout de suite, une seule fois, hors de la synchro des 30 s
+  async saveCard({ avatar, bio }) {
+    const data = { avatar: String(avatar || ''), bio: String(bio || '').slice(0, 160), updatedAt: Date.now() };
+    await this.exclusive(() => this.backend.saveProfile(this.uid, data));
+    this.p.avatar = data.avatar; this.p.bio = data.bio;
+    this.emit({ type: 'profile' });
+  }
+
   /* ---------- Synchronisation ---------- */
   pick() {
     const o = {};

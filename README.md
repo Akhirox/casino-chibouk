@@ -5,7 +5,9 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 - Connexion par **pseudo + mot de passe**, sans email.
 - **1 000 Brundles offerts** à la création du compte, puis **1 000 par jour** avec le bouton cadeau (une fois par jour, remise à zéro à minuit heure de Paris).
 - **Aucune mise maximum** : mise libre + bouton MAX (Slot, Plinkoko, Crashibouk, Tower, Mines, Dice), jetons jusqu'à 25k + « Tapis » (blackjack), jetons jusqu'à 25k empilables (roulette).
-- **Succès** : 72 défis (globaux et par jeu) qui rapportent de +100 à +10 000 Brundles, avec une page dédiée et une notification à chaque déblocage. Un clic sur un succès montre qui l'a débloqué, et qui l'a eu en premier (avec la date).
+- **Succès** : 77 défis (globaux et par jeu) qui rapportent de +100 à +10 000 Brundles, avec une page dédiée et une notification à chaque déblocage. Un clic sur un succès montre qui l'a débloqué, et qui l'a eu en premier (avec la date).
+- **Profils** : photo (ou un des 12 singes) et petite bio, visibles en cliquant sur un pseudo dans les classements. La photo est réduite à quelques Ko et stockée dans Firestore (pas besoin de Firebase Storage, donc ça reste gratuit).
+- **Singe conseiller** : petites astuces contextuelles sur chaque page, désactivables depuis le menu du pseudo.
 - **Paris automatiques** sur les 8 jeux de casino : nombre de paris libre ou infini, arrêt sur objectif de gain ou limite de perte.
 - **Nouveautés** : journal des versions sur le site (et dans `CHANGELOG.md`).
 - **Classement à côté de chaque jeu** : top 5 des plus gros parieurs (volume misé), du meilleur multiplicateur et du plus gros gain sur ce jeu.
@@ -18,7 +20,7 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 
 | Jeu | Principe | RTP |
 |---|---|---|
-| **Chibouk Slot** | Machine à sous 5×3, 21 lignes. 3 WILD n'importe où = tours gratuits avec gains ×2 (re-déclenchables). | ≈ 100 % |
+| **Chibouk Slot** | Machine à sous 5×3, 99 lignes connectées. WILD, WILD ×2, et 3 SCATTER n'importe où = tours gratuits avec gains ×2 (re-déclenchables). Animation des gros gains à partir de ×10. | ≈ 100 % |
 | **Blackjack du Singe** | 6 jeux, blackjack payé 3:2, croupier reste sur 17, doubler, séparer **n'importe quelles cartes** (4 mains), cartes 3D. Mises annexes **Perfect Pairs** (6:1 / 15:1 / 25:1, RTP 99,7 %) et **21+3** (couleur 5:1, suite 11:1, brelan 30:1, quinte flush 45:1, brelan couleur 100:1, RTP 99,5 %). | ≈ 99,5 % |
 | **Roulette Banane** | Roulette européenne à un zéro, roue et bille animées. | 97,3 % |
 | **Plinkoko** | 8, 12 ou 16 rangées, risque faible / moyen / élevé, jusqu'à ×1000, billes multiples. | 99 % |
@@ -27,7 +29,7 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 | **Mines** | Grille 5×5, 1 à 24 mines. Chaque banane trouvée augmente le multi, encaisse avant de tomber sur une mine. | 99 % |
 | **Dice** | Tirage de 0,00 à 100,00. Choisis « en dessous » ou « au-dessus » et ta chance (0,01 % à 98 %) : multi = 99 ÷ chance. | 99 % |
 | **Calcul mental** | Gratuit : 10 calculs (additions, soustractions, tables, divisions), 10 s chacun. +10 Brundles par bonne réponse, +50 de bonus pour un sans-faute. | — |
-| **Quiz capitales** | Gratuit : 10 questions à 4 choix, dans les deux sens (pays → capitale, capitale → pays), 127 pays, 10 s chacune. +10 Brundles par bonne réponse, +50 pour un sans-faute. | — |
+| **Quiz capitales** | Gratuit : 10 questions dans les deux sens (pays → capitale, capitale → pays), 127 pays. Mode facile (4 choix, 10 s, +10 par bonne réponse, +50 sans-faute) ou expert (réponse à écrire, 15 s, +20 par bonne réponse, +100 sans-faute). | — |
 | **Quiz ciné** | Gratuit : 10 questions à 4 choix sur 800 films (réalisateur, acteurs, année de sortie), 15 s chacune. Même barème. Données : `data/movies.json`, extrait de la base TMDB (The Movies Dataset). | — |
 | **Casse-briques** | Gratuit, sans mise, accessible à tout moment : +100 Brundles par niveau terminé (6 niveaux en boucle, de plus en plus durs). | — |
 
@@ -54,7 +56,7 @@ python -m http.server 8000
 1. Va sur <https://console.firebase.google.com> et clique sur **Ajouter un projet**. Google Analytics n'est pas nécessaire.
 2. **Authentication** → *Commencer* → *Sign-in method* → active **Adresse e-mail/Mot de passe**.
 3. **Firestore Database** → *Créer une base de données*. Choisis le **mode production** et une région en Europe, par exemple `europe-west1`.
-4. **Firestore Database → Règles** : copie-colle le contenu du fichier `firestore.rules`, puis clique sur **Publier**. À refaire à chaque fois que ce fichier change (c'est le cas avec l'ajout des transferts).
+4. **Firestore Database → Règles** : copie-colle le contenu du fichier `firestore.rules`, puis clique sur **Publier**. À refaire à chaque fois que ce fichier change (c'est le cas en V8 avec les photos de profil et les bios).
 5. **Paramètres du projet** (roue dentée) → *Vos applications* → icône **Web `</>`**. Enregistre l'app sans activer Firebase Hosting, puis copie le bloc `firebaseConfig` dans **`js/firebase-config.js`**.
 6. **Authentication → Paramètres → Domaines autorisés** → ajoute `tonpseudo.github.io`.
 
@@ -113,24 +115,27 @@ Une copie de secours est aussi gardée dans le navigateur (`localStorage`). Si u
 
 ## 6. Les maths de la machine à sous
 
-- 5 rouleaux de 48 symboles, 3 rangées, **21 lignes** (celles de ton image). La mise totale vaut 21 × la mise par ligne.
-- Symboles, du plus rare au plus courant : 👑 Roi Singe (WILD), 🐒 Singe, 7, BAR, Cloche, Pastèque, Raisin, Banane, Citron, Cerise.
-- Les gains se comptent **depuis le rouleau de gauche** (3, 4 ou 5 symboles). Le WILD remplace tous les symboles.
-- **3 / 4 / 5 WILD n'importe où** donnent **10 / 15 / 20 tours gratuits**, avec tous les gains **×2**. Le bonus peut se redéclencher.
+- 5 rouleaux de 50 à 51 symboles, 3 rangées, **99 lignes** : toutes les lignes où chaque symbole touche le suivant (même rangée ou diagonale, jamais 2 rangées d'écart). On choisit la **mise totale** (10 minimum), répartie sur les 99 lignes ; le gain est arrondi au Brundle près.
+- Symboles, du plus rare au plus courant : SCATTER (Totem), WILD ×2, WILD (Roi Singe), Singe, 7, BAR, Cloche, Pastèque, Raisin, Banane, Citron, Cerise.
+- Les gains des lignes se comptent **depuis le rouleau de gauche** (3, 4 ou 5 symboles) et s'additionnent. Le WILD remplace tous les symboles sauf le SCATTER. Le WILD ×2 (rouleaux 2 à 4 seulement) fait pareil et double le gain de la ligne (×4 avec deux).
+- Le **SCATTER** paie n'importe où (×2 / ×10 / ×50 la mise pour 3 / 4 / 5) et **3 / 4 / 5 SCATTER** donnent **10 / 15 / 20 tours gratuits**, avec tous les gains **×2**. Le bonus peut se redéclencher.
 
-Simulation sur 20 millions de tours :
+Le RTP est **calculé exactement** (`theoreticalRTP()` dans `slots-math.js`) puis vérifié par simulation :
 
 | Indicateur | Valeur |
 |---|---|
-| **RTP total** | **≈ 99,9 %** (quasi neutre) |
-| dont tours gratuits | ≈ 28 % |
-| Tours avec un gain | ≈ 35 % |
-| Bonus | ≈ 1 tour sur 63 |
+| **RTP exact** | **100,1 %** (léger avantage joueur) |
+| dont lignes / SCATTER / tours gratuits | 71,5 % / 3,6 % / 25,1 % |
+| RTP simulé (2 × 3 millions de tours) | 100,1 % et 100,6 % |
+| Tours avec un gain | ≈ 34 % |
+| Bonus | ≈ 1 tour sur 72 |
+| Gros gain (≥ ×10, animation) | ≈ 1 tour sur 53 |
+| Gain ≥ ×100 | ≈ 1 tour sur 4 000 |
 
 Si tu modifies la table des gains (`PAYTABLE`) ou la composition des rouleaux (`REEL_WEIGHTS`) dans `js/games/slots-math.js`, revérifie le RTP avec :
 
 ```bash
-node tools/simulate-rtp.mjs 2000000
+node tools/simulate-rtp.mjs 2000000   # calcul exact + simulation
 ```
 
 Le blackjack (avantage maison ~0,5 %) et la roulette (2,7 %) gardent les règles classiques d'un vrai casino.
@@ -184,6 +189,8 @@ js/games/movies.js         Quiz ciné (données dans data/movies.json)
 js/gameboard.js            classement affiché à côté de chaque jeu
 js/achievements.js         définition des succès et moteur de déblocage
 js/achpage.js              page des succès
+js/profile.js              profils (avatar, bio, fiche joueur)
+js/tips.js                 le singe conseiller (astuces)
 js/changelog.js            journal des versions (page Nouveautés)
 firestore.rules            règles de sécurité à publier
 tools/simulate-rtp.mjs     simulateur de RTP

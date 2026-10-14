@@ -14,7 +14,10 @@ export const CONFIG = {
   QUIZ_PERFECT_BONUS: 50,       // bonus si 10/10
   QUIZ_QUESTIONS: 10,
   QUIZ_SECONDS: 10,
-  CAPITALS_SECONDS: 10,  // quiz capitales
+  CAPITALS_SECONDS: 10,  // quiz capitales (mode facile)
+  CAPITALS_EXPERT_SECONDS: 15,          // mode expert : réponse à écrire
+  CAPITALS_EXPERT_PER_CORRECT: 20,      // mode expert : gain doublé
+  CAPITALS_EXPERT_PERFECT_BONUS: 100,
   MOVIES_SECONDS: 15,    // quiz ciné (questions plus longues à lire)
   FIREBASE_SDK_VERSION: '10.12.2',
 };

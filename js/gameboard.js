@@ -1,4 +1,5 @@
 // Classement affiché à côté de chaque jeu : plus gros parieurs (volume), meilleur multiplicateur, plus gros gain
+import { avatarHTML } from './profile.js';
 import { getPlayers } from './players.js';
 import { icon, coinSVG } from './art.js';
 import { $, $$, fmt, esc } from './ui.js';
@@ -34,11 +35,11 @@ export function mountBoard(el, game, title, { wallet, backend }) {
     if (!players) return;
     // ses propres stats sont toujours à jour en local
     const rows = players.map((p) => (p.uid === wallet.uid ? { ...p, stats: wallet.stats, pseudo: wallet.pseudo } : p))
-      .map((p) => ({ uid: p.uid, pseudo: p.pseudo, v: T.val((p.stats.games && p.stats.games[game]) || {}) }))
+      .map((p) => ({ uid: p.uid, pseudo: p.pseudo, avatar: p.avatar, v: T.val((p.stats.games && p.stats.games[game]) || {}) }))
       .filter((x) => x.v > 0).sort((a, b) => b.v - a.v);
     const top = rows.slice(0, 5);
     $('.gb-list', el).innerHTML = top.length
-      ? top.map((x, i) => `<li class="${x.uid === wallet.uid ? 'me' : ''}"><span class="rank r${i + 1}">${i + 1}</span><span class="gb-name">${esc(x.pseudo)}</span><b>${T.fmt(x.v)}${tab === 'mult' ? '' : coinSVG('coin coin-inline')}</b></li>`).join('')
+      ? top.map((x, i) => `<li class="${x.uid === wallet.uid ? 'me' : ''}"><span class="rank r${i + 1}">${i + 1}</span><button type="button" class="gb-name pl-link" data-player="${x.uid}">${avatarHTML(x, 'av-xs')}${esc(x.pseudo)}</button><b>${T.fmt(x.v)}${tab === 'mult' ? '' : coinSVG('coin coin-inline')}</b></li>`).join('')
       : '<li class="muted gb-empty">Personne pour l\'instant. À toi de jouer !</li>';
     const myIdx = rows.findIndex((x) => x.uid === wallet.uid);
     $('.gb-me', el).innerHTML = myIdx >= 5 ? `Toi : <b>#${myIdx + 1}</b> · ${T.fmt(rows[myIdx].v)}` : '';

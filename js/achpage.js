@@ -4,6 +4,7 @@ import { icon } from './art.js';
 import { $, $$, fmt, esc, modal } from './ui.js';
 import { getPlayers } from './players.js';
 import { CONFIG } from './config.js';
+import { avatarHTML } from './profile.js';
 
 const CAT_ICON = { global: 'trophy', slots: 'slots', blackjack: 'blackjack', roulette: 'roulette', plinko: 'plinko', crash: 'crash', tower: 'tower', mines: 'mines', dice: 'dice', free: 'gift' };
 const dateFmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
@@ -14,7 +15,7 @@ export function holdersById(players) {
   const map = {};
   for (const p of players) {
     const u = (p.ach && p.ach.u) || {};
-    for (const [id, at] of Object.entries(u)) (map[id] = map[id] || []).push({ uid: p.uid, pseudo: p.pseudo, at: +at || 0 });
+    for (const [id, at] of Object.entries(u)) (map[id] = map[id] || []).push({ uid: p.uid, pseudo: p.pseudo, avatar: p.avatar, at: +at || 0 });
   }
   for (const list of Object.values(map)) list.sort((a, b) => a.at - b.at || String(a.pseudo).localeCompare(String(b.pseudo)));
   return map;
@@ -55,7 +56,7 @@ export function mount(view, { wallet, backend }) {
 
   // ses propres succès viennent toujours de l'état local (à jour à la seconde)
   function refreshHolders() {
-    if (players) holders = holdersById(players.map((p) => (p.uid === wallet.uid ? { ...p, ach: wallet.p.ach } : p)));
+    if (players) holders = holdersById(players.map((p) => (p.uid === wallet.uid ? { ...p, ach: wallet.p.ach, avatar: wallet.p.avatar } : p)));
   }
 
   function render() {
@@ -104,9 +105,9 @@ export function mount(view, { wallet, backend }) {
     if (!hs.length) return head + `<div class="achd-none">Personne ne l'a encore débloqué.<br><b>Sois le premier !</b></div>`;
     const f = hs[0];
     return head + `
-      <div class="achd-first">${icon('trophy')}<div><small>Premier à le débloquer</small><b>${esc(f.pseudo)}${f.uid === wallet.uid ? ' (toi)' : ''}</b><span>${f.at ? 'le ' + dateTimeFmt.format(new Date(f.at)) : 'date inconnue'}</span></div></div>
+      <div class="achd-first">${avatarHTML(f, 'av-md')}<div><small>Premier à le débloquer</small><b>${esc(f.pseudo)}${f.uid === wallet.uid ? ' (toi)' : ''}</b><span>${f.at ? 'le ' + dateTimeFmt.format(new Date(f.at)) : 'date inconnue'}</span></div></div>
       <div class="achd-stat">${hs.length} joueur${hs.length > 1 ? 's' : ''} sur ${n} (${Math.round((hs.length / Math.max(1, n)) * 100)} %)</div>
-      <ol class="achd-list">${hs.map((x, i) => `<li class="${x.uid === wallet.uid ? 'me' : ''}"><span class="r">${i + 1}</span><b>${esc(x.pseudo)}</b><small>${x.at ? dateTimeFmt.format(new Date(x.at)) : '—'}</small></li>`).join('')}</ol>
+      <ol class="achd-list">${hs.map((x, i) => `<li class="${x.uid === wallet.uid ? 'me' : ''}"><span class="r">${i + 1}</span><b>${avatarHTML(x, 'av-xs')}${esc(x.pseudo)}</b><small>${x.at ? dateTimeFmt.format(new Date(x.at)) : '—'}</small></li>`).join('')}</ol>
       <p class="muted achd-note">Les succès des autres joueurs apparaissent environ ${CONFIG.SYNC_INTERVAL_MS / 1000} s après leur déblocage (liste gardée en cache ${CONFIG.LEADERBOARD_CACHE_MS / 60000} min).</p>`;
   }
 
