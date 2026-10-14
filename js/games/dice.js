@@ -112,8 +112,10 @@ export function mount(view, { wallet }) {
     const r = randInt(10001) / 100; // 0,00 … 100,00
     const win = mode === 'under' ? r < target : r > target;
     const payout = win ? Math.floor(amount * mult) : 0;
-    if (payout) wallet.win('dice', payout, amount);
-    wallet.round('dice', payout > amount ? payout : 0, { bet: amount, chance: ch, mult, win, roll: r, mode });
+    const reveal = wallet.deferEvents(() => {
+      if (payout) wallet.win('dice', payout, amount);
+      wallet.round('dice', payout > amount ? payout : 0, { bet: amount, chance: ch, mult, win, roll: r, mode });
+    });
 
     // animation : défilement des chiffres puis le marqueur glisse sur le résultat
     sfx.spinStart();
@@ -123,6 +125,7 @@ export function mount(view, { wallet }) {
       resEl.textContent = fmt2(randInt(10001) / 100);
       await sleep(40);
     }
+    reveal();
     if (!alive) return true;
     resEl.textContent = fmt2(r);
     resEl.className = 'dc-result ' + (win ? 'win' : 'lose');

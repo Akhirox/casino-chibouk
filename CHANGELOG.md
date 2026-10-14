@@ -2,6 +2,26 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V12 — Le VIP multiplie tes gains gratuits (14 octobre 2026)
+
+### Rangs VIP
+
+- Nouveau : chaque rang VIP multiplie tous tes gains gratuits. Roue du jour (en plus de la série de jours), quêtes et leur bonus, calcul mental, quiz capitales, ciné et drapeaux, mot du jour, Plus ou moins et casse-briques.
+- Le multiplicateur va de ×1,2 (Tamarin) à ×10 (Roi Singe) : ×1,5 Macaque, ×2 Capucin, ×2,5 Babouin, ×3 Chimpanzé, ×4 Mandrill, ×5 Orang-outan, ×6 Gorille, ×8 Gorille argenté. Il remplace les anciens petits bonus sur la roue et les quêtes.
+- Le bonus est versé en plus du gain normal, avec une notification « Bonus VIP ×… ». Il est affiché sur l'accueil (rubrique des jeux gratuits, quêtes, carte VIP), dans la roue du jour et dans le tableau des rangs.
+
+### Stats et classements
+
+- Le Casino Chibouk en chiffres revient sur la page Stats, dans l'onglet « Le casino » (à côté de « Mes stats »). La page se souvient de l'onglet choisi.
+- La page Classements ne contient plus que les classements : semaine et palmarès, soldes, meilleurs gains par jeu.
+
+## V11.1 — Le suspense d'abord (14 octobre 2026)
+
+### Correctifs
+
+- Le solde affiché en haut ne bouge plus avant la fin de l'animation : il se met à jour quand les rouleaux, la roue, la bille, les dés ou le tirage s'arrêtent (slot, roulette, Dice, Keno, Limbo, Roue du Singe, mises annexes du blackjack et roue du jour). Pareil pour les succès, les quêtes, le jackpot et le fil d'activité.
+- Le gain reste enregistré dès le lancement : quitter la page pendant l'animation ne fait rien perdre.
+
 ## V11 — Rakeback en continu, nouveaux rangs VIP et chiffres du casino (14 octobre 2026)
 
 ### Rangs VIP

@@ -74,8 +74,10 @@ export function mount(view, { wallet }) {
     const r = limboRoll();
     const win = r >= t;
     const payout = win ? Math.floor(amount * t) : 0;
-    if (payout) wallet.win('limbo', payout, amount);
-    wallet.round('limbo', payout > amount ? payout : 0, { bet: amount, target: t, result: r, win });
+    const reveal = wallet.deferEvents(() => {
+      if (payout) wallet.win('limbo', payout, amount);
+      wallet.round('limbo', payout > amount ? payout : 0, { bet: amount, target: t, result: r, win });
+    });
 
     // animation : le multiplicateur grimpe jusqu'au résultat
     res.className = 'lb-result rolling';
@@ -90,6 +92,7 @@ export function mount(view, { wallet }) {
       if (k >= 1) break;
       await sleep(16);
     }
+    reveal();
     if (!alive) return true;
     res.textContent = f2(r) + '×';
     res.className = 'lb-result ' + (win ? 'win' : 'lose');

@@ -94,18 +94,21 @@ export function mount(view, { wallet }) {
     const k = picks.size;
     const m = KENO_TABLES[risk][k - 1][hits];
     const payout = Math.floor(amount * m);
-    if (payout) wallet.win('keno', payout, amount);
-    wallet.round('keno', payout > amount ? payout : 0, { bet: amount, picks: k, hits, mult: m, risk });
+    const reveal = wallet.deferEvents(() => {
+      if (payout) wallet.win('keno', payout, amount);
+      wallet.round('keno', payout > amount ? payout : 0, { bet: amount, picks: k, hits, mult: m, risk });
+    });
 
     let shown = 0;
     for (const n of drawn) {
-      if (!alive) return true;
+      if (!alive) { reveal(); return true; }
       const b = view.querySelector(`.kn-n[data-n="${n}"]`);
       const hit = picks.has(n);
       b.classList.add('drawn', hit ? 'hit' : 'miss');
       if (hit) { shown++; sfx.coin(); renderPay(shown); } else sfx.tick && sfx.tick();
       await sleep(autoLeft ? 45 : 140);
     }
+    reveal();
     if (!alive) return true;
     renderPay(hits);
     $('#kn-msg', view).innerHTML = payout ? `${hits} numéro${hits > 1 ? 's' : ''} touché${hits > 1 ? 's' : ''} : ${fx(m)} → +${money(payout)}` : `${hits} numéro${hits > 1 ? 's' : ''} touché${hits > 1 ? 's' : ''}… pas de gain cette fois.`;

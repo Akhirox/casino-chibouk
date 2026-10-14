@@ -5,12 +5,13 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 - Connexion par **pseudo + mot de passe**, sans email.
 - **1 000 Brundles offerts** à la création du compte, puis la **roue du jour** (500 à 5 000 Brundles, une fois par jour, remise à zéro à minuit heure de Paris), multipliée par la série de jours consécutifs (jusqu'à ×2).
 - **Quêtes du jour** : 3 missions renouvelées à minuit (+300 / +600 / +1 000, +500 si les 3 sont faites).
-- **11 rangs VIP** selon le total misé (de Ouistiti à Roi Singe, 10 milliards) : **bonus de passage** à chaque nouveau rang (+500 à +100 millions, versé une seule fois, y compris rétroactivement pour les rangs déjà atteints), **rakeback en continu** (0,1 à 1,35 % de chaque mise aux jeux de casino tombe dans une cagnotte récupérable à tout moment), bonus sur la roue du jour et sur les quêtes (jusqu'à +50 %). Clic sur un rang pour voir le tableau complet.
+- **11 rangs VIP** selon le total misé (de Ouistiti à Roi Singe, 10 milliards) : **bonus de passage** à chaque nouveau rang (+500 à +100 millions, versé une seule fois, y compris rétroactivement pour les rangs déjà atteints), **rakeback en continu** (0,1 à 1,35 % de chaque mise aux jeux de casino tombe dans une cagnotte récupérable à tout moment), **multiplicateur de tous les gains gratuits** (roue du jour, quêtes, quiz, mot du jour, casse-briques… de ×1,2 à ×10, versé en plus du gain normal). Clic sur un rang pour voir le tableau complet.
 - **Classement de la semaine** (bénéfice du lundi au dimanche), trophée permanent pour le vainqueur et palmarès.
 - **Boutique cosmétique** : cadres d'avatar, titres, dos de cartes, thèmes de la slot, effets de victoire (de 2 000 à 100 millions de Brundles). Ça donne une utilité aux Brundles et freine l'inflation des soldes.
 - **Jackpot commun** alimenté par 1 % des mises de la slot (payé par le casino), qui peut tomber sur n'importe quel spin. Chance par spin = 1,5 % × mise ÷ jackpot, plafonnée à 1 % (ex. : jackpot de 10 000 et mise de 100 → 1 sur 6 667), affichée sur la slot.
 - **En direct de la jungle** : fil d'activité de l'accueil (gains à partir de ×25, tous les succès, jackpots, passages de rang VIP, achats, quêtes, vainqueurs de la semaine).
-- **Classements** (page à part de Stats) : le casino en chiffres (total misé et gagné par tout le monde, RTP réel, Brundles distribués, tableau par jeu), classement de la semaine, soldes, meilleurs gains par jeu.
+- **Stats** : onglet « Mes stats » et onglet « Le casino » (total misé et gagné par tout le monde, RTP réel, Brundles distribués, tableau par jeu).
+- **Classements** : classement de la semaine et palmarès, soldes, meilleurs gains par jeu.
 - **Historique** des 50 dernières parties de chaque jeu (onglet du classement à côté du jeu, gardé sur l'appareil).
 - **Aucune mise maximum** : mise libre + bouton MAX (Slot, Plinkoko, Crashibouk, Tower, Mines, Dice), jetons jusqu'à 25k + « Tapis » (blackjack), jetons jusqu'à 25k empilables (roulette).
 - **Succès** : 116 défis (globaux et par jeu) qui rapportent de +100 à +10 000 Brundles, avec une page dédiée et une notification à chaque déblocage. Un clic sur un succès montre qui l'a débloqué, et qui l'a eu en premier (avec la date).
@@ -184,8 +185,8 @@ js/config.js               réglages
 js/app.js                  connexion, navigation, lobby, bonus quotidien
 js/backend.js              Firebase (Auth + Firestore) / mode démo
 js/wallet.js               solde, stats, sauvegarde groupée
-js/stats.js                stats personnelles
-js/ranking.js              classements et chiffres globaux du casino
+js/stats.js                stats personnelles + chiffres de tout le casino
+js/ranking.js              classements (semaine, soldes, meilleurs gains)
 js/vip.js                  fenêtre des rangs VIP et cagnotte de rakeback
 js/players.js              liste des joueurs (cache partagé)
 js/tracker.js              suivi de session en graphique
@@ -212,7 +213,7 @@ js/achpage.js              page des succès
 js/profile.js              profils (avatar, bio, fiche joueur)
 js/tips.js                 le singe conseiller (astuces)
 js/changelog.js            journal des versions (page Nouveautés)
-js/progress.js             rangs VIP, rakeback, bonus de passage, roue du jour, quêtes
+js/progress.js             rangs VIP (rakeback, bonus de passage, multiplicateur gratuit), roue du jour, quêtes
 js/dailywheel.js           fenêtre de la roue du jour
 js/shop.js                 boutique et cosmétiques
 js/social.js               fil d'activité et jackpot commun

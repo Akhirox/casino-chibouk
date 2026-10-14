@@ -86,7 +86,32 @@ export class Wallet {
 
   on(cb) { this.listeners.add(cb); return () => this.listeners.delete(cb); }
   onSync(cb) { this.syncListeners.add(cb); return () => this.syncListeners.delete(cb); }
-  emit(evt) { for (const cb of this.listeners) try { cb(evt, this); } catch (e) { console.error(e); } }
+  emit(evt) {
+    if (this._capture) { this._capture.push(evt); return; }
+    for (const cb of this.listeners) try { cb(evt, this); } catch (e) { console.error(e); }
+  }
+
+  // Résultat « sous le gobelet » : fn() crédite tout de suite (solde, stats, sauvegarde : rien n'est perdu si on
+  // quitte la page pendant l'animation), mais les événements (affichage du solde, succès, quêtes, jackpot, fil…)
+  // ne partent qu'au reveal(), une fois le résultat montré à l'écran. Filet de sécurité : reveal auto après 20 s.
+  deferEvents(fn) {
+    const queue = [], prev = this._capture, before = this.p.balance;
+    this._capture = queue;
+    try { fn(); } finally { this._capture = prev; }
+    const delta = this.p.balance - before;
+    this.hiddenDelta = (this.hiddenDelta || 0) + delta;
+    let done = false;
+    const reveal = () => {
+      if (done) return;
+      done = true; clearTimeout(t);
+      this.hiddenDelta -= delta;
+      queue.forEach((e) => this.emit(e));
+    };
+    const t = setTimeout(reveal, 20000);
+    return reveal;
+  }
+  // Solde tel qu'il doit apparaître à l'écran (sans les gains dont l'animation n'est pas encore finie)
+  get shownBalance() { return this.p.balance - (this.hiddenDelta || 0); }
   emitSync(state) { for (const cb of this.syncListeners) try { cb(state, this); } catch (e) { console.error(e); } }
 
   touch(evt) {
@@ -221,7 +246,18 @@ export class Wallet {
     this.p.stats.breakerLevels += 1;
     this.p.stats.breakerTotal += CONFIG.BREAKER_REWARD;
     this.touch({ type: 'breaker', amount: CONFIG.BREAKER_REWARD });
+    this.vipBonus('breaker', CONFIG.BREAKER_REWARD);
     this.flush();
+  }
+
+  // Multiplicateur VIP des gains gratuits : la part en plus est versée à part (stats.vipfreeTotal)
+  // pour que les stats de chaque jeu gardent les gains de base. freeMult() est branché par initVip().
+  vipBonus(game, amount) {
+    const m = this.freeMult ? this.freeMult() : 1;
+    if (!(m > 1) || !(amount > 0)) return 0;
+    const extra = Math.round(amount * (m - 1));
+    this.credit('vipfree', extra, { game, mult: m, base: amount });
+    return extra;
   }
 
   // Récompense d'un jeu gratuit (calcul mental…) — comptée à part, comme le casse-briques
@@ -233,6 +269,7 @@ export class Wallet {
     for (const [k, v] of Object.entries(extra)) s[kind + k] = (s[kind + k] || 0) + v;
     if (amount > 0) this.p.balance += amount;
     this.touch({ type: 'free', game: kind, amount: Math.max(0, amount), extra });
+    this.vipBonus(kind, amount);
     this.flush();
   }
 

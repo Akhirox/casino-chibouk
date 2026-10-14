@@ -359,11 +359,12 @@ export function mount(view, { wallet }) {
     const p = hands[0];
     // les 4 cartes sont tirées d'abord : les mises annexes sont réglées tout de suite
     const c1 = draw(), d1 = draw(), c2 = draw(), d2 = draw();
-    resolveSideBets(c1, c2, d1);
+    const revealSide = wallet.deferEvents(() => resolveSideBets(c1, c2, d1));
     p.cards.push(c1); await dealCard(p.cards[0], p.cardsEl); refreshTotals();
     dealer.push(d1); await dealCard(dealer[0], dealerHandEl); refreshTotals();
     p.cards.push(c2); await dealCard(p.cards[1], p.cardsEl); refreshTotals();
     dealer.push(d2); holeEl = await dealCard(dealer[1], dealerHandEl, { hidden: true }); refreshTotals();
+    revealSide();
     if (!alive) return;
     showSideResults();
 

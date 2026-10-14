@@ -25,7 +25,7 @@ import * as Flags from './games/flags.js';
 import * as Motus from './games/motus.js';
 import * as Higher from './games/higher.js';
 import * as Shop from './shop.js';
-import { initQuests, today, questText, vipOf, vipProgress, VIP, rakePot, claimRake, initVip, pctFmt } from './progress.js';
+import { initQuests, today, questText, vipOf, vipProgress, VIP, rakePot, claimRake, initVip, pctFmt, freeMult, xMult } from './progress.js';
 import { createSocial, feedRich, FEED_ICON, jackpotChance, chanceText } from './social.js';
 import { openVipModal } from './vip.js';
 import { syncWeeks } from './weekly.js';
@@ -249,7 +249,8 @@ function renderShell() {
   let shown = wallet.balance;
   wallet.on((evt) => {
     if (evt && evt.type === 'profile') $('.ub-av', shell).innerHTML = Profile.avatarHTML(wallet.p, 'av-xs');
-    const nb = wallet.balance;
+    if (evt && evt.type === 'vipfree') toast(`Bonus VIP ${xMult(evt.mult)} : <b>+${fmt(evt.amount)} ${CUR}</b> en plus`, 'win', 3500);
+    const nb = wallet.shownBalance;
     if (nb !== shown) {
       pill.classList.remove('up', 'down'); void pill.offsetWidth;
       pill.classList.add(nb > shown ? 'up' : 'down');
@@ -273,8 +274,8 @@ function renderShell() {
   historyOff = initHistory(wallet);
   today(wallet);
   quests = initQuests(wallet, (q, bonus) => {
-    if (bonus) { toast(`<span class="ach-toast">${icon('check')}<span><small>Quêtes du jour</small><b>Les 3 quêtes sont terminées !</b><em>+${fmt(CONFIG.QUEST_BONUS)} ${CUR} de bonus</em></span></span>`, 'ach', 5000); coinRain(30); }
-    else toast(`<span class="ach-toast">${icon('check')}<span><small>Quête terminée</small><b>${esc(questText(q))}</b><em>+${fmt(q.r)} ${CUR}</em></span></span>`, 'ach', 4500);
+    if (bonus) { toast(`<span class="ach-toast">${icon('check')}<span><small>Quêtes du jour</small><b>Les 3 quêtes sont terminées !</b><em>+${fmt(Math.round(CONFIG.QUEST_BONUS * freeMult(wallet)))} ${CUR} de bonus</em></span></span>`, 'ach', 5000); coinRain(30); }
+    else toast(`<span class="ach-toast">${icon('check')}<span><small>Quête terminée</small><b>${esc(questText(q))}</b><em>+${fmt(Math.round(q.r * freeMult(wallet)))} ${CUR}</em></span></span>`, 'ach', 4500);
     sfx.bonus();
   });
   social = createSocial(wallet, backend);
@@ -457,18 +458,19 @@ function renderLobbyDaily(box) {
 function questsHTML() {
   const d = today(wallet);
   const lv = ['Facile', 'Moyenne', 'Difficile'];
+  const m = freeMult(wallet), r = (x) => fmt(Math.round(x * m));
   return `<div class="dash-head">${icon('check')}<b>Quêtes du jour</b><small class="muted">renouvelées à minuit</small></div>
     <ul class="quests">${d.quests.map((q) => `<li class="${q.done ? 'done' : ''}"><div><span class="q-lv q${q.tier}">${lv[q.tier]}</span>${esc(questText(q))}</div>
-      <div class="q-bar"><i style="width:${Math.min(100, (q.p / q.n) * 100)}%"></i></div><small>${q.done ? 'Terminée' : `${fmt(q.p)} / ${fmt(q.n)}`} · +${fmt(q.r)}</small></li>`).join('')}</ul>
-    <p class="muted q-bonus">${d.bonus ? 'Bonus de la journée récupéré !' : `Les 3 terminées : +${fmt(CONFIG.QUEST_BONUS)} ${CUR} de bonus`}</p>`;
+      <div class="q-bar"><i style="width:${Math.min(100, (q.p / q.n) * 100)}%"></i></div><small>${q.done ? 'Terminée' : `${fmt(q.p)} / ${fmt(q.n)}`} · +${r(q.r)}${m > 1 ? ` <span class="vip-x">${xMult(m)}</span>` : ''}</small></li>`).join('')}</ul>
+    <p class="muted q-bonus">${d.bonus ? 'Bonus de la journée récupéré !' : `Les 3 terminées : +${r(CONFIG.QUEST_BONUS)} ${CUR} de bonus`}</p>`;
 }
 function vipHTML() {
   const v = vipOf(wallet.stats.totalWagered);
   const pct = vipProgress(wallet.stats.totalWagered);
   const pot = rakePot(wallet);
   return `<div class="dash-head">${icon('star')}<b>Rang VIP</b><button type="button" class="btn btn-ghost btn-sm" data-vip>Tous les rangs</button></div>
-    <div class="vip-now"><button type="button" class="vip-badge big vip-${v.id}" style="--vc:${v.color}" data-vip>${v.name}</button><small>${v.rb ? `Rakeback ${pctFmt(v.rb)} sur chaque mise, +${pctFmt(v.wheel)} sur la roue du jour${v.quest ? `, +${pctFmt(v.quest)} sur les quêtes` : ''}` : 'Pas encore d\'avantage : mise 10 000 au total pour devenir Tamarin'}</small></div>
-    ${v.next ? `<div class="vip-pct"><div class="q-bar vip"><i style="width:${pct}%;background:${v.next.color}"></i></div><b>${pct.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %</b></div><small class="muted">Prochain rang : <b>${v.next.name}</b> à ${fmt(v.next.min)} misés · bonus <b class="gold">+${fmt(v.next.up)}</b></small>` : '<small class="muted">Rang maximum atteint !</small>'}
+    <div class="vip-now"><button type="button" class="vip-badge big vip-${v.id}" style="--vc:${v.color}" data-vip>${v.name}</button><small>${v.rb ? `Gains gratuits <b class="gold">${xMult(v.mult)}</b> (roue du jour, quêtes, quiz, mot du jour…) · rakeback ${pctFmt(v.rb)} sur chaque mise` : 'Pas encore d\'avantage : mise 10 000 au total pour devenir Tamarin (gains gratuits ×1,2)'}</small></div>
+    ${v.next ? `<div class="vip-pct"><div class="q-bar vip"><i style="width:${pct}%;background:${v.next.color}"></i></div><b>${pct.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %</b></div><small class="muted">Prochain rang : <b>${v.next.name}</b> à ${fmt(v.next.min)} misés · bonus <b class="gold">+${fmt(v.next.up)}</b> · gains gratuits ${xMult(v.next.mult)}</small>` : '<small class="muted">Rang maximum atteint !</small>'}
     <div class="rake-row"><div><small class="muted">Cagnotte de rakeback</small><b>${money(pot)}</b></div><button class="btn btn-gold btn-sm" id="rk-claim" ${pot >= 1 ? '' : 'disabled'}>Récupérer</button></div>`;
 }
 // mise actuelle de la slot (mémorisée) pour afficher la chance de jackpot
@@ -537,7 +539,7 @@ function mountLobby(view, { wallet: w }) {
     <h2 class="lobby-cat"><button type="button" class="lc-toggle" aria-expanded="true">${icon('chip')}Jeux de casino<small class="lc-count">${casinoCards.length} jeux</small><span class="lc-chev">${icon('arrow')}</span></button></h2>
     <div class="lc-body"><section class="games-grid">${casinoCards.join('')}</section></div></section>
     <section class="lobby-sec" data-sec="free">
-    <h2 class="lobby-cat free"><button type="button" class="lc-toggle" aria-expanded="true">${icon('gift')}Gagner des ${CUR} gratuitement<small class="lc-count">roue du jour, quiz, mot du jour, casse-briques</small><span class="lc-chev">${icon('arrow')}</span></button></h2>
+    <h2 class="lobby-cat free"><button type="button" class="lc-toggle" aria-expanded="true">${icon('gift')}Gagner des ${CUR} gratuitement<small class="lc-count">roue du jour, quiz, mot du jour, casse-briques</small>${freeMult(w) > 1 ? `<span class="vip-x big" title="Multiplicateur VIP sur tous les gains gratuits">VIP ${xMult(freeMult(w))}</span>` : ''}<span class="lc-chev">${icon('arrow')}</span></button></h2>
     <div class="lc-body">
     <section id="lobby-daily" class="daily-card"></section>
     <section class="games-grid free-grid">

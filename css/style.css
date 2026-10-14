@@ -1695,3 +1695,8 @@ td.vol { min-width: 90px; width: 18%; }
 td.vol .bar-track { height: 8px; }
 .stats-more { text-align: center; margin: 18px 0 0; }
 .stats-more a { color: var(--gold); }
+
+/* Multiplicateur VIP des gains gratuits */
+.vip-x { display: inline-block; padding: 1px 7px; border-radius: 999px; font-size: .72rem; font-weight: 800; color: #1a1400; background: linear-gradient(135deg, #ffe08a, #f5c542); letter-spacing: .02em; vertical-align: 1px; }
+.vip-x.big { font-size: .78rem; padding: 3px 10px; font-family: 'Rubik', system-ui, sans-serif; }
+.st-tabs { font-size: .85rem; }

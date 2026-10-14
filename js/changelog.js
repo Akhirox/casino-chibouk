@@ -1,9 +1,32 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '11';
+export const VERSION = '12';
 
 export const CHANGELOG = [
+  {
+    v: '12', date: '14 octobre 2026', title: 'Le VIP multiplie tes gains gratuits',
+    groups: [
+      ['Rangs VIP', [
+        'Nouveau : chaque rang VIP multiplie tous tes gains gratuits. Roue du jour (en plus de la série de jours), quêtes et leur bonus, calcul mental, quiz capitales, ciné et drapeaux, mot du jour, Plus ou moins et casse-briques.',
+        'Le multiplicateur va de ×1,2 (Tamarin) à ×10 (Roi Singe) : ×1,5 Macaque, ×2 Capucin, ×2,5 Babouin, ×3 Chimpanzé, ×4 Mandrill, ×5 Orang-outan, ×6 Gorille, ×8 Gorille argenté. Il remplace les anciens petits bonus sur la roue et les quêtes.',
+        'Le bonus est versé en plus du gain normal, avec une notification « Bonus VIP ×… ». Il est affiché sur l\'accueil (rubrique des jeux gratuits, quêtes, carte VIP), dans la roue du jour et dans le tableau des rangs.',
+      ]],
+      ['Stats et classements', [
+        'Le Casino Chibouk en chiffres revient sur la page Stats, dans l\'onglet « Le casino » (à côté de « Mes stats »). La page se souvient de l\'onglet choisi.',
+        'La page Classements ne contient plus que les classements : semaine et palmarès, soldes, meilleurs gains par jeu.',
+      ]],
+    ],
+  },
+  {
+    v: '11.1', date: '14 octobre 2026', title: 'Le suspense d\'abord',
+    groups: [
+      ['Correctifs', [
+        'Le solde affiché en haut ne bouge plus avant la fin de l\'animation : il se met à jour quand les rouleaux, la roue, la bille, les dés ou le tirage s\'arrêtent (slot, roulette, Dice, Keno, Limbo, Roue du Singe, mises annexes du blackjack et roue du jour). Pareil pour les succès, les quêtes, le jackpot et le fil d\'activité.',
+        'Le gain reste enregistré dès le lancement : quitter la page pendant l\'animation ne fait rien perdre.',
+      ]],
+    ],
+  },
   {
     v: '11', date: '14 octobre 2026', title: 'Rakeback en continu, nouveaux rangs VIP et chiffres du casino',
     groups: [
@@ -202,8 +225,11 @@ export async function maybeShowNews() {
   try { seen = localStorage.getItem('chibouk_seen_version'); } catch {}
   if (seen === VERSION) return;
   try { localStorage.setItem('chibouk_seen_version', VERSION); } catch {}
+  // toutes les versions publiées depuis la dernière vue (3 max), sinon juste la dernière
+  const i = CHANGELOG.findIndex((x) => x.v === seen);
+  const list = CHANGELOG.slice(0, i > 0 ? Math.min(i, 3) : 1);
   const c = CHANGELOG[0];
-  const go = await modal({ title: `Quoi de neuf dans la V${c.v} ?`, cls: 'wide', html: `<div class="cl-pop">${versionHTML(c)}</div>`,
+  const go = await modal({ title: `Quoi de neuf dans la V${c.v} ?`, cls: 'wide', html: `<div class="cl-pop">${list.map(versionHTML).join('')}</div>`,
     buttons: [{ label: 'Tout l\'historique', value: 'all' }, { label: 'C\'est parti !', value: true, primary: true }] });
   if (go === 'all') location.hash = '#/news';
 }

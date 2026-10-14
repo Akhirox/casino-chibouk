@@ -283,8 +283,11 @@ export function mount(view, { wallet, social }) {
     const mult = isFree ? FREE_SPIN_MULT : 1;
     const win = Math.round(spinMultiple(ev, mult) * bet);
     const ratio = win / bet;
-    if (win > 0) wallet.win('slots', win, bet);
-    if (!isFree) wallet.round('slots', win, { bet, wilds: ev.wilds, wildX: ev.wildX, scatters: ev.scatters, lineMult: Math.max(1, ...ev.wins.map((w) => w.mult)), bonus: !!ev.freeSpins, mult: ratio });
+    // … mais annoncé (solde affiché, succès, jackpot…) seulement quand les rouleaux s'arrêtent
+    const reveal = wallet.deferEvents(() => {
+      if (win > 0) wallet.win('slots', win, bet);
+      if (!isFree) wallet.round('slots', win, { bet, wilds: ev.wilds, wildX: ev.wildX, scatters: ev.scatters, lineMult: Math.max(1, ...ev.wins.map((w) => w.mult)), bonus: !!ev.freeSpins, mult: ratio });
+    });
     if (isFree) fs.won += win;
     if (ev.freeSpins) {
       if (isFree) { fs.left += ev.freeSpins; fs.total += ev.freeSpins; }
@@ -295,6 +298,7 @@ export function mount(view, { wallet, social }) {
 
     await animateReels(g);
     grid = g;
+    reveal();
     if (!alive) return null;
 
     // Présentation

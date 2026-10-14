@@ -90,8 +90,10 @@ export function mount(view, { wallet }) {
     const i = randInt(SEG);
     const m = cells[i];
     const payout = Math.floor(amount * m);
-    if (payout) wallet.win('wheel', payout, amount);
-    wallet.round('wheel', payout > amount ? payout : 0, { bet: amount, mult: m, risk, top: m === Math.max(...cells) });
+    const reveal = wallet.deferEvents(() => {
+      if (payout) wallet.win('wheel', payout, amount);
+      wallet.round('wheel', payout > amount ? payout : 0, { bet: amount, mult: m, risk, top: m === Math.max(...cells) });
+    });
 
     // la case i doit s'arrêter sous le pointeur (en haut)
     $$('path.hit', wheel).forEach((p) => p.classList.remove('hit'));
@@ -110,6 +112,7 @@ export function mount(view, { wallet }) {
     const ticks = setInterval(() => sfx.tick && sfx.tick(), autoLeft ? 120 : 160);
     await sleep(dur + 50);
     clearInterval(ticks);
+    reveal();
     if (!alive) return true;
     wheel.querySelector(`path[data-i="${i}"]`)?.classList.add('hit');
     const res = $('#wh-res', view);

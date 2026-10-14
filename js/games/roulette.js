@@ -324,10 +324,13 @@ export function mount(view, { wallet }) {
     // paiement calculé immédiatement (si on quitte la page, le gain est quand même crédité)
     let win = 0;
     for (const [k, a] of Object.entries(bets)) win += a * payoutFor(k, n);
-    if (win > 0) wallet.win('roulette', win, t);
-    wallet.round('roulette', win > t ? win : 0, { bet: t, number: n, spots: Object.keys(bets).length, straightWin: !!bets['n:' + n], zeroWin: n === 0 && !!bets['n:0'] });
+    const reveal = wallet.deferEvents(() => {
+      if (win > 0) wallet.win('roulette', win, t);
+      wallet.round('roulette', win > t ? win : 0, { bet: t, number: n, spots: Object.keys(bets).length, straightWin: !!bets['n:' + n], zeroWin: n === 0 && !!bets['n:0'] });
+    });
 
     await animateTo(n, autoOn);
+    reveal();
     if (!alive) return true;
     history.unshift(n); history = history.slice(0, 30);
     try { localStorage.setItem('chibouk_rl_hist', JSON.stringify(history)); } catch {}
@@ -362,5 +365,5 @@ export function mount(view, { wallet }) {
     onState: (on) => { autoOn = on; view.classList.toggle('rl-autoing', on); } });
   renderBets();
   renderHistory();
-  return () => { alive = false; auto.stop(); cancelAnimationFrame(raf); };
+  return () => { alive = false; auto.stop(); cancelAnimationFrame(raf); if (anim) { const done = anim.resolve; anim = null; done(); } };
 }
