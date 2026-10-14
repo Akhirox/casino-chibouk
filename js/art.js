@@ -129,6 +129,8 @@ const ICONS = {
   mines: `<circle cx="10.5" cy="14" r="6.5" ${D}/><path d="M15 9.5 17 7.5" /><path d="M17.5 7c.5-1.6 1.6-2.6 3-3" /><path d="M20.5 2.8v1.6M19.4 4.6h1.6M8 12a3 3 0 0 1 2.2-2" stroke-width="1.5"/>`,
   dice: `<rect x="3.5" y="3.5" width="17" height="17" rx="4" ${D}/><g fill="currentColor" stroke="none"><circle cx="8.3" cy="8.3" r="1.5"/><circle cx="15.7" cy="8.3" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="8.3" cy="15.7" r="1.5"/><circle cx="15.7" cy="15.7" r="1.5"/></g>`,
   check: `<path d="m5 12.5 4.5 4.5L19 7.5" />`,
+  globe: `<circle cx="12" cy="12" r="8.5" ${D}/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5M12 3.5C9.4 5.9 8.2 8.7 8.2 12s1.2 6.1 3.8 8.5" stroke-width="1.5"/>`,
+  film: `<rect x="3.5" y="9" width="17" height="11.5" rx="2" ${D}/><path d="m3.8 9 15.4-4.2-.9-3.3L3 5.7z" ${D}/><path d="m7.6 4.7 2 3M12.4 3.4l2 3" stroke-width="1.5"/><path d="M3.5 13h17" stroke-width="1.3"/>`,
 };
 export function icon(name, cls = '') {
   return `<svg class="ic ${cls}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name] || ''}</svg>`;
@@ -203,4 +205,26 @@ export function quizArtSVG() {
     <text x="100" y="64" text-anchor="middle" font-family="Bungee, sans-serif" font-size="28" fill="#f5f5f5">7×8=<tspan fill="#f5c542">?</tspan></text>
     <rect x="30" y="98" width="140" height="10" rx="5" fill="#1d3126"/><rect x="30" y="98" width="92" height="10" rx="5" fill="#3ddc84"/>
     <g fill="#3ddc84">${[0, 1, 2, 3, 4, 5].map((i) => `<circle cx="${62 + i * 15}" cy="124" r="4.5" ${i > 3 ? 'fill="#2f4a3a"' : ''}/>`).join('')}</g></svg>`;
+}
+
+export function capitalsArtSVG() {
+  return `<svg viewBox="0 0 200 145" class="art-capitals" aria-hidden="true">
+    <circle cx="100" cy="74" r="50" fill="#123a5c" stroke="#3a8fd0" stroke-width="2"/>
+    <path d="M70 46c10 4 14 12 10 20s4 14 12 12 10 10 4 20M118 32c-6 8 2 14 10 12s16 8 10 18-6 16 4 22M60 92c8-2 14 2 16 10" stroke="none" fill="none"/>
+    <path d="M66 50c8-6 20-6 24 2s-4 14 4 18 6 14-4 16-10 10-18 4-10-18-6-26 -4-10 0-14z" fill="#3ddc84" opacity=".85"/>
+    <path d="M112 36c10-2 22 4 24 14s-8 10-4 18 14 8 10 18-14 12-20 4-2-16-10-20-8-12-4-22 2-11 4-12z" fill="#3ddc84" opacity=".85"/>
+    <ellipse cx="100" cy="74" rx="50" ry="18" fill="none" stroke="#7fc4f5" stroke-opacity=".35" stroke-width="1.5"/>
+    <path d="M100 24v100" stroke="#7fc4f5" stroke-opacity=".35" stroke-width="1.5"/>
+    <g transform="translate(128 30)"><path d="M0 0v26" stroke="#e8e8e8" stroke-width="2.5"/><path d="M1 1h22l-6 6 6 6H1z" fill="#f5c542"/></g>
+    <circle cx="129" cy="57" r="4" fill="#ff4d5e" stroke="#fff" stroke-width="1.5"/></svg>`;
+}
+
+export function moviesArtSVG() {
+  return `<svg viewBox="0 0 200 145" class="art-movies" aria-hidden="true">
+    <rect x="44" y="58" width="112" height="66" rx="8" fill="#1a1a1a" stroke="#555" stroke-width="2"/>
+    <g transform="rotate(-14 44 58)"><rect x="44" y="38" width="112" height="20" rx="4" fill="#1a1a1a" stroke="#555" stroke-width="2"/>
+      <g fill="#f5f5f5">${[0, 1, 2, 3, 4].map((i) => `<path d="M${54 + i * 22} 39h11l-8 18h-11z"/>`).join('')}</g></g>
+    <g fill="#f5f5f5">${[0, 1, 2, 3, 4].map((i) => `<path d="M${50 + i * 22} 59h11l-8 14h-11z"/>`).join('')}</g>
+    <text x="100" y="106" text-anchor="middle" font-family="Bungee, sans-serif" font-size="22" fill="#f5c542">ACTION</text>
+    <g fill="#ffe08a"><circle cx="168" cy="40" r="3"/><circle cx="30" cy="96" r="2.5"/><circle cx="176" cy="104" r="2"/></g></svg>`;
 }

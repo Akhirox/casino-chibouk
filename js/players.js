@@ -19,5 +19,5 @@ export async function getPlayers(backend, wallet, force = false) {
 
 // Remplace ses propres données par l'état local (toujours à jour)
 function withMe(rows, wallet) {
-  return rows.map((r) => (r.uid === wallet.uid ? { ...r, balance: wallet.balance, stats: wallet.stats, pseudo: wallet.pseudo } : r));
+  return rows.map((r) => (r.uid === wallet.uid ? { ...r, balance: wallet.balance, stats: wallet.stats, pseudo: wallet.pseudo, ach: wallet.p.ach } : r));
 }

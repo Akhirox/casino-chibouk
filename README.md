@@ -5,7 +5,7 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 - Connexion par **pseudo + mot de passe**, sans email.
 - **1 000 Brundles offerts** à la création du compte, puis **1 000 par jour** avec le bouton cadeau (une fois par jour, remise à zéro à minuit heure de Paris).
 - **Aucune mise maximum** : mise libre + bouton MAX (Slot, Plinkoko, Crashibouk, Tower, Mines, Dice), jetons jusqu'à 25k + « Tapis » (blackjack), jetons jusqu'à 25k empilables (roulette).
-- **Succès** : 68 défis (globaux et par jeu) qui rapportent de +100 à +10 000 Brundles, avec une page dédiée et une notification à chaque déblocage.
+- **Succès** : 72 défis (globaux et par jeu) qui rapportent de +100 à +10 000 Brundles, avec une page dédiée et une notification à chaque déblocage. Un clic sur un succès montre qui l'a débloqué, et qui l'a eu en premier (avec la date).
 - **Paris automatiques** sur les 8 jeux de casino : nombre de paris libre ou infini, arrêt sur objectif de gain ou limite de perte.
 - **Nouveautés** : journal des versions sur le site (et dans `CHANGELOG.md`).
 - **Classement à côté de chaque jeu** : top 5 des plus gros parieurs (volume misé), du meilleur multiplicateur et du plus gros gain sur ce jeu.
@@ -27,6 +27,8 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 | **Mines** | Grille 5×5, 1 à 24 mines. Chaque banane trouvée augmente le multi, encaisse avant de tomber sur une mine. | 99 % |
 | **Dice** | Tirage de 0,00 à 100,00. Choisis « en dessous » ou « au-dessus » et ta chance (0,01 % à 98 %) : multi = 99 ÷ chance. | 99 % |
 | **Calcul mental** | Gratuit : 10 calculs (additions, soustractions, tables, divisions), 10 s chacun. +10 Brundles par bonne réponse, +50 de bonus pour un sans-faute. | — |
+| **Quiz capitales** | Gratuit : 10 questions à 4 choix, dans les deux sens (pays → capitale, capitale → pays), 127 pays, 10 s chacune. +10 Brundles par bonne réponse, +50 pour un sans-faute. | — |
+| **Quiz ciné** | Gratuit : 10 questions à 4 choix sur 800 films (réalisateur, acteurs, année de sortie), 15 s chacune. Même barème. Données : `data/movies.json`, extrait de la base TMDB (The Movies Dataset). | — |
 | **Casse-briques** | Gratuit, sans mise, accessible à tout moment : +100 Brundles par niveau terminé (6 niveaux en boucle, de plus en plus durs). | — |
 
 Si tu quittes la page au milieu d'une partie de Tower ou de Mines, elle est encaissée automatiquement au palier atteint (ou la mise est remboursée si aucune case n'a été choisie). Pareil pour le Crash (encaissement au multiplicateur du moment) et le Blackjack (la main est terminée en restant).
@@ -176,6 +178,9 @@ js/games/tower.js          Tower
 js/games/mines.js          Mines
 js/games/dice.js           Dice
 js/games/quiz.js           Calcul mental
+js/games/mcq.js            moteur des quiz à choix multiples
+js/games/capitals.js       Quiz capitales (+ capitals-data.js)
+js/games/movies.js         Quiz ciné (données dans data/movies.json)
 js/gameboard.js            classement affiché à côté de chaque jeu
 js/achievements.js         définition des succès et moteur de déblocage
 js/achpage.js              page des succès

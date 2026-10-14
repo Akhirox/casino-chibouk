@@ -36,6 +36,8 @@ export function mount(view, { wallet, backend }) {
       <div class="stat-card"><span>Bonus quotidiens</span><b>${fmt(s.dailyClaims)}</b><small>${fmt(s.dailyTotal)} ${CONFIG.CURRENCY} reçus</small></div>
       <div class="stat-card"><span>Casse-briques</span><b>${fmt(s.breakerLevels)} niveaux</b><small>${fmt(s.breakerTotal)} ${CONFIG.CURRENCY} gagnés</small></div>
       <div class="stat-card"><span>Calcul mental</span><b>${fmt(s.quizCorrect || 0)} bonnes rép.</b><small>${fmt(s.quizRounds || 0)} parties · ${fmt(s.quizTotal || 0)} ${CONFIG.CURRENCY} gagnés · ${fmt(s.quizPerfect || 0)} sans-faute</small></div>
+      <div class="stat-card"><span>Quiz capitales</span><b>${fmt(s.capitalsCorrect || 0)} bonnes rép.</b><small>${fmt(s.capitalsRounds || 0)} parties · ${fmt(s.capitalsTotal || 0)} ${CONFIG.CURRENCY} gagnés · ${fmt(s.capitalsPerfect || 0)} sans-faute</small></div>
+      <div class="stat-card"><span>Quiz ciné</span><b>${fmt(s.moviesCorrect || 0)} bonnes rép.</b><small>${fmt(s.moviesRounds || 0)} parties · ${fmt(s.moviesTotal || 0)} ${CONFIG.CURRENCY} gagnés · ${fmt(s.moviesPerfect || 0)} sans-faute</small></div>
       <div class="stat-card"><span>Transferts</span><b>${signed((s.transfersReceived || 0) - (s.transfersSent || 0))}</b><small>Reçus ${fmt(s.transfersReceived || 0)} · envoyés ${fmt(s.transfersSent || 0)}</small></div>
       <div class="stat-card"><span>Tours gratuits déclenchés</span><b>${fmt(s.games.slots.bonuses || 0)}</b><small>Blackjacks : ${fmt(s.games.blackjack.blackjacks || 0)}</small></div>
     </div>

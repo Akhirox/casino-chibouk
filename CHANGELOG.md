@@ -2,6 +2,21 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V7 — Quiz capitales, quiz ciné et succès cliquables (14 octobre 2026)
+
+### Nouveautés
+
+- Quiz capitales : nouveau jeu gratuit, 10 questions dans les deux sens (trouve la capitale d'un pays, ou le pays d'une capitale) parmi 127 pays, 10 secondes par question, de plus en plus difficile.
+- Quiz ciné : nouveau jeu gratuit sur les 800 films les plus populaires de la base TMDB. Qui a réalisé ce film ? Qui joue dedans ? En quelle année est-il sorti ? 15 secondes par question, affiche du film dévoilée après chaque réponse.
+- Même barème que le calcul mental pour les deux quiz : +10 Brundles par bonne réponse, +50 pour un sans-faute. Réponses au clic ou au clavier (touches 1 à 4 ou A à D).
+- Succès cliquables : chaque succès affiche la liste des joueurs qui l'ont débloqué avec la date, et met en avant le premier à l'avoir obtenu.
+- Chaque carte de succès indique combien de joueurs l'ont débloqué, avec une coupe si tu as été le premier.
+- 4 nouveaux succès Argent : sans-faute et 100 bonnes réponses aux quiz capitales et ciné.
+
+### Changements
+
+- Page Stats : cartes dédiées aux quiz capitales et ciné.
+
 ## V6 — Succès, paris automatiques et nouvel accueil (14 octobre 2026)
 
 ### Nouveautés

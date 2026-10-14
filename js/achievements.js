@@ -108,6 +108,10 @@ export const ACHIEVEMENTS = [
   /* ------------------------------ JEUX GRATUITS ------------------------------ */
   { id: 'qz-perfect', cat: 'free', tier: 'silver', name: 'Calculatrice humaine', desc: 'Faire un sans-faute au calcul mental.', test: (e, w) => (st(w).quizPerfect || 0) >= 1 },
   { id: 'qz-100', cat: 'free', tier: 'silver', name: 'Prof de maths', desc: 'Donner 100 bonnes réponses au calcul mental.', test: (e, w) => (st(w).quizCorrect || 0) >= 100, progress: (w) => [st(w).quizCorrect || 0, 100] },
+  { id: 'cap-perfect', cat: 'free', tier: 'silver', name: 'Globe-trotteur', desc: 'Faire un sans-faute au quiz des capitales.', test: (e, w) => (st(w).capitalsPerfect || 0) >= 1 },
+  { id: 'cap-100', cat: 'free', tier: 'silver', name: 'Atlas sur pattes', desc: 'Donner 100 bonnes réponses au quiz des capitales.', test: (e, w) => (st(w).capitalsCorrect || 0) >= 100, progress: (w) => [st(w).capitalsCorrect || 0, 100] },
+  { id: 'mv-perfect', cat: 'free', tier: 'silver', name: 'Cinéphile', desc: 'Faire un sans-faute au quiz ciné.', test: (e, w) => (st(w).moviesPerfect || 0) >= 1 },
+  { id: 'mv-100', cat: 'free', tier: 'silver', name: 'Critique aux Cahiers', desc: 'Donner 100 bonnes réponses au quiz ciné.', test: (e, w) => (st(w).moviesCorrect || 0) >= 100, progress: (w) => [st(w).moviesCorrect || 0, 100] },
   { id: 'bk-1', cat: 'free', tier: 'bronze', name: 'Casseur', desc: 'Terminer un niveau de casse-briques.', test: (e, w) => st(w).breakerLevels >= 1 },
   { id: 'bk-10', cat: 'free', tier: 'silver', name: 'Démolisseur', desc: 'Terminer 10 niveaux de casse-briques.', test: (e, w) => st(w).breakerLevels >= 10, progress: (w) => [st(w).breakerLevels, 10] },
 ];

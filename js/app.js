@@ -3,7 +3,7 @@ import { CONFIG } from './config.js';
 import { createBackend } from './backend.js';
 import { Wallet, msUntilParisMidnight } from './wallet.js';
 import { h, $, $$, fmt, money, esc, toast, modal, coinRain, CUR } from './ui.js';
-import { monkeySVG, goldMonkeySVG, hangingMonkeySVG, coinSVG, symbolSVG, icon, plinkoArtSVG, crashArtSVG, towerArtSVG, minesArtSVG, diceArtSVG, quizArtSVG } from './art.js';
+import { monkeySVG, goldMonkeySVG, hangingMonkeySVG, coinSVG, symbolSVG, icon, plinkoArtSVG, crashArtSVG, towerArtSVG, minesArtSVG, diceArtSVG, quizArtSVG, capitalsArtSVG, moviesArtSVG } from './art.js';
 import { sfx } from './sfx.js';
 import * as Slots from './games/slots.js';
 import * as Blackjack from './games/blackjack.js';
@@ -15,6 +15,8 @@ import * as Tower from './games/tower.js';
 import * as Mines from './games/mines.js';
 import * as Dice from './games/dice.js';
 import * as Quiz from './games/quiz.js';
+import * as Capitals from './games/capitals.js';
+import * as Movies from './games/movies.js';
 import { mountBoard } from './gameboard.js';
 import { initAchievements, achSummary, TIERS } from './achievements.js';
 import * as AchPage from './achpage.js';
@@ -45,6 +47,8 @@ const ROUTES = {
   mines: { label: 'Mines', icon: 'mines', mount: Mines.mount },
   dice: { label: 'Dice', icon: 'dice', mount: Dice.mount },
   quiz: { label: 'Calcul', icon: 'quiz', mount: Quiz.mount, group: 'free' },
+  capitals: { label: 'Capitales', icon: 'globe', mount: Capitals.mount, group: 'free' },
+  movies: { label: 'Ciné', icon: 'film', mount: Movies.mount, group: 'free' },
   breaker: { label: 'Briques', icon: 'breaker', mount: Breaker.mount, group: 'free' },
   achievements: { label: 'Succès', icon: 'medal', mount: AchPage.mount, group: 'me' },
   stats: { label: 'Stats', icon: 'stats', mount: Stats.mount, group: 'me' },
@@ -392,6 +396,8 @@ function mountLobby(view, { wallet: w }) {
     <section id="lobby-daily" class="daily-card"></section>
     <section class="games-grid free-grid">
       ${card('quiz', 'Calcul mental', `${CONFIG.QUIZ_QUESTIONS} calculs, ${CONFIG.QUIZ_SECONDS} s chacun : +${CONFIG.QUIZ_PER_CORRECT} ${CUR} par bonne réponse, bonus pour un sans-faute.`, 'Gratuit', quizArtSVG())}
+      ${card('capitals', 'Quiz capitales', `${CONFIG.QUIZ_QUESTIONS} questions dans les deux sens : trouve la capitale du pays, ou le pays de la capitale. +${CONFIG.QUIZ_PER_CORRECT} ${CUR} par bonne réponse.`, 'Gratuit', capitalsArtSVG())}
+      ${card('movies', 'Quiz ciné', `${CONFIG.QUIZ_QUESTIONS} questions sur 800 films cultes : réalisateurs, acteurs, années. +${CONFIG.QUIZ_PER_CORRECT} ${CUR} par bonne réponse.`, 'Gratuit', moviesArtSVG())}
       ${card('breaker', 'Casse-briques', `Casse toutes les briques d'un niveau : +${CONFIG.BREAKER_REWARD} ${CUR}. Gratuit, sans mise.`, 'Gratuit',
         `<div class="mini-bricks">${Array.from({ length: 15 }, (_, i) => `<i style="--h:${(i * 37) % 360}"></i>`).join('')}</div>`)}
       <a class="game-card gc-ach" href="#/achievements">
