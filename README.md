@@ -1,4 +1,4 @@
-# Casino Chibouk
+# Casino Chibouk HEY
 
 Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est statique et s'héberge sur **GitHub Pages**. Les comptes et les soldes sont stockés dans **Firebase**, avec le plan gratuit Spark.
 
