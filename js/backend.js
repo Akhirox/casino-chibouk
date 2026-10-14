@@ -32,6 +32,7 @@ export function newProfile(pseudo) {
     lastDaily: '',
     breakerLevel: 0,
     slotFS: null,
+    ach: { u: {}, c: {} },
     stats: emptyStats(),
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -44,7 +45,8 @@ export function normalizeProfile(p) {
   const stats = { ...base.stats, ...(p.stats || {}) };
   stats.games = { ...base.stats.games };
   for (const k of Object.keys(base.stats.games)) stats.games[k] = { ...base.stats.games[k], ...((p.stats && p.stats.games && p.stats.games[k]) || {}) };
-  return { ...base, ...p, stats };
+  const ach = { u: {}, c: {}, ...(p.ach || {}) };
+  return { ...base, ...p, stats, ach };
 }
 
 export function validatePseudo(pseudo) {

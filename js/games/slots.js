@@ -1,7 +1,7 @@
 // Machine à sous "Chibouk Slot" — 5 rouleaux, 3 rangées, 21 lignes, tours gratuits x2
 import { STRIPS, PAYTABLE, PAYLINES, LINE_COUNT, SYMBOLS, FREE_SPINS_AWARD, FREE_SPIN_MULT, spinGrid, evaluate, randInt } from './slots-math.js';
 import { symbolSVG, monkeySVG, goldMonkeySVG, icon } from '../art.js';
-import { h, $, $$, fmt, money, modal, toast, countUp, coinRain, sleep, CUR } from '../ui.js';
+import { h, $, $$, fmt, money, modal, toast, countUp, coinRain, sleep, autoHTML, bindAuto, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 // Paliers des boutons − / + (aucune limite : on peut aussi taper n'importe quel montant ou cliquer MAX)
@@ -47,12 +47,13 @@ export function mount(view, { wallet }) {
         </div>
         <button class="spin-btn" id="spin" title="Espace"><span>SPIN</span></button>
         <div class="auto-box">
-          <div class="bet-label">Auto</div>
-          <div class="auto-btns"><button class="btn btn-ghost btn-sm" data-auto="10">10</button><button class="btn btn-ghost btn-sm" data-auto="25">25</button><button class="btn btn-ghost btn-sm" data-auto="50">50</button></div>
+          <div class="bet-label">Options</div>
           <label class="turbo"><input type="checkbox" id="turbo"> Turbo ${icon('bolt')}</label>
+          <button class="btn btn-ghost btn-sm" id="to-auto">Auto ↓</button>
         </div>
       </div>
     </div>
+    <div class="slot-auto">${autoHTML('sl-auto', 'Spins automatiques', '<p class="ab-note">Les tours gratuits se jouent tout seuls pendant l\'auto, puis l\'auto reprend.</p>')}</div>
   </div>`;
 
   const machine = $('.slot-machine', view);
@@ -99,8 +100,8 @@ export function mount(view, { wallet }) {
     inp.disabled = locked;
     spinBtn.disabled = (spinning && !autoLeft) || (fs && fs.left > 0);
     spinBtn.classList.toggle('stop', autoLeft > 0);
-    spinBtn.querySelector('span').textContent = autoLeft > 0 ? `STOP (${autoLeft})` : 'SPIN';
-    $$('[data-auto]', view).forEach((b) => (b.disabled = spinning || autoLeft > 0 || (fs && fs.left > 0)));
+    spinBtn.querySelector('span').textContent = autoLeft > 0 ? 'STOP' : 'SPIN';
+    if (autoLeft) { $('#bet-down', view).disabled = $('#bet-up', view).disabled = $('#bet-max', view).disabled = inp.disabled = true; }
   }
   const setLineBet = (v) => { curLineBet = Math.max(1, Math.floor(v) || 1); try { localStorage.setItem('chibouk_slot_bet', curLineBet); } catch {} updateBet(); };
   $('#bet-down', view).onclick = () => { const prev = [...STEPS].reverse().find((x) => x < curLineBet); setLineBet(prev || Math.max(1, Math.floor(curLineBet / 2))); sfx.click(); };
@@ -109,9 +110,9 @@ export function mount(view, { wallet }) {
   $('#line-bet', view).onchange = (e) => setLineBet(+e.target.value);
   $('#line-bet', view).oninput = (e) => { const v = Math.floor(+e.target.value); if (v >= 1) { curLineBet = v; $('#total-bet', view).innerHTML = money(v * LINE_COUNT); } };
   $('#turbo', view).onchange = (e) => { turbo = e.target.checked; };
-  $$('[data-auto]', view).forEach((b) => (b.onclick = () => { autoLeft = +b.dataset.auto; updateBet(); loopAuto(); }));
+  $('#to-auto', view).onclick = () => $('.slot-auto', view).scrollIntoView({ behavior: 'smooth', block: 'center' });
   spinBtn.onclick = () => {
-    if (autoLeft > 0) { autoLeft = 0; updateBet(); return; }
+    if (autoLeft > 0) { auto.stop(); autoLeft = 0; updateBet(); return; }
     if (!spinning) spin();
   };
   const onKey = (e) => {
@@ -123,19 +124,19 @@ export function mount(view, { wallet }) {
   document.addEventListener('keydown', onKey);
   $('#paytable', view).onclick = showPaytable;
 
-  async function loopAuto() {
-    while (alive && autoLeft > 0) {
-      if (!wallet.canAfford(totalBet())) { toast(`Solde insuffisant pour continuer l'auto-spin`, 'error'); autoLeft = 0; break; }
-      autoLeft--;
-      updateBet();
+  const auto = bindAuto(view, 'sl-auto', { wallet, game: 'slots', delay: 50,
+    play: async () => {
+      // tours gratuits en cours : on attend qu'ils se terminent
+      while (alive && (spinning || (fs && fs.left > 0))) await sleep(200);
+      if (!alive) return false;
+      if (!wallet.canAfford(totalBet())) { toast(`Solde insuffisant pour continuer l'auto`, 'error'); return false; }
       const res = await spin(true);
-      if (!res) { autoLeft = 0; break; }
-      if (res.bonus) { autoLeft = 0; break; }
-      await sleep(res.win > 0 ? (turbo ? 700 : 1300) : (turbo ? 150 : 350));
-    }
-    autoLeft = 0;
-    if (alive) updateBet();
-  }
+      if (!res) return false;
+      while (alive && (spinning || (fs && fs.left > 0))) await sleep(200);
+      await sleep(res.win > 0 ? (turbo ? 600 : 1100) : (turbo ? 120 : 300));
+      return alive;
+    },
+    onState: (on) => { autoLeft = on ? 1 : 0; if (alive) updateBet(); } });
 
   /* ---------- lignes gagnantes ---------- */
   function clearWins() {
@@ -235,7 +236,7 @@ export function mount(view, { wallet }) {
     const mult = isFree ? FREE_SPIN_MULT : 1;
     const win = ev.total * lb * mult;
     if (win > 0) wallet.win('slots', win, lb * LINE_COUNT);
-    if (!isFree) wallet.round('slots', win);
+    if (!isFree) wallet.round('slots', win, { bet: lb * LINE_COUNT, wilds: ev.wilds, bonus: !!ev.freeSpins, mult: win / (lb * LINE_COUNT) });
     if (isFree) fs.won += win;
     if (ev.freeSpins) {
       if (isFree) { fs.left += ev.freeSpins; fs.total += ev.freeSpins; }
@@ -268,6 +269,9 @@ export function mount(view, { wallet }) {
       sfx.bonus();
       if (isFree) {
         toast(`+${ev.freeSpins} tours gratuits !`, 'win');
+      } else if (autoLeft) {
+        toast(`BONUS DU ROI SINGE : ${ev.freeSpins} tours gratuits ×${FREE_SPIN_MULT} !`, 'win');
+        await sleep(900);
       } else {
         await sleep(900);
         await modal({ title: 'BONUS DU ROI SINGE', html: `<div class="bonus-pop">${goldMonkeySVG('bonus-monkey')}<p><b>${ev.wilds} WILD</b> !</p><p class="big">${ev.freeSpins} TOURS GRATUITS</p><p>Tous les gains <b>×${FREE_SPIN_MULT}</b></p></div>`, buttons: [{ label: "C'est parti !", value: true, primary: true }], dismissable: false });
@@ -291,6 +295,7 @@ export function mount(view, { wallet }) {
     wallet.set('slotFS', null);
     updateFsBanner(); updateBet();
     if (total > 0) { coinRain(Math.min(60, 15 + Math.round(total / 50))); sfx.win(true); }
+    if (autoLeft) { toast(`Fin des tours gratuits : +${fmt(total)} ${CUR}`, 'win'); return; }
     await modal({ title: 'Fin des tours gratuits', html: `<div class="bonus-pop">${monkeySVG({ wink: true, cls: 'bonus-monkey' })}<p>Total gagné pendant le bonus</p><p class="big">${money(total)}</p></div>`, buttons: [{ label: 'Super !', value: true, primary: true }] });
   }
 
@@ -342,6 +347,7 @@ export function mount(view, { wallet }) {
   return () => {
     alive = false;
     autoLeft = 0;
+    auto.stop();
     clearInterval(cycleTimer);
     ro.disconnect();
     document.removeEventListener('keydown', onKey);

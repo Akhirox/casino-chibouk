@@ -12,7 +12,7 @@ export function msUntilParisMidnight() {
   return Math.max(0, (86400 - secs) * 1000);
 }
 
-const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'updatedAt', 'pseudo', 'pseudoLower'];
+const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'updatedAt', 'pseudo', 'pseudoLower'];
 
 export class Wallet {
   constructor(backend, uid, profile) {
@@ -95,11 +95,19 @@ export class Wallet {
   }
 
   // Une "manche" terminée (pour compter les parties jouées et les manches gagnantes)
-  round(game, payout = 0) {
+  // info : détails de la manche (mise, résultat…) utilisés par les succès
+  round(game, payout = 0, info = {}) {
     const s = this.p.stats, g = s.games[game];
     s.rounds += 1;
     if (g) { g.rounds += 1; if (payout > 0) g.wins += 1; }
-    this.touch({ type: 'round', game });
+    this.touch({ type: 'round', game, payout, info });
+  }
+
+  // Récompense d'un succès débloqué
+  achReward(id, amount) {
+    if (amount > 0) this.p.balance += amount;
+    this.p.stats.achTotal = (this.p.stats.achTotal || 0) + Math.max(0, amount);
+    this.touch({ type: 'ach', id, amount });
   }
 
   // bet (facultatif) = mise correspondant à ce gain, pour retenir le meilleur multiplicateur
@@ -115,7 +123,7 @@ export class Wallet {
       if (bet > 0) { const m = Math.floor((amount / bet) * 100) / 100; if (m > (g.bestMult || 0)) g.bestMult = m; }
     }
     if (amount > s.biggestWin) { s.biggestWin = amount; s.biggestWinGame = game; }
-    this.touch({ type: 'win', game, amount });
+    this.touch({ type: 'win', game, amount, bet });
   }
 
   // Rembourse une mise (partie annulée avant tout risque) : on annule aussi le "misé" des stats

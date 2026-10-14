@@ -2,7 +2,7 @@
 // Multiplicateur après k bananes = 0,99 × Π (25−i)/(25−mines−i)  → RTP 99 %
 import { randInt } from './slots-math.js';
 import { icon, bananaTileSVG, bombTileSVG } from '../art.js';
-import { $, $$, fmt, money, toast, modal, coinRain, betFieldHTML, bindBetField, CUR } from '../ui.js';
+import { $, $$, fmt, money, toast, modal, coinRain, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const N = 25;
@@ -32,6 +32,7 @@ export function mount(view, { wallet }) {
           <div class="auto-row">${[1, 3, 5, 10, 24].map((v) => `<button class="btn btn-ghost btn-sm" data-m="${v}">${v}</button>`).join('')}</div></div>
         <button class="btn btn-gold btn-lg wide" id="mn-main">Commencer</button>
         <button class="btn btn-ghost wide" id="mn-random">Case au hasard</button>
+        ${autoHTML('mn-auto', 'Paris automatiques', '<label class="ab-extra">Bananes à révéler avant d\'encaisser<input class="bet-input" type="number" min="1" max="24" step="1" id="mn-auto-picks" value="3"></label>')}
         <div class="plk-info"><span>Multiplicateur actuel</span><b id="mn-cur">×1,00</b></div>
         <div class="plk-info"><span>Prochaine banane</span><b id="mn-next"></b></div>
         <div class="plk-info"><span>Chance de banane</span><b id="mn-chance"></b></div>
@@ -72,14 +73,15 @@ export function mount(view, { wallet }) {
   }
 
   function updateSide() {
-    const playing = game && !game.over;
+    const playing = !!(game && !game.over);
+    const lock = playing || autoOn;
     const m = game ? game.mines : mines;
     const k = game ? game.revealed.size : 0;
     $('#mn-count-val', view).textContent = m;
-    range.disabled = playing;
-    $$('[data-m]', view).forEach((b) => (b.disabled = playing));
-    bet.disabled = playing;
-    $('#mn-random', view).disabled = !playing;
+    range.disabled = lock;
+    $$('[data-m]', view).forEach((b) => (b.disabled = lock));
+    bet.disabled = lock;
+    $('#mn-random', view).disabled = !playing || autoOn;
     $('#mn-cur', view).textContent = fmtX(playing ? minesMult(m, k) : 1);
     const left = N - m - (playing ? k : 0);
     $('#mn-next', view).textContent = left > 0 ? fmtX(minesMult(m, (playing ? k : 0) + 1)) : '—';
@@ -88,26 +90,28 @@ export function mount(view, { wallet }) {
     if (playing && k > 0) { mainBtn.textContent = `Encaisser ${fmt(Math.floor(game.bet * minesMult(m, k)))}`; mainBtn.className = 'btn btn-green btn-lg wide'; mainBtn.disabled = false; }
     else if (playing) { mainBtn.textContent = 'Choisis une case…'; mainBtn.className = 'btn btn-gold btn-lg wide'; mainBtn.disabled = true; }
     else { mainBtn.textContent = game ? 'Rejouer' : 'Commencer'; mainBtn.className = 'btn btn-gold btn-lg wide'; mainBtn.disabled = false; }
+    if (autoOn) { mainBtn.disabled = true; if (!playing) mainBtn.textContent = 'Auto en cours…'; }
   }
 
   function say(html, cls = '') { msg.className = 'tw-msg show ' + cls; msg.innerHTML = html; }
 
   function start() {
     const amount = bet.value;
-    if (!wallet.bet('mines', amount)) { toast(`Solde insuffisant pour miser ${fmt(amount)} ${CUR}`, 'error'); return; }
+    if (!wallet.bet('mines', amount)) { toast(`Solde insuffisant pour miser ${fmt(amount)} ${CUR}`, 'error'); return false; }
     const pos = [...Array(N).keys()];
     for (let i = N - 1; i > 0; i--) { const j = randInt(i + 1); [pos[i], pos[j]] = [pos[j], pos[i]]; }
     game = { bet: amount, mines, set: new Set(pos.slice(0, mines)), revealed: new Set(), over: false, lostAt: -1 };
     msg.className = 'tw-msg';
     sfx.click();
     render();
+    return true;
   }
 
   function reveal(i) {
     if (!game || game.over || game.revealed.has(i)) return;
     if (game.set.has(i)) {
       game.over = true; game.lostAt = i;
-      wallet.round('mines', 0);
+      wallet.round('mines', 0, { bet: game.bet, mines: game.mines, picks: game.revealed.size, lost: true });
       sfx.lose();
       render();
       grid.classList.remove('shake'); void grid.offsetWidth; grid.classList.add('shake');
@@ -126,13 +130,30 @@ export function mount(view, { wallet }) {
     const payout = Math.floor(game.bet * m);
     game.over = true;
     wallet.win('mines', payout, game.bet);
-    wallet.round('mines', payout > game.bet ? payout : 0);
+    wallet.round('mines', payout > game.bet ? payout : 0, { bet: game.bet, mines: game.mines, picks: game.revealed.size, mult: m, lost: false });
     if (!alive) return;
     render();
     say(`Encaissé à <b>${fmtX(m)}</b> : +${money(payout)}`, 'win');
     sfx.win(m >= 10); if (m >= 10) coinRain(Math.min(60, 15 + m));
   }
 
+  let autoOn = false;
+  const picksIn = $('#mn-auto-picks', view);
+  try { const v = +localStorage.getItem('chibouk_mn_auto_picks'); if (v >= 1 && v <= 24) picksIn.value = v; } catch {}
+  picksIn.onchange = () => { picksIn.value = Math.max(1, Math.min(24, Math.floor(+picksIn.value) || 1)); try { localStorage.setItem('chibouk_mn_auto_picks', picksIn.value); } catch {} };
+  const auto = bindAuto(view, 'mn-auto', { wallet, game: 'mines', delay: 600,
+    play: async () => {
+      if (!start()) return false;
+      const target = Math.max(1, Math.min(N - game.mines, +picksIn.value || 1));
+      while (alive && game && !game.over && game.revealed.size < target) {
+        await new Promise((r) => setTimeout(r, 200));
+        const free = [...Array(N).keys()].filter((i) => !game.revealed.has(i));
+        reveal(free[randInt(free.length)]);
+      }
+      if (alive && game && !game.over) { await new Promise((r) => setTimeout(r, 200)); cashOut(); }
+      return alive;
+    },
+    onState: (on) => { autoOn = on; picksIn.disabled = on; if (alive) updateSide(); } });
   grid.addEventListener('click', (e) => { const t = e.target.closest('.mn-tile'); if (t) reveal(+t.dataset.i); });
   mainBtn.onclick = () => { if (game && !game.over) cashOut(); else start(); };
   $('#mn-random', view).onclick = () => {
@@ -156,6 +177,7 @@ export function mount(view, { wallet }) {
   render();
   return () => {
     alive = false;
+    auto.stop();
     document.removeEventListener('keydown', onKey);
     if (game && !game.over) {
       if (game.revealed.size > 0) cashOut();

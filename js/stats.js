@@ -77,9 +77,9 @@ export function mount(view, { wallet, backend }) {
     }
     if (!alive || !box) return;
     const rows = [...players].sort((a, b) => b.balance - a.balance).slice(0, CONFIG.LEADERBOARD_SIZE);
-    box.innerHTML = `<div class="tbl-scroll"><table class="tbl"><thead><tr><th>#</th><th>Joueur</th><th class="r">Solde</th><th class="r">Total misé</th><th class="r">Plus gros gain</th><th class="r">Bilan jeux</th></tr></thead><tbody>
+    box.innerHTML = `<div class="tbl-scroll"><table class="tbl"><thead><tr><th>#</th><th>Joueur</th><th class="r">Solde</th><th class="r">Total misé</th><th class="r">Plus gros gain</th><th class="r">Bilan jeux</th><th class="r">Succès</th></tr></thead><tbody>
       ${rows.map((r, i) => `<tr class="${r.uid === wallet.uid ? 'me' : ''}"><td><span class="rank r${i + 1}">${i + 1}</span></td><td>${esc(r.pseudo)}${r.uid === wallet.uid ? ' (toi)' : ''}</td>
-      <td class="r"><b>${fmt(r.balance)}</b></td><td class="r">${fmt(r.stats.totalWagered)}</td><td class="r">${fmt(r.stats.biggestWin)}</td><td class="r">${signed(r.stats.totalWon - r.stats.totalWagered)}</td></tr>`).join('')}
+      <td class="r"><b>${fmt(r.balance)}</b></td><td class="r">${fmt(r.stats.totalWagered)}</td><td class="r">${fmt(r.stats.biggestWin)}</td><td class="r">${signed(r.stats.totalWon - r.stats.totalWagered)}</td><td class="r">${r.uid === wallet.uid ? Object.keys((wallet.p.ach && wallet.p.ach.u) || {}).length : Object.keys((r.ach && r.ach.u) || {}).length}</td></tr>`).join('')}
       </tbody></table></div>`;
     // Top 3 des plus gros gains, jeu par jeu
     bw.innerHTML = GAMES.map((g) => {

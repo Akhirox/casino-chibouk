@@ -2,7 +2,7 @@
 // Doubler sur 2 cartes, séparer jusqu'à 4 mains (As séparés : une carte chacun)
 import { randInt } from './slots-math.js';
 import { monkeySVG, icon } from '../art.js';
-import { h, $, $$, fmt, money, toast, sleep, coinRain, CUR } from '../ui.js';
+import { h, $, $$, fmt, money, toast, sleep, coinRain, autoHTML, bindAuto, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
@@ -70,6 +70,7 @@ export function mount(view, { wallet }) {
   let phase = 'bet'; // bet | deal | play | dealer | done
   let bet = 0, lastBet = 0;
   let selChip = 25;
+  let autoOn = false;
   let dealer = [];
   let hands = []; // { cards, bet, done, doubled, splitAces, el, result }
   let active = 0;
@@ -77,6 +78,7 @@ export function mount(view, { wallet }) {
   let settled = true; // la main en cours a-t-elle déjà été payée ?
   let side = { pp: 0, t3: 0 };            // mises annexes choisies
   let sideRound = { stake: 0, pay: 0 };  // mises annexes de la main en cours
+  let lastSide = { pp: 0, t3: 0 };
   try { const sb = JSON.parse(localStorage.getItem('chibouk_bj_side') || '{}'); side.pp = Math.max(0, sb.pp | 0); side.t3 = Math.max(0, sb.t3 | 0); } catch {}
 
   try { lastBet = +localStorage.getItem('chibouk_bj_bet') || 0; } catch {}
@@ -95,20 +97,18 @@ export function mount(view, { wallet }) {
       <div class="felt-text"><span>BLACKJACK PAIE 3 CONTRE 2</span><small>Le croupier tire jusqu'à 16 et reste sur tous les 17</small></div>
       <div class="table-monkey">${monkeySVG({ wink: true })}</div>
       <div class="player-zone"><div class="hands" id="player-hands"></div></div>
-      <div class="bet-spot" id="bet-spot"><div class="bet-stack"></div><div class="bet-amt"></div></div>
-      <div class="side-spots"><div class="side-spot" id="ss-pp"><small>PAIRES</small><b></b></div><div class="side-spot" id="ss-t3"><small>21+3</small><b></b></div></div>
+      <div class="bet-spot" id="bet-spot" data-spot="main" title="Clique pour poser le jeton sélectionné"><div class="bet-stack"></div><div class="bet-amt"></div><button class="spot-x" data-x="main" title="Retirer">×</button></div>
+      <div class="side-spots">
+        <div class="side-spot" id="ss-pp" data-spot="pp" title="Perfect Pairs : paire dans tes 2 premières cartes"><small>PAIRES</small><b></b><span class="ss-pay">jusqu'à 25:1</span><button class="spot-x" data-x="pp" title="Retirer">×</button></div>
+        <div class="side-spot" id="ss-t3" data-spot="t3" title="21+3 : tes 2 cartes + la carte du croupier"><small>21+3</small><b></b><span class="ss-pay">jusqu'à 100:1</span><button class="spot-x" data-x="t3" title="Retirer">×</button></div>
+      </div>
       <div class="side-res" id="side-res"></div>
       <div class="bj-msg" id="bj-msg"></div>
     </div>
     <div class="bj-controls">
       <div class="ctrl-bet">
         <div class="chip-row">${CHIPS.map((v) => `<button class="chip" data-v="${v}">${v >= 1000 ? v / 1000 + 'k' : v}</button>`).join('')}</div>
-        <div class="side-bets">
-          <div class="side-bet"><label>Perfect Pairs <small>jusqu'à 25:1</small></label>
-            <div class="bet-field-row"><input id="sb-pp" class="bet-input" type="number" min="0" step="1" inputmode="numeric"><button class="btn btn-ghost btn-sm" data-sb="pp">+ jeton</button><button class="btn btn-ghost btn-sm" data-sb0="pp">0</button></div></div>
-          <div class="side-bet"><label>21+3 <small>jusqu'à 100:1</small></label>
-            <div class="bet-field-row"><input id="sb-t3" class="bet-input" type="number" min="0" step="1" inputmode="numeric"><button class="btn btn-ghost btn-sm" data-sb="t3">+ jeton</button><button class="btn btn-ghost btn-sm" data-sb0="t3">0</button></div></div>
-        </div>
+        <p class="bj-hint">Choisis un jeton, puis clique sur <b>MISE</b>, <b>PAIRES</b> ou <b>21+3</b> sur le tapis pour le poser. La croix retire la mise d'une case.</p>
         <div class="bet-actions">
           <button class="btn btn-ghost" id="clear">Effacer</button>
           <button class="btn btn-ghost" id="rebet">Remiser</button>
@@ -117,6 +117,7 @@ export function mount(view, { wallet }) {
           <button class="btn btn-ghost" id="allin">Tapis</button>
           <button class="btn btn-gold btn-lg" id="deal">Distribuer</button>
         </div>
+        ${autoHTML('bj-auto', 'Mains automatiques', '<p class="ab-note">Rejoue tes mises (principale et annexes) et joue chaque main avec la stratégie de base.</p>')}
       </div>
       <div class="ctrl-play">
         <button class="btn btn-green btn-lg" id="hit">Tirer <kbd>H</kbd></button>
@@ -147,33 +148,49 @@ export function mount(view, { wallet }) {
     spot.querySelector('.bet-stack').innerHTML = chipStackHTML(amount);
     spot.querySelector('.bet-amt').innerHTML = amount ? money(amount) : 'Mise';
     spot.classList.toggle('empty', !amount);
+    spot.classList.toggle('placeable', phase === 'bet' || phase === 'done');
     for (const k of ['pp', 't3']) {
       const v = phase === 'bet' ? side[k] : (sideRound[k] || 0);
       const el = $('#ss-' + k, view);
       el.classList.toggle('on', v > 0);
+      el.classList.toggle('placeable', phase === 'bet' || phase === 'done');
       el.querySelector('b').textContent = v ? fmt(v) : '';
-      const inp = $('#sb-' + k, view);
-      if (document.activeElement !== inp) inp.value = side[k] || '';
     }
+    $$('.chip-row .chip', view).forEach((c) => c.classList.toggle('sel', +c.dataset.v === selChip));
   }
-  const saveSide = () => { try { localStorage.setItem('chibouk_bj_side', JSON.stringify(side)); } catch {} };
-  const setSide = (k, v) => { if (phase === 'done') resetTable(); if (phase !== 'bet') return; side[k] = Math.max(0, Math.floor(v) || 0); saveSide(); renderBet(); updateControls(); };
-  $$('[data-sb]', view).forEach((b) => (b.onclick = () => { setSide(b.dataset.sb, side[b.dataset.sb] + selChip); sfx.chip(); }));
-  $$('[data-sb0]', view).forEach((b) => (b.onclick = () => setSide(b.dataset.sb0, 0)));
-  ['pp', 't3'].forEach((k) => ($('#sb-' + k, view).onchange = (e) => setSide(k, +e.target.value)));
+  const saveSide = () => { try { localStorage.setItem('chibouk_bj_side', JSON.stringify(side)); localStorage.setItem('chibouk_bj_chip', selChip); } catch {} };
+  try { const c = +localStorage.getItem('chibouk_bj_chip'); if (CHIPS.includes(c)) selChip = c; } catch {}
+  const totalStake = () => bet + side.pp + side.t3;
+  // Poser le jeton sélectionné sur une case du tapis
+  function place(spot) {
+    if (phase === 'done') resetTable();
+    if (phase !== 'bet') return;
+    if (totalStake() + selChip > wallet.balance) { toast('Solde insuffisant', 'error'); return; }
+    if (spot === 'main') bet += selChip; else side[spot] += selChip;
+    sfx.chip(); saveSide(); renderBet(); updateControls();
+  }
+  function clearSpot(spot) {
+    if (phase === 'done') resetTable();
+    if (phase !== 'bet') return;
+    if (spot === 'main') bet = 0; else side[spot] = 0;
+    saveSide(); renderBet(); updateControls();
+  }
+  $$('[data-spot]', view).forEach((el) => {
+    el.addEventListener('click', (e) => { if (e.target.closest('.spot-x')) return; place(el.dataset.spot); });
+    el.addEventListener('contextmenu', (e) => { e.preventDefault(); clearSpot(el.dataset.spot); });
+  });
+  $$('.spot-x', view).forEach((b) => (b.onclick = (e) => { e.stopPropagation(); clearSpot(b.dataset.x); }));
   $$('.chip-row .chip', view).forEach((c) => {
-    c.onclick = () => {
-      if (phase !== 'bet' && phase !== 'done') return;
-      if (phase === 'done') resetTable();
-      const v = +c.dataset.v;
-      if (bet + v > wallet.balance) { toast(`Solde insuffisant`, 'error'); return; }
-      bet += v; selChip = v; sfx.chip(); renderBet(); updateControls();
-    };
+    c.onclick = () => { selChip = +c.dataset.v; sfx.click(); saveSide(); renderBet(); };
   });
   $('#clear', view).onclick = () => { if (phase === 'done') resetTable(); bet = 0; side = { pp: 0, t3: 0 }; saveSide(); renderBet(); updateControls(); };
-  $('#rebet', view).onclick = () => { if (phase === 'done') resetTable(); if (lastBet && lastBet <= wallet.balance) { bet = lastBet; sfx.chip(); renderBet(); updateControls(); } else toast('Solde insuffisant pour remiser', 'error'); };
-  $('#double-bet', view).onclick = () => { if (phase === 'done') resetTable(); if (bet && bet * 2 <= wallet.balance) { bet *= 2; sfx.chip(); renderBet(); updateControls(); } };
-  $('#half-bet', view).onclick = () => { if (phase === 'done') resetTable(); bet = Math.floor(bet / 2); sfx.chip(); renderBet(); updateControls(); };
+  $('#rebet', view).onclick = () => {
+    if (phase === 'done') resetTable();
+    const t = lastBet + lastSide.pp + lastSide.t3;
+    if (lastBet && t <= wallet.balance) { bet = lastBet; side = { ...lastSide }; saveSide(); sfx.chip(); renderBet(); updateControls(); } else toast('Solde insuffisant pour remiser', 'error');
+  };
+  $('#double-bet', view).onclick = () => { if (phase === 'done') resetTable(); if (totalStake() && totalStake() * 2 <= wallet.balance) { bet *= 2; side.pp *= 2; side.t3 *= 2; saveSide(); sfx.chip(); renderBet(); updateControls(); } };
+  $('#half-bet', view).onclick = () => { if (phase === 'done') resetTable(); bet = Math.floor(bet / 2); side.pp = Math.floor(side.pp / 2); side.t3 = Math.floor(side.t3 / 2); saveSide(); sfx.chip(); renderBet(); updateControls(); };
   $('#allin', view).onclick = () => { if (phase === 'done') resetTable(); bet = Math.max(0, Math.floor(wallet.balance) - side.pp - side.t3); sfx.chip(); renderBet(); updateControls(); };
   $('#deal', view).onclick = () => deal();
   $('#hit', view).onclick = () => hit();
@@ -200,7 +217,7 @@ export function mount(view, { wallet }) {
     view.querySelector('.bj-controls').dataset.phase = phase === 'play' ? 'play' : phase === 'bet' || phase === 'done' ? 'bet' : 'busy';
     $('#deal', view).disabled = !(phase === 'bet' || phase === 'done') || !(bet > 0) || bet + side.pp + side.t3 > wallet.balance;
     $('#deal', view).textContent = phase === 'done' ? 'Rejouer' : 'Distribuer';
-    $$('.chip-row .chip', view).forEach((c) => (c.disabled = +c.dataset.v > wallet.balance));
+    view.querySelector('.bj-wrap').classList.toggle('auto-on', !!autoOn);
     const hd = hands[active];
     const can = phase === 'play' && hd && !hd.done;
     $('#hit', view).disabled = !can;
@@ -331,7 +348,7 @@ export function mount(view, { wallet }) {
     sideRound = { stake: side.pp + side.t3, pay: 0, pp: side.pp, t3: side.t3, res: [] };
     if (sideRound.stake > 0) wallet.bet('blackjack', sideRound.stake);
     $('#side-res', view).className = 'side-res';
-    lastBet = bet;
+    lastBet = bet; lastSide = { ...side };
     settled = false;
     try { localStorage.setItem('chibouk_bj_bet', bet); } catch {}
     if (shoe.length < cut) { shoe = newShoe(); cut = Math.floor(shoe.length * 0.25); toast('Nouveau sabot mélangé'); }
@@ -370,12 +387,14 @@ export function mount(view, { wallet }) {
       const k = perfectPairs(c1, c2);
       const pay = k ? sideRound.pp * (SIDE_PP[k].pay + 1) : 0;
       sideRound.res.push({ label: 'Perfect Pairs', name: k ? SIDE_PP[k].name : 'Pas de paire', pay, mult: k ? SIDE_PP[k].pay : 0 });
+      sideRound.ppKind = k;
       sideRound.pay += pay;
     }
     if (sideRound.t3) {
       const k = twentyOneThree([c1, c2, up]);
       const pay = k ? sideRound.t3 * (SIDE_T3[k].pay + 1) : 0;
       sideRound.res.push({ label: '21+3', name: k ? SIDE_T3[k].name : 'Rien', pay, mult: k ? SIDE_T3[k].pay : 0 });
+      sideRound.t3Kind = k;
       sideRound.pay += pay;
     }
     if (sideRound.pay > 0) wallet.win('blackjack', sideRound.pay, sideRound.stake);
@@ -500,7 +519,7 @@ export function mount(view, { wallet }) {
     const { payout, staked } = computeResults();
     if (payout > 0) wallet.win('blackjack', payout, staked);
     const totPay = payout + sideRound.pay, totStake = staked + sideRound.stake;
-    wallet.round('blackjack', totPay > totStake ? totPay : 0);
+    wallet.round('blackjack', totPay > totStake ? totPay : 0, { bet: totStake, net: totPay - totStake, result: payout > staked ? 'win' : payout < staked ? 'lose' : 'push', bj: hands.some((hd) => hd.result === 'bj'), hands: hands.length, doubled: hands.some((hd) => hd.doubled && (hd.result === 'win')), dealerBJ: isBJ(dealer), dealerBust: handValue(dealer).total > 21, pp: sideRound.ppKind || null, t3: sideRound.t3Kind || null, pushAll: hands.every((hd) => hd.result === 'push'), bust22: hands.some((hd) => handValue(hd.cards).total === 22) });
     if (hands.some((hd) => hd.result === 'bj')) wallet.track('blackjack', 'blackjacks');
     if (hands.every((hd) => hd.result === 'push')) wallet.track('blackjack', 'pushes');
     if (!alive) return;
@@ -531,8 +550,61 @@ export function mount(view, { wallet }) {
     const { payout, staked } = computeResults();
     if (payout > 0) wallet.win('blackjack', payout, staked);
     const totPay = payout + sideRound.pay, totStake = staked + sideRound.stake;
-    wallet.round('blackjack', totPay > totStake ? totPay : 0);
+    wallet.round('blackjack', totPay > totStake ? totPay : 0, { bet: totStake, net: totPay - totStake, result: payout > staked ? 'win' : payout < staked ? 'lose' : 'push', bj: hands.some((hd) => hd.result === 'bj'), hands: hands.length, doubled: hands.some((hd) => hd.doubled && (hd.result === 'win')), dealerBJ: isBJ(dealer), dealerBust: handValue(dealer).total > 21, pp: sideRound.ppKind || null, t3: sideRound.t3Kind || null, pushAll: hands.every((hd) => hd.result === 'push'), bust22: hands.some((hd) => handValue(hd.cards).total === 22) });
   }
+
+  /* -------------------- mains automatiques (stratégie de base) -------------------- */
+  function basicStrategy(hd, up) {
+    const u = up.r === 'A' ? 11 : cardValue(up);
+    const v = handValue(hd.cards);
+    const two = hd.cards.length === 2;
+    const canDbl = two && wallet.balance >= hd.bet;
+    const canSplit = two && hands.length < 4 && wallet.balance >= hd.bet && cardValue(hd.cards[0]) === cardValue(hd.cards[1]);
+    if (canSplit) {
+      const pv = hd.cards[0].r === 'A' ? 11 : cardValue(hd.cards[0]);
+      if (pv === 11 || pv === 8) return 'P';
+      if (pv === 9 && ![7, 10, 11].includes(u)) return 'P';
+      if ((pv === 7 || pv === 2 || pv === 3) && u <= 7) return 'P';
+      if (pv === 6 && u <= 6) return 'P';
+      if (pv === 4 && (u === 5 || u === 6)) return 'P';
+    }
+    if (v.soft && v.total < 21) {
+      const t = v.total;
+      if (t >= 20) return 'S';
+      if (t === 19) return u === 6 && canDbl ? 'D' : 'S';
+      if (t === 18) return u >= 2 && u <= 6 ? (canDbl ? 'D' : 'S') : u <= 8 ? 'S' : 'H';
+      if (t === 17) return u >= 3 && u <= 6 && canDbl ? 'D' : 'H';
+      if (t >= 15) return u >= 4 && u <= 6 && canDbl ? 'D' : 'H';
+      return u >= 5 && u <= 6 && canDbl ? 'D' : 'H';
+    }
+    const t = v.total;
+    if (t >= 17) return 'S';
+    if (t >= 13) return u <= 6 ? 'S' : 'H';
+    if (t === 12) return u >= 4 && u <= 6 ? 'S' : 'H';
+    if (t === 11) return canDbl ? 'D' : 'H';
+    if (t === 10) return u <= 9 && canDbl ? 'D' : 'H';
+    if (t === 9) return u >= 3 && u <= 6 && canDbl ? 'D' : 'H';
+    return 'H';
+  }
+  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+  const auto = bindAuto(view, 'bj-auto', { wallet, game: 'blackjack', delay: 900,
+    play: async () => {
+      if (!(phase === 'bet' || phase === 'done')) return false;
+      if (!bet) { toast('Pose d\'abord une mise sur le tapis', 'error'); return false; }
+      if (bet + side.pp + side.t3 > wallet.balance) { toast('Solde insuffisant pour continuer', 'error'); return false; }
+      deal();
+      await wait(50);
+      while (alive && phase !== 'done') {
+        if (phase === 'play') {
+          const hd = hands[active];
+          const a = basicStrategy(hd, dealer[0]);
+          if (a === 'P') await split(); else if (a === 'D') await doubleDown(); else if (a === 'H') await hit(); else await stand();
+        }
+        await wait(120);
+      }
+      return alive;
+    },
+    onState: (on) => { autoOn = on; updateControls(); } });
 
   const onKey = (e) => {
     if (e.target.closest('input,textarea') || document.querySelector('.modal-backdrop')) return;
@@ -547,6 +619,7 @@ export function mount(view, { wallet }) {
 
   return () => {
     alive = false;
+    auto.stop();
     document.removeEventListener('keydown', onKey);
     finishSilently();
   };

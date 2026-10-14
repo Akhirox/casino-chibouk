@@ -981,3 +981,103 @@ main#view.has-board { max-width: 1640px; }
   .side-spot small { font-size: .45rem; }
   .qz-pad button { height: 48px; }
 }
+
+/* ============================== V6 : PARIS AUTOMATIQUES ============================== */
+.auto-box2 { display: grid; gap: 8px; padding: 12px; border-radius: 14px; background: #0005; border: 1px solid var(--line); text-align: left; }
+.ab-title { font-size: .75rem; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 800; }
+.ab-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.ab-grid label, .ab-extra { display: grid; gap: 4px; font-size: .7rem; color: var(--muted); font-weight: 700; }
+.ab-grid .bet-input, .ab-extra .bet-input { padding: 7px 6px; font-size: .92rem; }
+.ab-status { font-size: .8rem; color: var(--muted); min-height: 1.2em; }
+.ab-note { margin: 0; font-size: .78rem; color: var(--muted); }
+.ab-go { margin-top: 2px; }
+.slot-auto { max-width: 520px; margin: 16px auto 0; }
+.rl-controls .auto-box2 { width: min(520px, 100%); }
+.bj-controls .auto-box2 { width: min(620px, 100%); }
+
+/* ============================== V6 : BLACKJACK, MISES SUR LE TAPIS ============================== */
+.bet-spot, .side-spot { cursor: default; }
+.bet-spot.placeable, .side-spot.placeable { cursor: pointer; transition: transform .15s, box-shadow .2s, border-color .2s; }
+.bet-spot.placeable:hover, .side-spot.placeable:hover { transform: scale(1.06); border-color: var(--gold); box-shadow: 0 0 0 4px rgba(245, 197, 66, .18); }
+.bet-spot.placeable.empty { animation: spotPulse 2s infinite; }
+@keyframes spotPulse { 50% { box-shadow: 0 0 0 6px rgba(245, 197, 66, .15); } }
+.side-spot { position: relative; width: 78px; height: 78px; }
+.ss-pay { font-size: .5rem; color: rgba(255, 230, 150, .55); font-weight: 700; }
+.spot-x { position: absolute; top: -4px; right: -4px; width: 22px; height: 22px; border-radius: 50%; border: 0; background: #2a0d10; color: #ff9aa4; font-weight: 800; font-size: .85rem; line-height: 1; cursor: pointer; display: none; box-shadow: 0 2px 6px #0008; }
+.bet-spot.placeable:not(.empty) .spot-x, .side-spot.placeable.on .spot-x { display: grid; place-items: center; }
+.bj-hint { margin: 0; color: var(--muted); font-size: .85rem; text-align: center; }
+.bj-hint b { color: var(--gold); }
+.bj-controls .chip-row .chip.sel { transform: translateY(-8px) scale(1.08); }
+.bj-wrap.auto-on .ctrl-play, .bj-wrap.auto-on .bet-actions, .bj-wrap.auto-on .chip-row { pointer-events: none; opacity: .55; }
+.bj-controls[data-phase="busy"] .ctrl-bet, .bj-controls[data-phase="play"] .ctrl-bet { display: none; }
+.bj-wrap.auto-on .bj-controls .ctrl-bet { display: grid !important; }
+
+/* ============================== V6 : ACCUEIL ============================== */
+.lobby-cat { display: flex; align-items: center; gap: 10px; margin: 26px 0 12px; font-family: var(--font-title); font-weight: 400; font-size: 1.25rem; color: var(--gold); }
+.lobby-cat .ic { width: 26px; height: 26px; }
+.lobby-cat.free { color: var(--green); }
+.lobby-cat + .daily-card { margin-top: 0; }
+.free-grid .gc-tag { color: var(--green); background: rgba(61, 220, 132, .1); border-color: rgba(61, 220, 132, .3); }
+.gc-ach .gc-art { background: radial-gradient(circle at 50% 40%, #4a3a0a, #0d0a03); }
+.ach-teaser { font-family: var(--font-title); color: var(--gold); font-size: 3rem; display: flex; align-items: baseline; gap: 6px; }
+.ach-teaser span { font-size: 1.3rem; color: var(--muted); }
+.nav-sep { width: 1px; align-self: stretch; margin: 8px 4px; background: var(--line); flex: none; }
+.nav a.nav-free .ni { color: var(--green); }
+.foot a { color: var(--muted); text-decoration: underline; }
+
+/* ============================== V6 : SUCCÈS ============================== */
+.ach-top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: 18px 20px; border-radius: 20px; background: linear-gradient(135deg, #2a2209, #121b16); border: 1px solid #4a3d12; margin-bottom: 16px; }
+.ach-sum { flex: 1; min-width: 240px; display: grid; gap: 8px; }
+.ach-count { display: flex; align-items: baseline; gap: 6px; font-family: var(--font-title); font-size: 1.4rem; color: var(--muted); }
+.ach-count b { font-size: 2.4rem; color: var(--gold); font-weight: 400; }
+.ach-count span { font-family: var(--font); font-size: .9rem; margin-left: 6px; }
+.ach-bar, .ach-prog { height: 10px; border-radius: 999px; background: #0007; overflow: hidden; }
+.ach-bar i, .ach-prog i { display: block; height: 100%; background: var(--gold-grad); border-radius: 999px; }
+.ach-prog { height: 6px; margin-top: 6px; }
+.ach-tiers { display: flex; flex-wrap: wrap; gap: 6px; }
+.tier-badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: .72rem; font-weight: 800; white-space: nowrap; }
+.t-bronze.tier-badge { background: rgba(205, 127, 50, .18); color: #e6a066; }
+.t-silver.tier-badge { background: rgba(200, 210, 220, .15); color: #dfe7ee; }
+.t-gold.tier-badge { background: rgba(245, 197, 66, .18); color: var(--gold); }
+.t-legend.tier-badge { background: linear-gradient(90deg, rgba(180, 90, 255, .3), rgba(255, 90, 180, .3)); color: #ffc7ff; }
+.ach-filters { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+.ach-tabs { grid-auto-flow: row; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); flex: 1; }
+.ach-tabs button { display: flex; align-items: center; justify-content: center; gap: 5px; font-size: .82rem; position: relative; }
+.ach-tabs button::after { content: attr(data-count); font-size: .66rem; color: var(--muted); margin-left: 4px; }
+.ach-tabs .ic { width: 16px; height: 16px; }
+.ach-hide { font-size: .85rem; color: var(--muted); display: flex; gap: 6px; align-items: center; cursor: pointer; }
+.ach-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 12px; }
+.ach-card { display: grid; grid-template-columns: 48px 1fr; gap: 12px; padding: 14px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); opacity: .78; }
+.ach-card.done { opacity: 1; border-color: #4a3d12; background: linear-gradient(160deg, rgba(245, 197, 66, .08), var(--panel)); }
+.ach-ic { width: 48px; height: 48px; border-radius: 14px; display: grid; place-items: center; background: #0006; color: var(--muted); }
+.ach-ic .ic { width: 26px; height: 26px; }
+.ach-card.done .ach-ic { background: var(--gold-grad); color: #3a2600; }
+.ach-card.done.t-legend .ach-ic { background: linear-gradient(135deg, #c77dff, #ff6fae); color: #fff; }
+.ach-txt b { display: block; }
+.ach-txt p { margin: 2px 0 0; color: var(--muted); font-size: .86rem; }
+.ach-meta { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-top: 8px; font-size: .75rem; color: var(--muted); }
+.toast-ach { border-color: #6b5a12; background: linear-gradient(180deg, #2c2709, #1c190a); }
+.ach-toast { display: flex; align-items: center; gap: 10px; }
+.ach-toast .ic { width: 30px; height: 30px; color: var(--gold); flex: none; }
+.ach-toast span { display: grid; }
+.ach-toast small { color: var(--muted); font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; }
+.ach-toast em { font-style: normal; color: var(--green); font-weight: 800; font-size: .85rem; }
+
+/* ============================== V6 : NOUVEAUTÉS ============================== */
+.cl-wrap { max-width: 860px; margin: 0 auto; display: grid; gap: 16px; }
+.cl-item { padding: 18px 20px; border-radius: 20px; background: var(--panel); border: 1px solid var(--line); }
+.cl-item header { display: flex; gap: 14px; align-items: center; }
+.cl-item h2 { margin: 0; font-size: 1.15rem; }
+.cl-item small { color: var(--muted); }
+.cl-v { font-family: var(--font-title); font-size: 1.3rem; padding: 6px 12px; border-radius: 12px; background: var(--gold-grad); color: #3a2600; }
+.cl-item h3 { margin: 14px 0 6px; font-size: .8rem; letter-spacing: .1em; text-transform: uppercase; color: var(--gold); }
+.cl-item ul { margin: 0; padding-left: 20px; display: grid; gap: 6px; color: #d6e4dc; font-size: .93rem; }
+.cl-pop .cl-item { background: none; border: 0; padding: 0; }
+
+@media (max-width: 760px) {
+  .ab-grid { grid-template-columns: 1fr 1fr 1fr; }
+  .nav-sep { margin: 6px 2px; }
+  .side-spot { width: 52px; height: 52px; }
+  .ss-pay { display: none; }
+  .ach-tabs { grid-template-columns: repeat(3, 1fr); }
+}

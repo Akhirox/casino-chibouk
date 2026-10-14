@@ -16,6 +16,9 @@ import * as Mines from './games/mines.js';
 import * as Dice from './games/dice.js';
 import * as Quiz from './games/quiz.js';
 import { mountBoard } from './gameboard.js';
+import { initAchievements, achSummary, TIERS } from './achievements.js';
+import * as AchPage from './achpage.js';
+import * as News from './changelog.js';
 import * as Stats from './stats.js';
 import { createTracker } from './tracker.js';
 import { getPlayers } from './players.js';
@@ -28,6 +31,7 @@ let signupPromise = null;
 let authToken = 0;
 let headerTimer = null;
 let tracker = null;
+let achievements = null;
 let inboxTimer = null;
 
 const ROUTES = {
@@ -40,9 +44,11 @@ const ROUTES = {
   tower: { label: 'Tower', icon: 'tower', mount: Tower.mount },
   mines: { label: 'Mines', icon: 'mines', mount: Mines.mount },
   dice: { label: 'Dice', icon: 'dice', mount: Dice.mount },
-  breaker: { label: 'Briques', icon: 'breaker', mount: Breaker.mount },
-  quiz: { label: 'Calcul', icon: 'quiz', mount: Quiz.mount },
-  stats: { label: 'Stats', icon: 'stats', mount: Stats.mount },
+  quiz: { label: 'Calcul', icon: 'quiz', mount: Quiz.mount, group: 'free' },
+  breaker: { label: 'Briques', icon: 'breaker', mount: Breaker.mount, group: 'free' },
+  achievements: { label: 'Succès', icon: 'medal', mount: AchPage.mount, group: 'me' },
+  stats: { label: 'Stats', icon: 'stats', mount: Stats.mount, group: 'me' },
+  news: { label: 'Nouveautés', icon: 'scroll', mount: News.mount, nav: false },
 };
 
 // Jeux qui affichent leur classement à côté (clé de stats -> nom affiché)
@@ -62,6 +68,7 @@ async function boot() {
   backend.onAuth(async (user) => {
     const token = ++authToken;
     if (tracker) { tracker.destroy(); tracker = null; }
+    if (achievements) { achievements.destroy(); achievements = null; }
     clearInterval(inboxTimer);
     if (wallet) { await wallet.stop(); wallet = null; }
     if (!user) { renderAuth(); return; }
@@ -161,7 +168,7 @@ function renderShell() {
     ${backend.mode === 'demo' ? `<div class="demo-banner slim">Mode démo local (Firebase non configuré)</div>` : ''}
     <header class="topbar">
       <a class="brand" href="#/lobby">${monkeySVG({ cls: 'brand-monkey' })}<span class="logo-text">Casino <span>Chibouk</span></span></a>
-      <nav class="nav">${Object.entries(ROUTES).map(([k, r]) => `<a href="#/${k}" data-r="${k}" title="${r.label}"><span class="ni">${icon(r.icon)}</span><span class="nl">${r.label}</span></a>`).join('')}</nav>
+      <nav class="nav">${Object.entries(ROUTES).filter(([, r]) => r.nav !== false).map(([k, r], i, arr) => `${i && (arr[i - 1][1].group || 'casino') !== (r.group || 'casino') ? '<span class="nav-sep"></span>' : ''}<a href="#/${k}" data-r="${k}" title="${r.label}" class="${r.group === 'free' ? 'nav-free' : ''}"><span class="ni">${icon(r.icon)}</span><span class="nl">${r.label}</span></a>`).join('')}</nav>
       <div class="top-right">
         <button class="daily-btn" title="Bonus quotidien"></button>
         <div class="balance-pill" title="Ton solde">${coinSVG('coin')}<span class="bal-amount">${fmt(wallet.balance)}</span></div>
@@ -170,11 +177,11 @@ function renderShell() {
         <button class="icon-btn tracker-btn" title="Suivi de balance">${icon('chart')}</button>
         <button class="icon-btn mute-btn" title="Son">${icon(sfx.muted ? 'mute' : 'sound')}</button>
         <div class="user-menu"><button class="user-btn">${esc(wallet.pseudo)} ▾</button>
-          <div class="user-drop"><a href="#/stats">Mes stats</a><button class="send-menu">Envoyer des ${CUR}</button><button class="logout">Se déconnecter</button></div></div>
+          <div class="user-drop"><a href="#/stats">Mes stats</a><a href="#/achievements">Mes succès</a><a href="#/news">Nouveautés</a><button class="send-menu">Envoyer des ${CUR}</button><button class="logout">Se déconnecter</button></div></div>
       </div>
     </header>
     <main id="view"></main>
-    <footer class="foot">Casino Chibouk · argent fictif, aucune mise réelle · sauvegarde automatique toutes les ${CONFIG.SYNC_INTERVAL_MS / 1000} s</footer>
+    <footer class="foot">Casino Chibouk <a href="#/news">V${News.VERSION} · Nouveautés</a> · argent fictif, aucune mise réelle · sauvegarde automatique toutes les ${CONFIG.SYNC_INTERVAL_MS / 1000} s</footer>
   </div>`);
   app.append(shell);
 
@@ -195,6 +202,12 @@ function renderShell() {
   wallet.onSync((s) => { dot.className = 'sync-dot ' + s; dot.title = syncTitles[s] || s; });
 
   tracker = createTracker(wallet, $('.tracker-btn', shell));
+  achievements = initAchievements(wallet, (a) => {
+    toast(`<span class="ach-toast t-${a.tier}">${icon('medal')}<span><small>Succès débloqué · ${TIERS[a.tier].name}</small><b>${esc(a.name)}</b><em>+${fmt(TIERS[a.tier].reward)} ${CUR}</em></span></span>`, 'ach', 5000);
+    sfx.bonus();
+    if (a.tier === 'gold' || a.tier === 'legend') coinRain(40);
+  });
+  setTimeout(() => { if (wallet) News.maybeShowNews(); }, 1200);
   $('.send-btn', shell).onclick = openTransfer;
   $('.send-menu', shell).onclick = openTransfer;
   startInbox();
@@ -362,11 +375,11 @@ function mountLobby(view, { wallet: w }) {
       </div>
       ${hangingMonkeySVG()}
     </section>
-    <section id="lobby-daily" class="daily-card"></section>
+    <h2 class="lobby-cat">${icon('chip')}Jeux de casino</h2>
     <section class="games-grid">
       ${card('slots', 'Chibouk Slot', 'Machine à sous 5×3, 21 lignes. 3 WILD = tours gratuits ×2.', 'RTP ≈ 100 %',
         `<div class="mini-reels">${['S', 'W', 'S'].map((x) => `<div>${symbolSVG(x)}</div>`).join('')}</div>`)}
-      ${card('blackjack', 'Blackjack du Singe', 'Blackjack 6 jeux, paie 3:2. Doubler, séparer, cartes en 3D.', 'RTP ≈ 99,5 %',
+      ${card('blackjack', 'Blackjack du Singe', 'Blackjack 6 jeux, paie 3:2, mises annexes Perfect Pairs et 21+3, cartes en 3D.', 'RTP ≈ 99,5 %',
         `<div class="mini-cards"><div class="mc mc1">A<span>♠</span></div><div class="mc mc2 red">K<span>♥</span></div></div>`)}
       ${card('roulette', 'Roulette Banane', 'Roulette européenne à un zéro, roue et bille animées.', 'RTP 97,3 %', `<div class="mini-wheel"></div>`)}
       ${card('plinko', 'Plinkoko', 'Lâche des noix de coco, 3 niveaux de risque, jusqu\'à ×1000.', 'RTP 99 %', plinkoArtSVG())}
@@ -374,9 +387,17 @@ function mountLobby(view, { wallet: w }) {
       ${card('tower', 'Tower', 'Grimpe étage par étage : chaque banane fait monter le multi, une bombe et tout explose.', 'RTP 99 %', towerArtSVG())}
       ${card('mines', 'Mines', 'Choisis le nombre de mines : plus il y en a, plus chaque banane trouvée rapporte.', 'RTP 99 %', minesArtSVG())}
       ${card('dice', 'Dice', 'Choisis ta chance de 0,01 % à 98 % : plus elle est faible, plus le dé paie.', 'RTP 99 %', diceArtSVG())}
+    </section>
+    <h2 class="lobby-cat free">${icon('gift')}Gagner des ${CUR} gratuitement</h2>
+    <section id="lobby-daily" class="daily-card"></section>
+    <section class="games-grid free-grid">
       ${card('quiz', 'Calcul mental', `${CONFIG.QUIZ_QUESTIONS} calculs, ${CONFIG.QUIZ_SECONDS} s chacun : +${CONFIG.QUIZ_PER_CORRECT} ${CUR} par bonne réponse, bonus pour un sans-faute.`, 'Gratuit', quizArtSVG())}
       ${card('breaker', 'Casse-briques', `Casse toutes les briques d'un niveau : +${CONFIG.BREAKER_REWARD} ${CUR}. Gratuit, sans mise.`, 'Gratuit',
         `<div class="mini-bricks">${Array.from({ length: 15 }, (_, i) => `<i style="--h:${(i * 37) % 360}"></i>`).join('')}</div>`)}
+      <a class="game-card gc-ach" href="#/achievements">
+        <div class="gc-art"><div class="ach-teaser"><b>${achSummary(w).done}</b><span>/ ${achSummary(w).total}</span></div></div>
+        <div class="gc-body"><div class="gc-title"><span class="gc-logo">${icon('medal')}</span><h3>Succès</h3></div><p>Relève des défis sur chaque jeu : de +100 à +10 000 ${CUR} par succès débloqué.</p><span class="gc-tag">Récompenses</span></div>
+      </a>
     </section>
     <section class="mini-stats">
       <div><span>Total misé</span><b>${money(s.totalWagered)}</b></div>

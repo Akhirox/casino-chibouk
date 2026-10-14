@@ -5,6 +5,9 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 - Connexion par **pseudo + mot de passe**, sans email.
 - **1 000 Brundles offerts** à la création du compte, puis **1 000 par jour** avec le bouton cadeau (une fois par jour, remise à zéro à minuit heure de Paris).
 - **Aucune mise maximum** : mise libre + bouton MAX (Slot, Plinkoko, Crashibouk, Tower, Mines, Dice), jetons jusqu'à 25k + « Tapis » (blackjack), jetons jusqu'à 25k empilables (roulette).
+- **Succès** : 68 défis (globaux et par jeu) qui rapportent de +100 à +10 000 Brundles, avec une page dédiée et une notification à chaque déblocage.
+- **Paris automatiques** sur les 8 jeux de casino : nombre de paris libre ou infini, arrêt sur objectif de gain ou limite de perte.
+- **Nouveautés** : journal des versions sur le site (et dans `CHANGELOG.md`).
 - **Classement à côté de chaque jeu** : top 5 des plus gros parieurs (volume misé), du meilleur multiplicateur et du plus gros gain sur ce jeu.
 - **Stats** par jeu (misé, gagné, bilan, RTP réel, plus gros gain…), un **classement** des soldes et un **classement des meilleures wins par jeu** (top 3).
 - **Suivi de session** (bouton graphique dans la barre du haut) : courbe des gains/pertes qui part de 0 au lancement, verte au-dessus de 0 et rouge en dessous. Il continue quand on change de jeu ou qu'on recharge la page, jusqu'au reset. Seuls les jeux comptent (pas le bonus quotidien ni les transferts).
@@ -174,6 +177,9 @@ js/games/mines.js          Mines
 js/games/dice.js           Dice
 js/games/quiz.js           Calcul mental
 js/gameboard.js            classement affiché à côté de chaque jeu
+js/achievements.js         définition des succès et moteur de déblocage
+js/achpage.js              page des succès
+js/changelog.js            journal des versions (page Nouveautés)
 firestore.rules            règles de sécurité à publier
 tools/simulate-rtp.mjs     simulateur de RTP
 ```

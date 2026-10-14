@@ -2,7 +2,7 @@
 // Multiplicateur = 99 / chance  → RTP ≈ 99 %
 import { randInt } from './slots-math.js';
 import { icon } from '../art.js';
-import { $, $$, fmt, money, toast, modal, coinRain, sleep, betFieldHTML, bindBetField, CUR } from '../ui.js';
+import { $, $$, fmt, money, toast, modal, coinRain, sleep, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const MIN_CH = 0.01, MAX_CH = 98;
@@ -35,8 +35,7 @@ export function mount(view, { wallet }) {
           <div class="bet-field"><label for="dc-mult">Multi ×</label><input id="dc-mult" class="bet-input" type="number" step="0.0001" inputmode="decimal"></div>
         </div>
         <button class="btn btn-gold btn-lg wide" id="dc-roll">Lancer le dé</button>
-        <div class="seg-field"><label>Lancers en série</label>
-          <div class="auto-row"><button class="btn btn-ghost btn-sm" data-auto="10">10</button><button class="btn btn-ghost btn-sm" data-auto="25">25</button><button class="btn btn-ghost btn-sm" data-auto="50">50</button><button class="btn btn-red btn-sm" id="dc-stop">Stop</button></div></div>
+        ${autoHTML('dc-auto')}
         <div class="plk-info"><span>Gain si victoire</span><b id="dc-pot"></b></div>
         <div class="plk-info"><span>RTP</span><b>99 %</b></div>
       </aside>
@@ -100,9 +99,7 @@ export function mount(view, { wallet }) {
     bet.disabled = d;
     [tIn, cIn, mIn, range].forEach((el) => (el.disabled = d));
     $$('#dc-mode button', view).forEach((b) => (b.disabled = d));
-    $$('[data-auto]', view).forEach((b) => (b.disabled = d));
-    $('#dc-stop', view).style.display = autoLeft > 0 ? '' : 'none';
-    $('#dc-roll', view).disabled = d && autoLeft === 0;
+    $('#dc-roll', view).disabled = d;
   }
 
   async function roll() {
@@ -116,7 +113,7 @@ export function mount(view, { wallet }) {
     const win = mode === 'under' ? r < target : r > target;
     const payout = win ? Math.floor(amount * mult) : 0;
     if (payout) wallet.win('dice', payout, amount);
-    wallet.round('dice', payout > amount ? payout : 0);
+    wallet.round('dice', payout > amount ? payout : 0, { bet: amount, chance: ch, mult, win, roll: r, mode });
 
     // animation : défilement des chiffres puis le marqueur glisse sur le résultat
     sfx.spinStart();
@@ -142,21 +139,11 @@ export function mount(view, { wallet }) {
     return true;
   }
 
-  async function auto(n) {
-    autoLeft = n;
-    setDisabled(true);
-    while (alive && autoLeft > 0) {
-      autoLeft--;
-      if (!(await roll())) break;
-      await sleep(260);
-    }
-    autoLeft = 0;
-    if (alive) setDisabled(false);
-  }
+  const auto = bindAuto(view, 'dc-auto', { wallet, game: 'dice', delay: 220,
+    play: () => roll(),
+    onState: (on) => { autoLeft = on ? 1 : 0; if (alive) setDisabled(on); } });
 
   $('#dc-roll', view).onclick = () => roll();
-  $$('[data-auto]', view).forEach((b) => (b.onclick = () => auto(+b.dataset.auto)));
-  $('#dc-stop', view).onclick = () => { autoLeft = 0; };
   $('#dc-rules', view).onclick = () => modal({ title: 'Règles du Dice', html: `
     <ul class="muted"><li>Un nombre est tiré entre <b>0,00 et 100,00</b> (deux décimales).</li>
     <li>Choisis si tu gagnes quand il tombe <b>en dessous</b> ou <b>au-dessus</b> de ton objectif. Glisse le curseur ou tape l'objectif, la chance ou le multiplicateur : les trois sont liés.</li>
@@ -171,5 +158,5 @@ export function mount(view, { wallet }) {
 
   refresh();
   setDisabled(false);
-  return () => { alive = false; autoLeft = 0; document.removeEventListener('keydown', onKey); };
+  return () => { alive = false; autoLeft = 0; auto.stop(); document.removeEventListener('keydown', onKey); };
 }

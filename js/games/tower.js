@@ -2,7 +2,7 @@
 // Multiplicateur à l'étage k = 0,99 × (cases / cases sûres)^k  → RTP 99 % quel que soit le moment où on encaisse
 import { randInt } from './slots-math.js';
 import { icon, monkeySVG, bananaTileSVG, bombTileSVG } from '../art.js';
-import { $, $$, fmt, money, toast, modal, coinRain, betFieldHTML, bindBetField, CUR } from '../ui.js';
+import { $, $$, fmt, money, toast, modal, coinRain, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const FLOORS = 9;
@@ -37,6 +37,7 @@ export function mount(view, { wallet }) {
           <div class="seg seg-wrap" id="tw-level">${Object.entries(TOWER_LEVELS).map(([k, l]) => `<button data-v="${k}">${l.name}</button>`).join('')}</div></div>
         <button class="btn btn-gold btn-lg wide" id="tw-main">Commencer</button>
         <button class="btn btn-ghost wide" id="tw-random">Case au hasard</button>
+        ${autoHTML('tw-auto', 'Paris automatiques', '<label class="ab-extra">Étages à grimper avant d\'encaisser<input class="bet-input" type="number" min="1" max="9" step="1" id="tw-auto-floors" value="2"></label>')}
         <div class="plk-info"><span>Multiplicateur actuel</span><b id="tw-cur">×1,00</b></div>
         <div class="plk-info"><span>Prochain étage</span><b id="tw-next">—</b></div>
         <div class="plk-info"><span>RTP</span><b>99 %</b></div>
@@ -77,10 +78,11 @@ export function mount(view, { wallet }) {
   }
 
   function updateSide() {
-    const playing = game && !game.over;
-    $$('#tw-level button', view).forEach((b) => { b.classList.toggle('on', b.dataset.v === (game ? game.level : level)); b.disabled = playing; });
-    bet.disabled = playing;
-    $('#tw-random', view).disabled = !playing;
+    const playing = !!(game && !game.over);
+    const lock = playing || autoOn;
+    $$('#tw-level button', view).forEach((b) => { b.classList.toggle('on', b.dataset.v === (game ? game.level : level)); b.disabled = lock; });
+    bet.disabled = lock;
+    $('#tw-random', view).disabled = !playing || autoOn;
     const k = playing ? game.floor : 0;
     const lv = game ? game.level : level;
     $('#tw-cur', view).textContent = fmtX(game && !game.over ? towerMult(lv, k) : 1);
@@ -88,13 +90,14 @@ export function mount(view, { wallet }) {
     if (playing && k > 0) { mainBtn.textContent = `Encaisser ${fmt(Math.floor(game.bet * towerMult(lv, k)))}`; mainBtn.className = 'btn btn-green btn-lg wide'; mainBtn.disabled = false; }
     else if (playing) { mainBtn.textContent = 'Choisis une case…'; mainBtn.className = 'btn btn-gold btn-lg wide'; mainBtn.disabled = true; }
     else { mainBtn.textContent = game ? 'Rejouer' : 'Commencer'; mainBtn.className = 'btn btn-gold btn-lg wide'; mainBtn.disabled = false; }
+    if (autoOn) { mainBtn.disabled = true; if (!playing) mainBtn.textContent = 'Auto en cours…'; }
   }
 
   function say(html, cls = '') { msg.className = 'tw-msg show ' + cls; msg.innerHTML = html; }
 
   function start() {
     const amount = bet.value;
-    if (!wallet.bet('tower', amount)) { toast(`Solde insuffisant pour miser ${fmt(amount)} ${CUR}`, 'error'); return; }
+    if (!wallet.bet('tower', amount)) { toast(`Solde insuffisant pour miser ${fmt(amount)} ${CUR}`, 'error'); return false; }
     const L = TOWER_LEVELS[level];
     const bombs = [];
     for (let f = 0; f < FLOORS; f++) {
@@ -106,6 +109,7 @@ export function mount(view, { wallet }) {
     msg.className = 'tw-msg';
     sfx.click();
     render();
+    return true;
   }
 
   function pick(c) {
@@ -114,7 +118,7 @@ export function mount(view, { wallet }) {
     game.picks[f] = c;
     if (game.bombs[f].includes(c)) {
       game.over = true;
-      wallet.round('tower', 0);
+      wallet.round('tower', 0, { bet: game.bet, level: game.level, floors: f, lostAt: f + 1 });
       sfx.lose();
       render();
       board.classList.remove('shake'); void board.offsetWidth; board.classList.add('shake');
@@ -133,13 +137,29 @@ export function mount(view, { wallet }) {
     const payout = Math.floor(game.bet * m);
     game.over = true; game.cashed = true;
     wallet.win('tower', payout, game.bet);
-    wallet.round('tower', payout > game.bet ? payout : 0);
+    wallet.round('tower', payout > game.bet ? payout : 0, { bet: game.bet, level: game.level, floors: game.floor, mult: m, top: game.floor >= FLOORS });
     if (!alive) return;
     render();
     say(`Encaissé à <b>${fmtX(m)}</b> : +${money(payout)}`, 'win');
     sfx.win(m >= 10); if (m >= 10) coinRain(Math.min(60, 15 + m));
   }
 
+  let autoOn = false;
+  const floorsIn = $('#tw-auto-floors', view);
+  try { const v = +localStorage.getItem('chibouk_tw_auto_floors'); if (v >= 1 && v <= FLOORS) floorsIn.value = v; } catch {}
+  floorsIn.onchange = () => { floorsIn.value = Math.max(1, Math.min(FLOORS, Math.floor(+floorsIn.value) || 1)); try { localStorage.setItem('chibouk_tw_auto_floors', floorsIn.value); } catch {} };
+  const auto = bindAuto(view, 'tw-auto', { wallet, game: 'tower', delay: 600,
+    play: async () => {
+      if (!start()) return false;
+      const target = Math.max(1, Math.min(FLOORS, +floorsIn.value || 1));
+      while (alive && game && !game.over && game.floor < target) {
+        await new Promise((r) => setTimeout(r, 220));
+        pick(randInt(TOWER_LEVELS[game.level].tiles));
+      }
+      if (alive && game && !game.over) { await new Promise((r) => setTimeout(r, 200)); cashOut(); }
+      return alive;
+    },
+    onState: (on) => { autoOn = on; floorsIn.disabled = on; if (alive) updateSide(); } });
   mainBtn.onclick = () => { if (game && !game.over) cashOut(); else start(); };
   $('#tw-random', view).onclick = () => { if (game && !game.over) pick(randInt(TOWER_LEVELS[game.level].tiles)); };
   $$('#tw-level button', view).forEach((b) => (b.onclick = () => {
@@ -163,6 +183,7 @@ export function mount(view, { wallet }) {
   render();
   return () => {
     alive = false;
+    auto.stop();
     document.removeEventListener('keydown', onKey);
     // partie en cours : on encaisse au palier atteint, ou on rembourse si aucune case n'a été choisie
     if (game && !game.over) {

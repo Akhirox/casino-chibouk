@@ -1,7 +1,7 @@
 // Crashibouk — jeu "crash" : le multiplicateur grimpe, encaisse avant l'explosion
 // Loi du point de crash : P(crash ≥ x) = 0,99 / x  → RTP de 99 % quelle que soit la stratégie
 import { monkeySVG, icon } from '../art.js';
-import { h, $, $$, fmt, money, toast, modal, coinRain, betFieldHTML, bindBetField, CUR } from '../ui.js';
+import { h, $, $$, fmt, money, toast, modal, coinRain, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const W = 900, H = 520, PAD_L = 56, PAD_B = 40, PAD_T = 24, PAD_R = 24;
@@ -39,6 +39,7 @@ export function mount(view, { wallet }) {
         <div class="bet-field"><label for="cr-auto"><input type="checkbox" id="cr-auto-on"> Encaissement auto à</label>
           <div class="bet-field-row"><input id="cr-auto" class="bet-input" type="number" min="1.01" step="0.01" inputmode="decimal"><span class="suffix">×</span></div></div>
         <button class="btn btn-gold btn-lg wide cr-main" id="cr-main">Décoller</button>
+        ${autoHTML('cr-autobet', 'Paris automatiques', '<p class="ab-note">Chaque fusée encaisse au multiplicateur « Encaissement auto » ci-dessus (activé automatiquement).</p>')}
         <div class="plk-info"><span>Gain potentiel</span><b id="cr-pot">—</b></div>
         <div class="plk-info"><span>RTP</span><b>99 %</b></div>
         <div class="cr-hist" id="cr-hist"></div>
@@ -78,15 +79,25 @@ export function mount(view, { wallet }) {
   function updateUI() {
     if (!alive) return;
     const flying = state === 'flying';
-    bet.disabled = flying;
-    autoInput.disabled = flying; autoChk.disabled = flying;
+    const lock = flying || autoRun;
+    bet.disabled = lock;
+    autoInput.disabled = lock; autoChk.disabled = lock;
     mainBtn.classList.toggle('btn-gold', !flying || round.cashed);
     mainBtn.classList.toggle('btn-green', flying && !round.cashed);
     if (flying && !round.cashed) { mainBtn.disabled = false; }
     else if (flying && round.cashed) { mainBtn.disabled = true; mainBtn.textContent = `Encaissé : +${fmt(round.payout)}`; }
-    else { mainBtn.disabled = false; mainBtn.textContent = 'Décoller'; }
+    else { mainBtn.disabled = autoRun; mainBtn.textContent = 'Décoller'; }
   }
 
+  let autoRun = false;
+  const auto = bindAuto(view, 'cr-autobet', { wallet, game: 'crash', delay: 900,
+    play: async () => {
+      if (!autoOn) { autoOn = true; autoChk.checked = true; }
+      if (!start()) return false;
+      while (alive && state === 'flying') await new Promise((r) => setTimeout(r, 100));
+      return alive;
+    },
+    onState: (on) => { autoRun = on; if (alive) updateUI(); } });
   mainBtn.onclick = () => { if (state === 'flying') cashOut(); else start(); };
   const onKey = (e) => {
     if (e.code === 'Space' && !e.target.closest('input,textarea,button') && !document.querySelector('.modal-backdrop')) {
@@ -103,9 +114,9 @@ export function mount(view, { wallet }) {
     buttons: [{ label: 'Compris', value: true, primary: true }] });
 
   function start() {
-    if (state === 'flying') return;
+    if (state === 'flying') return false;
     const amount = bet.value;
-    if (!wallet.bet('crash', amount)) { toast(`Solde insuffisant pour miser ${fmt(amount)} ${CUR}`, 'error'); return; }
+    if (!wallet.bet('crash', amount)) { toast(`Solde insuffisant pour miser ${fmt(amount)} ${CUR}`, 'error'); return false; }
     round = { bet: amount, crash: crashPoint(), start: performance.now(), cashed: false, cashMult: 0, payout: 0, auto: autoOn ? autoTarget : 0, m: 1 };
     particles = [];
     state = 'flying';
@@ -114,6 +125,7 @@ export function mount(view, { wallet }) {
     subEl.textContent = round.auto ? `Encaissement auto à ${fmtM(round.auto)}` : 'Encaisse avant l\'explosion !';
     sfx.spinStart();
     updateUI();
+    return true;
   }
 
   function cashOut(at) {
@@ -123,7 +135,7 @@ export function mount(view, { wallet }) {
     round.cashMult = m;
     round.payout = Math.floor(round.bet * m);
     wallet.win('crash', round.payout, round.bet);
-    wallet.round('crash', round.payout > round.bet ? round.payout : 0);
+    wallet.round('crash', round.payout > round.bet ? round.payout : 0, { bet: round.bet, cashed: m, crash: round.crash });
     if (!alive) return;
     view.querySelector('.crash-stage').classList.add('cashed');
     subEl.innerHTML = `Encaissé à <b>${fmtM(m)}</b> : +${money(round.payout)}`;
@@ -134,7 +146,7 @@ export function mount(view, { wallet }) {
   function explode() {
     state = 'crashed';
     round.m = round.crash;
-    if (!round.cashed) wallet.round('crash', 0);
+    if (!round.cashed) wallet.round('crash', 0, { bet: round.bet, cashed: 0, crash: round.crash });
     history.unshift(round.crash); history = history.slice(0, 30);
     try { localStorage.setItem('chibouk_crash_hist', JSON.stringify(history)); } catch {}
     renderHist();
@@ -267,6 +279,7 @@ export function mount(view, { wallet }) {
     alive = false;
     cancelAnimationFrame(raf);
     document.removeEventListener('keydown', onKey);
+    auto.stop();
     // si on quitte en plein vol sans avoir encaissé : on encaisse au multiplicateur actuel
     if (state === 'flying' && round && !round.cashed) {
       const m = Math.min(round.crash, Math.floor(multAt((performance.now() - round.start) / 1000) * 100) / 100);

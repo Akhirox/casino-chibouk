@@ -1,7 +1,7 @@
 // Roulette Banane — roulette européenne (un seul zéro), roue animée sur canvas
 import { randInt } from './slots-math.js';
 import { icon } from '../art.js';
-import { h, $, $$, fmt, money, toast, sleep, coinRain, CUR } from '../ui.js';
+import { h, $, $$, fmt, money, toast, sleep, coinRain, autoHTML, bindAuto, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
@@ -82,6 +82,7 @@ export function mount(view, { wallet }) {
         <button class="btn btn-ghost" id="rl-double">×2</button>
         <button class="btn btn-gold btn-lg" id="rl-spin">Lancer la bille</button>
       </div>
+      ${autoHTML('rl-auto', 'Lancers automatiques', '<p class="ab-note">Relance la bille avec les jetons posés sur le tapis.</p>')}
       <p class="hint">Clic = poser un jeton · Clic droit (ou appui long) = retirer la mise d'une case</p>
     </div>
   </div>`;
@@ -308,10 +309,10 @@ export function mount(view, { wallet }) {
 
   /* ------------------------- un lancer ------------------------- */
   async function spin() {
-    if (spinning) return;
+    if (spinning) return false;
     const t = total();
-    if (!t) return;
-    if (!wallet.bet('roulette', t)) { toast('Solde insuffisant', 'error'); return; }
+    if (!t) { toast('Pose au moins un jeton sur le tapis', 'error'); return false; }
+    if (!wallet.bet('roulette', t)) { toast('Solde insuffisant', 'error'); return false; }
     spinning = true;
     lastBets = { ...bets };
     $$('.rl-spot.won, .rl-spot.hit', view).forEach((s) => s.classList.remove('won', 'hit'));
@@ -324,10 +325,10 @@ export function mount(view, { wallet }) {
     let win = 0;
     for (const [k, a] of Object.entries(bets)) win += a * payoutFor(k, n);
     if (win > 0) wallet.win('roulette', win, t);
-    wallet.round('roulette', win > t ? win : 0);
+    wallet.round('roulette', win > t ? win : 0, { bet: t, number: n, spots: Object.keys(bets).length, straightWin: !!bets['n:' + n], zeroWin: n === 0 && !!bets['n:0'] });
 
-    await animateTo(n, false);
-    if (!alive) return;
+    await animateTo(n, autoOn);
+    if (!alive) return true;
     history.unshift(n); history = history.slice(0, 30);
     try { localStorage.setItem('chibouk_rl_hist', JSON.stringify(history)); } catch {}
     renderHistory();
@@ -352,9 +353,14 @@ export function mount(view, { wallet }) {
     // on laisse les jetons en place pour rejouer facilement, sauf si le solde ne suit plus
     if (total() > wallet.balance) { bets = {}; undo = []; }
     renderBets();
+    return true;
   }
 
+  let autoOn = false;
+  const auto = bindAuto(view, 'rl-auto', { wallet, game: 'roulette', delay: 700,
+    play: () => spin(),
+    onState: (on) => { autoOn = on; view.classList.toggle('rl-autoing', on); } });
   renderBets();
   renderHistory();
-  return () => { alive = false; cancelAnimationFrame(raf); };
+  return () => { alive = false; auto.stop(); cancelAnimationFrame(raf); };
 }

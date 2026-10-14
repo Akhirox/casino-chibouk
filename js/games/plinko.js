@@ -2,7 +2,7 @@
 import { TABLES, RISKS, ROWS, rtp, probability, dropPath } from './plinko-math.js';
 import { randInt } from './slots-math.js';
 import { icon } from '../art.js';
-import { h, $, $$, fmt, money, toast, modal, coinRain, betFieldHTML, bindBetField, CUR } from '../ui.js';
+import { h, $, $$, fmt, money, toast, modal, coinRain, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const W = 800, H = 720;
@@ -44,8 +44,7 @@ export function mount(view, { wallet }) {
         <div class="seg-field"><label>Rangées</label>
           <div class="seg" id="plk-rows">${ROWS.map((r) => `<button data-v="${r}">${r}</button>`).join('')}</div></div>
         <button class="btn btn-gold btn-lg wide" id="plk-drop">Lâcher une noix</button>
-        <div class="seg-field"><label>Lâcher en série</label>
-          <div class="auto-row"><button class="btn btn-ghost btn-sm" data-auto="10">10</button><button class="btn btn-ghost btn-sm" data-auto="25">25</button><button class="btn btn-ghost btn-sm" data-auto="50">50</button><button class="btn btn-red btn-sm" id="plk-stop">Stop</button></div></div>
+        ${autoHTML('plk-auto', 'Lâcher en automatique')}
         <div class="plk-info"><span>Gain max</span><b id="plk-max"></b></div>
         <div class="plk-info"><span>RTP</span><b id="plk-rtp"></b></div>
         <div class="plk-hist" id="plk-hist"></div>
@@ -80,8 +79,6 @@ export function mount(view, { wallet }) {
     $$('#plk-rows button', view).forEach((b) => b.classList.toggle('on', +b.dataset.v === rows));
     const busy = balls.length > 0 || autoLeft > 0;
     $$('#plk-risk button, #plk-rows button', view).forEach((b) => (b.disabled = busy));
-    $$('[data-auto]', view).forEach((b) => (b.disabled = autoLeft > 0));
-    $('#plk-stop', view).style.display = autoLeft > 0 ? '' : 'none';
     const t = TABLES[rows][risk];
     $('#plk-max', view).textContent = '×' + fmtMult(Math.max(...t));
     $('#plk-rtp', view).textContent = (rtp(rows, risk) * 100).toFixed(1).replace('.', ',') + ' %';
@@ -93,21 +90,15 @@ export function mount(view, { wallet }) {
   $$('#plk-risk button', view).forEach((b) => (b.onclick = () => { if (balls.length) return; risk = b.dataset.v; try { localStorage.setItem('chibouk_plk_risk', risk); } catch {} layout(); updateSide(); sfx.click(); }));
   $$('#plk-rows button', view).forEach((b) => (b.onclick = () => { if (balls.length) return; rows = +b.dataset.v; try { localStorage.setItem('chibouk_plk_rows', rows); } catch {} layout(); updateSide(); sfx.click(); }));
   $('#plk-drop', view).onclick = () => drop();
-  $$('[data-auto]', view).forEach((b) => (b.onclick = () => { autoLeft = +b.dataset.auto; updateSide(); autoStep(); }));
-  $('#plk-stop', view).onclick = () => { autoLeft = 0; clearTimeout(autoTimer); updateSide(); };
   $('#plk-rules', view).onclick = showRules;
   const onKey = (e) => {
     if (e.code === 'Space' && !e.target.closest('input,textarea,button') && !document.querySelector('.modal-backdrop')) { e.preventDefault(); drop(); }
   };
   document.addEventListener('keydown', onKey);
 
-  function autoStep() {
-    if (!alive || autoLeft <= 0) return;
-    if (!drop()) { autoLeft = 0; updateSide(); return; }
-    autoLeft--;
-    updateSide();
-    if (autoLeft > 0) autoTimer = setTimeout(autoStep, 260);
-  }
+  const auto = bindAuto(view, 'plk-auto', { wallet, game: 'plinko', delay: 260,
+    play: () => drop(),
+    onState: (on) => { autoLeft = on ? 1 : 0; if (alive) updateSide(); } });
 
   /* ---------------- une bille ---------------- */
   function drop() {
@@ -125,7 +116,7 @@ export function mount(view, { wallet }) {
       p += path[r] ? 0.5 : -0.5;
     }
     pts.push({ x: geo.bins[bin].x, y: geo.bins[bin].y });
-    balls.push({ pts, seg: 0, t: 0, bin, mult, payout, amount, rows, done: false, x: pts[0].x, y: pts[0].y });
+    balls.push({ pts, seg: 0, t: 0, bin, mult, payout, amount, rows, risk, done: false, x: pts[0].x, y: pts[0].y });
     sfx.click();
     updateSide();
     return true;
@@ -134,7 +125,7 @@ export function mount(view, { wallet }) {
   function land(b) {
     b.done = true;
     if (b.payout > 0) wallet.win('plinko', b.payout, b.amount);
-    wallet.round('plinko', b.payout > b.amount ? b.payout : 0);
+    wallet.round('plinko', b.payout > b.amount ? b.payout : 0, { bet: b.amount, mult: b.mult, rows: b.rows, risk: b.risk, edge: b.bin === 0 || b.bin === b.rows });
     if (!alive) return;
     if (b.rows === rows) binPulse[b.bin] = 1;
     history.unshift(b.mult);
@@ -236,7 +227,7 @@ export function mount(view, { wallet }) {
   return () => {
     alive = false;
     autoLeft = 0;
-    clearTimeout(autoTimer);
+    auto.stop();
     cancelAnimationFrame(raf);
     document.removeEventListener('keydown', onKey);
     // les billes encore en l'air sont payées immédiatement

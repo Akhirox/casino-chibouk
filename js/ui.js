@@ -103,3 +103,69 @@ export function bindBetField(root, id, storageKey, wallet, def = 10) {
     set disabled(d) { input.disabled = d; box.querySelectorAll('button').forEach((b) => (b.disabled = d)); },
   };
 }
+
+/* ---------------- Paris automatiques (commun à tous les jeux) ----------------
+   Nombre de paris libre (vide = infini), arrêt optionnel sur gain ou perte. */
+export function autoHTML(id, title = 'Paris automatiques', extra = '') {
+  return `<div class="auto-box2" id="${id}">
+    <div class="ab-title">${title}</div>
+    ${extra}
+    <div class="ab-grid">
+      <label>Nombre<input class="bet-input" type="number" min="0" step="1" inputmode="numeric" placeholder="∞" data-a="count"></label>
+      <label>Stop gain ≥<input class="bet-input" type="number" min="0" step="1" inputmode="numeric" placeholder="—" data-a="win"></label>
+      <label>Stop perte ≥<input class="bet-input" type="number" min="0" step="1" inputmode="numeric" placeholder="—" data-a="loss"></label>
+    </div>
+    <button type="button" class="btn btn-blue wide ab-go" data-a="go">Lancer l'auto</button>
+    <div class="ab-status" data-a="status"></div>
+  </div>`;
+}
+
+// play() : joue UNE partie, renvoie false pour arrêter (solde insuffisant…). Le bilan se calcule
+// à partir des mises/gains du jeu (événements du portefeuille), donc même les gains différés comptent.
+export function bindAuto(root, id, { wallet, game, play, delay = 300, onState } = {}) {
+  const box = root.querySelector('#' + id);
+  const q = (a) => box.querySelector(`[data-a="${a}"]`);
+  const key = 'chibouk_auto_' + id;
+  try { const s = JSON.parse(localStorage.getItem(key) || '{}'); for (const k of ['count', 'win', 'loss']) if (s[k]) q(k).value = s[k]; } catch {}
+  const save = () => { try { localStorage.setItem(key, JSON.stringify({ count: q('count').value, win: q('win').value, loss: q('loss').value })); } catch {} };
+  ['count', 'win', 'loss'].forEach((k) => q(k).addEventListener('change', save));
+  let running = false, stopAsked = false, done = 0, net = 0, off = null;
+  const status = () => {
+    const total = Math.floor(+q('count').value) || 0;
+    q('status').innerHTML = running || done
+      ? `${running ? 'En cours' : 'Terminé'} · ${done}${total ? '/' + total : ' (∞)'} paris · bilan <b class="${net >= 0 ? 'pos' : 'neg'}">${net >= 0 ? '+' : ''}${fmt(net)}</b>`
+      : 'Laisse « Nombre » vide pour jouer à l\'infini.';
+    q('go').textContent = running ? (stopAsked ? 'Arrêt…' : 'Arrêter l\'auto') : 'Lancer l\'auto';
+    q('go').classList.toggle('btn-red', running);
+    q('go').classList.toggle('btn-blue', !running);
+    ['count', 'win', 'loss'].forEach((k) => (q(k).disabled = running));
+  };
+  async function start() {
+    if (running) return;
+    running = true; stopAsked = false; done = 0; net = 0;
+    off = wallet.on((e) => {
+      if (!e || e.game !== game) return;
+      if (e.type === 'bet') net -= e.amount; else if (e.type === 'win' || e.type === 'refund') net += e.amount;
+    });
+    onState && onState(true); status();
+    const total = Math.floor(+q('count').value) || 0;
+    const winStop = Math.floor(+q('win').value) || 0, lossStop = Math.floor(+q('loss').value) || 0;
+    while (running && !stopAsked && (!total || done < total) && document.body.contains(box)) {
+      let ok;
+      try { ok = await play(); } catch (e) { console.error(e); ok = false; }
+      if (ok === false) break;
+      done++;
+      status();
+      if (winStop && net >= winStop) { toast(`Auto arrêté : objectif de gain atteint (+${fmt(net)})`, 'win'); break; }
+      if (lossStop && -net >= lossStop) { toast(`Auto arrêté : limite de perte atteinte (${fmt(net)})`, 'error'); break; }
+      await sleep(delay);
+    }
+    running = false;
+    off && off(); off = null;
+    onState && onState(false);
+    if (document.body.contains(box)) status();
+  }
+  q('go').onclick = () => { if (running) { stopAsked = true; status(); } else start(); };
+  status();
+  return { get running() { return running; }, stop() { stopAsked = true; running = false; off && off(); off = null; } };
+}
