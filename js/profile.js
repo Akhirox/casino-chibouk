@@ -4,6 +4,8 @@ import { monkeySVG, icon } from './art.js';
 import { $, $$, fmt, money, esc, toast, modal, CUR } from './ui.js';
 import { getPlayers } from './players.js';
 import { ACHIEVEMENTS, TIERS } from './achievements.js';
+import { frameClass, titleHTML } from './shop.js';
+import { vipBadge } from './progress.js';
 
 export const BIO_MAX = 160;
 const AVATAR_MAX_CHARS = 38000; // photo en JPEG base64 (≈ 28 Ko), stockée directement dans Firestore
@@ -29,11 +31,17 @@ const hash = (s) => { let h = 0; for (const ch of String(s || '')) h = (h * 31 +
 // Avatar d'un joueur (photo, singe choisi, ou singe attribué d'après le pseudo)
 export function avatarHTML(p, cls = '') {
   const a = (p && p.avatar) || '';
-  if (a.startsWith('data:image/')) return `<span class="av ${cls}"><img src="${esc(a)}" alt=""></span>`;
-  let i = a.startsWith('m:') ? +a.slice(2) : hash(p && p.pseudo) % PRESETS.length;
-  if (!PRESETS[i]) i = 0;
-  const [o, bg] = PRESETS[i];
-  return `<span class="av ${cls}" style="--av-bg:${bg}">${monkeySVG(o)}</span>`;
+  let inner;
+  if (a.startsWith('data:image/')) inner = `<span class="av ${cls}"><img src="${esc(a)}" alt=""></span>`;
+  else {
+    let i = a.startsWith('m:') ? +a.slice(2) : hash(p && p.pseudo) % PRESETS.length;
+    if (!PRESETS[i]) i = 0;
+    const [o, bg] = PRESETS[i];
+    inner = `<span class="av ${cls}" style="--av-bg:${bg}">${monkeySVG(o)}</span>`;
+  }
+  // cadre acheté en boutique
+  const f = p && p.shop ? frameClass(p) : '';
+  return f ? `<span class="avf ${f}">${inner}</span>` : inner;
 }
 
 // Recadre une image au centre et la réduit en 160×160 JPEG
@@ -60,7 +68,15 @@ export async function resizeImage(file) {
 }
 
 const dateFmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-const GAME_NAMES = { slots: 'Chibouk Slot', blackjack: 'Blackjack', roulette: 'Roulette', plinko: 'Plinkoko', crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice' };
+const GAME_NAMES = { slots: 'Chibouk Slot', blackjack: 'Blackjack', roulette: 'Roulette', plinko: 'Plinkoko', crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice', hilo: 'Hi-Lo', keno: 'Keno', wheel: 'Roue du Singe', limbo: 'Limbo' };
+
+// Trophées de la semaine (palmarès chargé par weekly.js)
+let WEEKS = [];
+export function setWeeks(list) { WEEKS = list || []; }
+function trophies(p) {
+  const n = WEEKS.filter((w) => w.winnerUid === p.uid).length;
+  return n ? `<span class="trophy-badge" title="Vainqueur du classement de la semaine">${icon('trophy')}×${n}</span>` : '';
+}
 
 // Carte de profil (sert sur la page « Mon profil » et dans la fiche des autres joueurs)
 export function cardHTML(p, { me = false } = {}) {
@@ -73,6 +89,7 @@ export function cardHTML(p, { me = false } = {}) {
   return `<div class="pf-card">
     <div class="pf-top">${avatarHTML(p, 'av-xl')}
       <div class="pf-id"><h2>${esc(p.pseudo)}${me ? ' <small>(toi)</small>' : ''}</h2>
+        <div class="pf-badges">${vipBadge(p)}${titleHTML(p)}${trophies(p)}</div>
         ${p.createdAt ? `<small class="muted">Membre depuis le ${dateFmt.format(new Date(p.createdAt))}</small>` : ''}
         <p class="pf-bio ${p.bio ? '' : 'empty'}">${p.bio ? esc(p.bio) : me ? 'Pas encore de bio. Présente-toi en dessous !' : 'Ce singe n\'a rien écrit pour l\'instant.'}</p></div></div>
     <div class="pf-stats">
@@ -92,7 +109,7 @@ export async function showPlayerCard(uid, { backend, wallet }) {
   try { p = (await getPlayers(backend, wallet)).find((x) => x.uid === uid); } catch (e) { console.error(e); }
   if (!p) { toast('Profil introuvable pour le moment', 'error'); return; }
   const me = uid === wallet.uid;
-  const r = await modal({ title: me ? 'Ton profil' : 'Profil', cls: 'pf-modal', html: cardHTML(me ? { ...p, avatar: wallet.p.avatar, bio: wallet.p.bio } : p, { me }),
+  const r = await modal({ title: me ? 'Ton profil' : 'Profil', cls: 'pf-modal', html: cardHTML(me ? { ...p, avatar: wallet.p.avatar, bio: wallet.p.bio, shop: wallet.p.shop } : p, { me }),
     buttons: me ? [{ label: 'Modifier', value: 'edit' }, { label: 'Fermer', value: true, primary: true }] : [{ label: 'Fermer', value: true, primary: true }] });
   if (r === 'edit') location.hash = '#/profile';
 }

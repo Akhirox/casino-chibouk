@@ -49,7 +49,7 @@ export const ALIASES = {
   'République du Congo': ['Congo', 'Congo Brazzaville'], 'Émirats arabes unis': ['EAU', 'Emirats', 'Emirats arabes'],
   'Biélorussie': ['Bélarus', 'Belarus'], 'Viêt Nam': ['Vietnam'], 'Bosnie-Herzégovine': ['Bosnie'],
   'Papouasie-Nouvelle-Guinée': ['Papouasie'], 'Fidji': ['Fiji', 'Iles Fidji'], 'Moldavie': ['Moldova'], 'Turquie': ['Turkiye'],
-  'Arabie saoudite': ['Arabie'], 'Corée du Sud': ['Coree sud'], 'Corée du Nord': ['Coree nord'], 'Nouvelle-Zélande': ['NZ'],
+  'Arabie saoudite': ['Arabie'], 'Écosse': ['Ecosse', 'Scotland'], 'Pays de Galles': ['Galles', 'Wales'], 'Timor oriental': ['Timor Leste', 'Timor'], 'Trinité-et-Tobago': ['Trinidad', 'Trinite et Tobago'], 'Koweït': ['Koweit', 'Kuwait'], 'Israël': ['Israel'], 'Bénin': ['Benin'], 'Érythrée': ['Erythree'], 'Corée du Sud': ['Coree sud'], 'Corée du Nord': ['Coree nord'], 'Nouvelle-Zélande': ['NZ'],
   'Kiev': ['Kyiv'], 'Pékin': ['Beijing'], 'New Delhi': ['Delhi'], 'Mexico': ['Mexico City'], 'Washington': ['Washington DC'],
   'Dacca': ['Dhaka'], 'Oulan-Bator': ['Ulaanbaatar', 'Ulan Bator'], 'Naypyidaw': ['Naypyitaw', 'Nay Pyi Taw'],
   'Chisinau': ['Kichinev'], 'Abou Dabi': ['Abu Dhabi', 'Abou Dhabi'], 'Tachkent': ['Tashkent'], 'Sanaa': ['Sana a'],

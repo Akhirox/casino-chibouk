@@ -64,11 +64,24 @@ export function countUp(el, to, { from = 0, ms = 900, format = fmt, onTick } = {
 }
 
 // Pluie de pièces pour les gros gains
+// Effet de victoire (boutique) : pièces, bananes, confettis, étoiles ou diamants
+let winFx = 'coins';
+export function setWinFx(k) { winFx = k || 'coins'; }
+const FX_SVG = {
+  banana: '<svg viewBox="0 0 100 100"><path d="M22 22 C18 62 50 92 88 74 C92 72 90 66 85 67 C56 76 34 56 34 22 Z" fill="#ffd93b" stroke="#b38300" stroke-width="4"/><path d="M20 24 L18 12 L32 12 L34 24 Z" fill="#6b4a1a"/></svg>',
+  stars: '<svg viewBox="0 0 24 24"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="#ffe066" stroke="#c98a00" stroke-width="1"/></svg>',
+  diamond: '<svg viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 12L2 9z" fill="#8ee8ff" stroke="#2a8db5" stroke-width="1.2"/><path d="M2 9h20M8 3l-2 6 6 12 6-12-2-6" fill="none" stroke="#2a8db5" stroke-width=".9"/></svg>',
+};
+const CONFETTI = ['#ff4d5e', '#3ddc84', '#2fb1ff', '#f5c542', '#c77dff', '#ff8a3d'];
 export function coinRain(count = 30) {
   const layer = h('<div class="coin-rain" aria-hidden="true"></div>');
   document.body.append(layer);
   for (let i = 0; i < count; i++) {
-    const c = h(`<div class="rain-coin">${coinSVG('coin')}</div>`);
+    let inner;
+    if (winFx === 'confetti') inner = `<i class="confetto" style="background:${CONFETTI[i % CONFETTI.length]}"></i>`;
+    else if (FX_SVG[winFx]) inner = FX_SVG[winFx];
+    else inner = coinSVG('coin');
+    const c = h(`<div class="rain-coin fx-${winFx}">${inner}</div>`);
     c.style.left = Math.random() * 100 + 'vw';
     c.style.animationDelay = Math.random() * 0.8 + 's';
     c.style.animationDuration = 1.6 + Math.random() * 1.2 + 's';

@@ -5,12 +5,12 @@ import { esc } from '../ui.js';
 import { mountMCQ, makeQ, pickDistinct, pick, shuffle } from './mcq.js';
 
 let cache = null;
-// data/movies.json : [titre, année, [réalisateurs], [acteurs], affiche]
+// data/movies.json : [titre, année, [réalisateurs], [acteurs], affiche, budget $, note TMDB]
 export async function loadMovies() {
   if (cache) return cache;
   const res = await fetch('data/movies.json', { cache: 'force-cache' });
   if (!res.ok) throw new Error('HTTP ' + res.status);
-  cache = (await res.json()).map(([t, y, d, a, p]) => ({ t, y, d, a, p }));
+  cache = (await res.json()).map(([t, y, d, a, p, b = 0, n = 0]) => ({ t, y, d, a, p, b, n }));
   return cache;
 }
 

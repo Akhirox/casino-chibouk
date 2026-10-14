@@ -3,12 +3,19 @@
 Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est statique et s'héberge sur **GitHub Pages**. Les comptes et les soldes sont stockés dans **Firebase**, avec le plan gratuit Spark.
 
 - Connexion par **pseudo + mot de passe**, sans email.
-- **1 000 Brundles offerts** à la création du compte, puis **1 000 par jour** avec le bouton cadeau (une fois par jour, remise à zéro à minuit heure de Paris).
+- **1 000 Brundles offerts** à la création du compte, puis la **roue du jour** (500 à 5 000 Brundles, une fois par jour, remise à zéro à minuit heure de Paris), multipliée par la série de jours consécutifs (jusqu'à ×2).
+- **Quêtes du jour** : 3 missions renouvelées à minuit (+300 / +600 / +1 000, +500 si les 3 sont faites).
+- **Rangs VIP** selon le total misé, avec un **remboursement le lundi** de 1 à 7 % des pertes de la semaine aux jeux de casino.
+- **Classement de la semaine** (bénéfice du lundi au dimanche), trophée permanent pour le vainqueur et palmarès.
+- **Boutique cosmétique** : cadres d'avatar, titres, dos de cartes, thèmes de la slot, effets de victoire (de 2 000 à 100 millions de Brundles). Ça donne une utilité aux Brundles et freine l'inflation des soldes.
+- **Jackpot commun** alimenté par 1 % des mises de la slot (payé par le casino), qui peut tomber sur n'importe quel spin.
+- **En direct de la jungle** : fil d'activité de l'accueil (gros gains, succès rares, jackpots, rangs VIP, vainqueurs de la semaine).
+- **Historique** des 50 dernières parties de chaque jeu (onglet du classement à côté du jeu, gardé sur l'appareil).
 - **Aucune mise maximum** : mise libre + bouton MAX (Slot, Plinkoko, Crashibouk, Tower, Mines, Dice), jetons jusqu'à 25k + « Tapis » (blackjack), jetons jusqu'à 25k empilables (roulette).
-- **Succès** : 77 défis (globaux et par jeu) qui rapportent de +100 à +10 000 Brundles, avec une page dédiée et une notification à chaque déblocage. Un clic sur un succès montre qui l'a débloqué, et qui l'a eu en premier (avec la date).
+- **Succès** : 115 défis (globaux et par jeu) qui rapportent de +100 à +10 000 Brundles, avec une page dédiée et une notification à chaque déblocage. Un clic sur un succès montre qui l'a débloqué, et qui l'a eu en premier (avec la date).
 - **Profils** : photo (ou un des 12 singes) et petite bio, visibles en cliquant sur un pseudo dans les classements. La photo est réduite à quelques Ko et stockée dans Firestore (pas besoin de Firebase Storage, donc ça reste gratuit).
 - **Singe conseiller** : petites astuces contextuelles sur chaque page, désactivables depuis le menu du pseudo.
-- **Paris automatiques** sur les 8 jeux de casino : nombre de paris libre ou infini, arrêt sur objectif de gain ou limite de perte.
+- **Paris automatiques** sur les 12 jeux de casino : nombre de paris libre ou infini, arrêt sur objectif de gain ou limite de perte.
 - **Nouveautés** : journal des versions sur le site (et dans `CHANGELOG.md`).
 - **Classement à côté de chaque jeu** : top 5 des plus gros parieurs (volume misé), du meilleur multiplicateur et du plus gros gain sur ce jeu.
 - **Stats** par jeu (misé, gagné, bilan, RTP réel, plus gros gain…), un **classement** des soldes et un **classement des meilleures wins par jeu** (top 3).
@@ -28,9 +35,16 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 | **Tower** | 9 étages, 5 difficultés (de 1 bombe sur 4 cases à 3 bombes sur 4). Chaque étage monte le multi, encaisse quand tu veux. | 99 % |
 | **Mines** | Grille 5×5, 1 à 24 mines. Chaque banane trouvée augmente le multi, encaisse avant de tomber sur une mine. | 99 % |
 | **Dice** | Tirage de 0,00 à 100,00. Choisis « en dessous » ou « au-dessus » et ta chance (0,01 % à 98 %) : multi = 99 ÷ chance. | 99 % |
+| **Hi-Lo** | Plus haut ou plus bas que la carte affichée ? Paquet infini, chaque bonne réponse multiplie le gain (0,99 ÷ probabilité), encaissement quand on veut. | 99 % |
+| **Keno** | 1 à 10 numéros sur 40, 10 tirés, 3 niveaux de risque, jusqu'à ×10 000. Tables calculées exactement (`tools/keno-rtp.mjs`). | 99 % |
+| **Roue du Singe** | 30 cases équiprobables, 3 niveaux de risque (jusqu'à ×29,7). | 99 % |
+| **Limbo** | Cible de ×1,01 à ×1 000 000 : on gagne mise × cible si le tirage l'atteint (chance = 99 ÷ cible). | 99 % |
 | **Calcul mental** | Gratuit : 10 calculs (additions, soustractions, tables, divisions), 10 s chacun. +10 Brundles par bonne réponse, +50 de bonus pour un sans-faute. | — |
 | **Quiz capitales** | Gratuit : 10 questions dans les deux sens (pays → capitale, capitale → pays), 127 pays. Mode facile (4 choix, 10 s, +10 par bonne réponse, +50 sans-faute) ou expert (réponse à écrire, 15 s, +20 par bonne réponse, +100 sans-faute). | — |
 | **Quiz ciné** | Gratuit : 10 questions à 4 choix sur 800 films (réalisateur, acteurs, année de sortie), 15 s chacune. Même barème. Données : `data/movies.json`, extrait de la base TMDB (The Movies Dataset). | — |
+| **Quiz drapeaux** | Gratuit : 10 drapeaux parmi 159 pays (SVG du projet flag-icons, licence MIT, dans `data/flags/`). Modes facile et expert comme les capitales. | — |
+| **Mot du jour** | Gratuit, une fois par jour : façon Motus, même mot pour tout le monde, 6 essais. +400 à +70 selon le nombre d'essais. Dictionnaire de 77 000 mots dans `data/mots.txt` (projet an-array-of-french-words, licence MIT), 346 mots à deviner dans `data/mots-cibles.json`. | — |
+| **Plus ou moins** | Gratuit : quel film a eu le plus gros budget ? Série jusqu'à 15, +10 par bonne réponse, +50 au bout. Budgets tirés de ta base TMDB. | — |
 | **Casse-briques** | Gratuit, sans mise, accessible à tout moment : +100 Brundles par niveau terminé (6 niveaux en boucle, de plus en plus durs). | — |
 
 Si tu quittes la page au milieu d'une partie de Tower ou de Mines, elle est encaissée automatiquement au palier atteint (ou la mise est remboursée si aucune case n'a été choisie). Pareil pour le Crash (encaissement au multiplicateur du moment) et le Blackjack (la main est terminée en restant).
@@ -56,7 +70,7 @@ python -m http.server 8000
 1. Va sur <https://console.firebase.google.com> et clique sur **Ajouter un projet**. Google Analytics n'est pas nécessaire.
 2. **Authentication** → *Commencer* → *Sign-in method* → active **Adresse e-mail/Mot de passe**.
 3. **Firestore Database** → *Créer une base de données*. Choisis le **mode production** et une région en Europe, par exemple `europe-west1`.
-4. **Firestore Database → Règles** : copie-colle le contenu du fichier `firestore.rules`, puis clique sur **Publier**. À refaire à chaque fois que ce fichier change (c'est le cas en V8 avec les photos de profil et les bios).
+4. **Firestore Database → Règles** : copie-colle le contenu du fichier `firestore.rules`, puis clique sur **Publier**. À refaire à chaque fois que ce fichier change (c'est le cas en V9 : fil d'activité, jackpot commun et palmarès des semaines).
 5. **Paramètres du projet** (roue dentée) → *Vos applications* → icône **Web `</>`**. Enregistre l'app sans activer Firebase Hosting, puis copie le bloc `firebaseConfig` dans **`js/firebase-config.js`**.
 6. **Authentication → Paramètres → Domaines autorisés** → ajoute `tonpseudo.github.io`.
 
@@ -89,6 +103,9 @@ Le plan gratuit Spark offre **50 000 lectures et 20 000 écritures par jour**. L
 | Fermeture de l'onglet, bonus quotidien, niveau de casse-briques | 1 écriture immédiate |
 | Page Stats, liste des destinataires d'un transfert | 1 lecture par joueur inscrit, gardée en cache 2 min |
 | Vérification des Brundles reçus | 1 lecture toutes les 90 s (seulement quand l'onglet est visible) |
+| Fil d'activité + jackpot | 2 lectures toutes les 90 s (seuls les nouveaux messages sont lus), + 1 écriture toutes les 90 s si tu as joué à la slot |
+| Publication dans le fil | 1 écriture par exploit (gros gain, succès Or/Légende…), 20 s minimum entre deux |
+| Palmarès des semaines | quelques lectures toutes les 15 min, 1 écriture par semaine (la première personne connectée le lundi) |
 | Envoi ou réception d'un transfert | 2 écritures |
 
 Un joueur qui joue 2 h sans pause fait au maximum ~240 écritures et ~80 lectures. Même à 20 potes, tu restes très loin des limites.
@@ -192,6 +209,22 @@ js/achpage.js              page des succès
 js/profile.js              profils (avatar, bio, fiche joueur)
 js/tips.js                 le singe conseiller (astuces)
 js/changelog.js            journal des versions (page Nouveautés)
+js/progress.js             rangs VIP, remboursement, roue du jour, quêtes
+js/dailywheel.js           fenêtre de la roue du jour
+js/shop.js                 boutique et cosmétiques
+js/social.js               fil d'activité et jackpot commun
+js/weekly.js               classement de la semaine et palmarès
+js/history.js              historique des parties
+js/games/hilo.js           Hi-Lo
+js/games/keno.js           Keno (+ keno-math.js)
+js/games/wheel.js          Roue du Singe
+js/games/limbo.js          Limbo
+js/games/flags.js          Quiz drapeaux (+ flags-data.js)
+js/games/motus.js          Mot du jour
+js/games/higher.js         Plus ou moins
+data/                      films, drapeaux, dictionnaire
 firestore.rules            règles de sécurité à publier
-tools/simulate-rtp.mjs     simulateur de RTP
+tools/simulate-rtp.mjs     RTP de la slot (calcul exact + simulation)
+tools/keno-rtp.mjs         RTP exact des tables du Keno
+tools/new-games-rtp.mjs    RTP des jeux de la V9
 ```

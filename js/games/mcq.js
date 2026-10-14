@@ -126,7 +126,7 @@ export function mountMCQ(view, { wallet }, opt) {
     body.innerHTML = `
       <div class="qz-q mcq-q"><span class="qz-num">Question ${qi + 1}/${N}</span>
         <div class="mcq-label">${esc(q.label)}</div>
-        <div class="mcq-big">${esc(q.big)}</div>${q.sub ? `<div class="mcq-sub">${esc(q.sub)}</div>` : ''}
+        ${q.img ? `<div class="mcq-img"><img src="${esc(q.img)}" alt="Drapeau à deviner"></div>` : `<div class="mcq-big">${esc(q.big)}</div>`}${q.sub ? `<div class="mcq-sub">${esc(q.sub)}</div>` : ''}
         <div class="qz-verdict" id="qz-verdict"></div></div>
       <div class="qz-timer"><div class="qz-bar" id="qz-bar"></div><span id="qz-sec">${SECS()}</span></div>
       ${q.type === 'text' ? `<form class="qz-form mcq-text" id="mcq-form" autocomplete="off">

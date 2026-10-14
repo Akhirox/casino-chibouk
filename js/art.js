@@ -145,6 +145,17 @@ const ICONS = {
   user: `<circle cx="12" cy="8.5" r="4" ${D}/><path d="M4.5 20.5c.8-4 3.8-6.2 7.5-6.2s6.7 2.2 7.5 6.2" ${D}/>`,
   camera: `<rect x="3" y="7" width="18" height="13" rx="3" ${D}/><path d="M8.5 7 10 4.5h4L15.5 7"/><circle cx="12" cy="13.5" r="3.6"/>`,
   bulb: `<path d="M9 17.5h6M9.8 20.5h4.4M12 3.5a6 6 0 0 0-3.6 10.8c.6.5 1 1.2 1 2v1.2h5.2v-1.2c0-.8.4-1.5 1-2A6 6 0 0 0 12 3.5z" ${D}/>`,
+  star: `<path d="M12 3l2.6 5.6 6.1.7-4.5 4.2 1.2 6L12 16.6 6.6 19.5l1.2-6L3.3 9.3l6.1-.7z" ${D}/>`,
+  hilo: `<rect x="3" y="5" width="10" height="14" rx="2" ${D}/><path d="M17 9l2.5-3L22 9M17 15l2.5 3 2.5-3M19.5 6v12" stroke-width="1.6"/><path d="M6.5 10.5 8 9l1.5 1.5M8 9v5" stroke-width="1.4"/>`,
+  keno: `<rect x="3" y="3" width="18" height="18" rx="3" ${D}/><g fill="currentColor" stroke="none"><circle cx="8" cy="8" r="1.6"/><circle cx="16" cy="8" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="8" cy="16" r="1.6"/></g><circle cx="16" cy="16" r="2.2"/>`,
+  wheel: `<circle cx="12" cy="13" r="8" ${D}/><path d="M12 5v16M4 13h16M6.3 7.3l11.4 11.4M17.7 7.3 6.3 18.7" stroke-width="1.2"/><path d="M12 1.5l2 3h-4z" fill="currentColor"/>`,
+  limbo: `<path d="M3 20h18" /><path d="M4 16c4-1 6-4 8-9 2 5 4 8 8 9" ${D}/><path d="M12 7V3" stroke-width="1.6"/>`,
+  flag: `<path d="M5 21V4" stroke-width="2"/><path d="M5 4h13l-2.5 4L18 12H5" ${D}/>`,
+  motus: `<rect x="2.5" y="7" width="5.5" height="10" rx="1.2" ${D}/><rect x="9.25" y="7" width="5.5" height="10" rx="1.2"/><rect x="16" y="7" width="5.5" height="10" rx="1.2" ${D}/><path d="M11 10.5h2M11 13.5h2" stroke-width="1.3"/>`,
+  higher: `<path d="M7 20V5M3.5 8.5 7 5l3.5 3.5M17 4v15M13.5 15.5 17 19l3.5-3.5" stroke-width="1.8"/>`,
+  shop: `<path d="M4.5 8h15l-1.3 12h-12.4z" ${D}/><path d="M8.5 10V7a3.5 3.5 0 0 1 7 0v3" stroke-width="1.6"/>`,
+  chev: `<path d="m6 9 6 6 6-6" stroke-width="2"/>`,
+  fire: `<path d="M12 21c-4 0-7-2.8-7-6.6 0-3.4 2.6-5.4 3.7-8.4.5 2 1.6 3 2.6 3.5C11.6 6 13 4 15 3c-.3 3 1.5 4.6 2.8 6.6A7 7 0 0 1 19 14.4C19 18.2 16 21 12 21z" ${D}/>`,
   globe: `<circle cx="12" cy="12" r="8.5" ${D}/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5M12 3.5C9.4 5.9 8.2 8.7 8.2 12s1.2 6.1 3.8 8.5" stroke-width="1.5"/>`,
   film: `<rect x="3.5" y="9" width="17" height="11.5" rx="2" ${D}/><path d="m3.8 9 15.4-4.2-.9-3.3L3 5.7z" ${D}/><path d="m7.6 4.7 2 3M12.4 3.4l2 3" stroke-width="1.5"/><path d="M3.5 13h17" stroke-width="1.3"/>`,
 };
@@ -243,4 +254,49 @@ export function moviesArtSVG() {
     <g fill="#f5f5f5">${[0, 1, 2, 3, 4].map((i) => `<path d="M${50 + i * 22} 59h11l-8 14h-11z"/>`).join('')}</g>
     <text x="100" y="106" text-anchor="middle" font-family="Bungee, sans-serif" font-size="22" fill="#f5c542">ACTION</text>
     <g fill="#ffe08a"><circle cx="168" cy="40" r="3"/><circle cx="30" cy="96" r="2.5"/><circle cx="176" cy="104" r="2"/></g></svg>`;
+}
+
+export function hiloArtSVG() {
+  const c = (x, r, sym, red, rot) => `<g transform="translate(${x} 72) rotate(${rot})"><rect x="-26" y="-38" width="52" height="76" rx="7" fill="#fff" stroke="#ccc"/><text x="-17" y="-18" font-family="Bungee, sans-serif" font-size="16" fill="${red ? '#c8102e' : '#161616'}">${r}</text><text x="0" y="14" text-anchor="middle" font-size="34" fill="${red ? '#c8102e' : '#161616'}">${sym}</text></g>`;
+  return `<svg viewBox="0 0 200 145" class="art-hilo" aria-hidden="true">${c(72, '7', '♠', 0, -10)}${c(128, 'D', '♥', 1, 10)}
+    <g fill="#3ddc84"><path d="M172 40l12 16h-24z"/></g><g fill="#ff4d5e"><path d="M172 104l12-16h-24z"/></g></svg>`;
+}
+export function kenoArtSVG() {
+  const hits = [3, 9, 12, 18, 22, 27], picks = [3, 7, 12, 18, 25];
+  return `<svg viewBox="0 0 200 145" class="art-keno" aria-hidden="true">${Array.from({ length: 30 }, (_, i) => {
+    const x = 34 + (i % 6) * 26, y = 18 + Math.floor(i / 6) * 23, n = i + 1;
+    const h = hits.includes(n) && picks.includes(n), p = picks.includes(n), d = hits.includes(n);
+    return `<rect x="${x}" y="${y}" width="22" height="19" rx="4" fill="${h ? '#3ddc84' : p ? '#f5c542' : d ? '#5a2330' : '#1d3126'}"/><text x="${x + 11}" y="${y + 13.5}" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="800" font-size="9" fill="${h || p ? '#0b120e' : '#9fb3a6'}">${n}</text>`;
+  }).join('')}</svg>`;
+}
+export function wheelArtSVG() {
+  const cols = ['#2b3a31', '#3ddc84', '#2b3a31', '#2fb1ff', '#2b3a31', '#f5c542', '#2b3a31', '#c77dff', '#2b3a31', '#3ddc84', '#2b3a31', '#ff8a3d'];
+  const a = (2 * Math.PI) / cols.length;
+  const p = (r, t) => `${(100 + r * Math.cos(t)).toFixed(1)} ${(76 + r * Math.sin(t)).toFixed(1)}`;
+  return `<svg viewBox="0 0 200 145" class="art-wheel" aria-hidden="true">${cols.map((c, i) => `<path d="M${p(34, i * a)} L${p(60, i * a)} A60 60 0 0 1 ${p(60, (i + 1) * a)} L${p(34, (i + 1) * a)} A34 34 0 0 0 ${p(34, i * a)}Z" fill="${c}" stroke="#0b120e" stroke-width="1.5"/>`).join('')}
+    <circle cx="100" cy="76" r="60" fill="none" stroke="#f5c542" stroke-width="3"/><text x="100" y="83" text-anchor="middle" font-family="Bungee, sans-serif" font-size="18" fill="#f5c542">×5</text><path d="M100 22l-8-14h16z" fill="#ff4d5e" stroke="#fff" stroke-width="1.5"/></svg>`;
+}
+export function limboArtSVG() {
+  return `<svg viewBox="0 0 200 145" class="art-limbo" aria-hidden="true"><defs><linearGradient id="lbg" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3ddc84"/><stop offset="1" stop-color="#0f5a30"/></linearGradient></defs>
+    <path d="M20 112 Q100 112 180 24" stroke="url(#lbg)" stroke-width="5" fill="none" stroke-linecap="round"/>
+    <path d="M30 70h140" stroke="#f5c542" stroke-width="2" stroke-dasharray="6 5"/><text x="168" y="64" text-anchor="end" font-family="Rubik, sans-serif" font-weight="800" font-size="11" fill="#f5c542">cible ×2,00</text>
+    <text x="70" y="104" text-anchor="middle" font-family="Bungee, sans-serif" font-size="26" fill="#fff">4,87×</text></svg>`;
+}
+export function flagsArtSVG() {
+  const f = (x, y, rot, colors, vertical = true) => `<g transform="translate(${x} ${y}) rotate(${rot})"><rect x="-27" y="-18" width="54" height="36" rx="3" fill="#111"/>${colors.map((c, i) => vertical ? `<rect x="${-27 + i * 18}" y="-18" width="18" height="36" fill="${c}"/>` : `<rect x="-27" y="${-18 + i * 12}" width="54" height="12" fill="${c}"/>`).join('')}<rect x="-27" y="-18" width="54" height="36" rx="3" fill="none" stroke="#0006"/></g>`;
+  return `<svg viewBox="0 0 200 145" class="art-flags" aria-hidden="true">${f(62, 58, -12, ['#0055a4', '#fff', '#ef4135'])}${f(138, 54, 10, ['#000', '#dd0000', '#ffce00'], false)}${f(100, 96, -2, ['#009246', '#fff', '#ce2b37'])}
+    <text x="100" y="138" text-anchor="middle" font-family="Bungee, sans-serif" font-size="14" fill="#f5c542">?</text></svg>`;
+}
+export function motusArtSVG() {
+  const L = ['B', 'A', 'N', 'A', 'N', 'E'], st = ['ok', 'ok', 'mis', 'no', 'ok', 'no'];
+  return `<svg viewBox="0 0 200 145" class="art-motus" aria-hidden="true">${L.map((l, i) => {
+    const x = 22 + i * 27, s = st[i];
+    return `<rect x="${x}" y="50" width="24" height="28" rx="3" fill="${s === 'ok' ? '#e3263b' : '#1f5ea8'}"/>${s === 'mis' ? `<circle cx="${x + 12}" cy="64" r="11" fill="#f5c542"/>` : ''}<text x="${x + 12}" y="70.5" text-anchor="middle" font-family="Bungee, sans-serif" font-size="17" fill="#fff">${l}</text>`;
+  }).join('')}${[0, 1, 2, 3, 4, 5].map((i) => `<rect x="${22 + i * 27}" y="84" width="24" height="28" rx="3" fill="#1f5ea8" opacity=".45"/>`).join('')}<text x="35" y="104" text-anchor="middle" font-family="Bungee, sans-serif" font-size="17" fill="#fff">B</text></svg>`;
+}
+export function higherArtSVG() {
+  return `<svg viewBox="0 0 200 145" class="art-higher" aria-hidden="true">
+    <rect x="30" y="22" width="60" height="88" rx="6" fill="#3a1420" stroke="#ff8a3d"/><text x="60" y="72" text-anchor="middle" font-family="Bungee, sans-serif" font-size="14" fill="#fff">160 M$</text>
+    <rect x="110" y="22" width="60" height="88" rx="6" fill="#14324a" stroke="#2fb1ff"/><text x="140" y="72" text-anchor="middle" font-family="Bungee, sans-serif" font-size="22" fill="#f5c542">?</text>
+    <path d="M100 52l7 9h-14zM100 92l7-9h-14z" fill="#f5c542"/><text x="100" y="134" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="800" font-size="11" fill="#cfe0d5">plus ou moins ?</text></svg>`;
 }

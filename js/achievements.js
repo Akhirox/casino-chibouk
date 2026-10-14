@@ -1,5 +1,6 @@
 // Succès (achievements) : défis globaux et par jeu, débloqués automatiquement à partir des événements du portefeuille
 import { CONFIG } from './config.js';
+import { vipOf } from './progress.js';
 
 export const TIERS = {
   bronze: { name: 'Bronze', reward: 100 },
@@ -10,10 +11,11 @@ export const TIERS = {
 
 export const CATEGORIES = {
   global: 'Global', slots: 'Chibouk Slot', blackjack: 'Blackjack', roulette: 'Roulette', plinko: 'Plinkoko',
-  crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice', free: 'Jeux gratuits',
+  crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice', hilo: 'Hi-Lo', keno: 'Keno', wheel: 'Roue du Singe', limbo: 'Limbo',
+  free: 'Jeux gratuits', progress: 'Progression',
 };
 
-const CASINO_GAMES = ['slots', 'blackjack', 'roulette', 'plinko', 'crash', 'tower', 'mines', 'dice'];
+const CASINO_GAMES = ['slots', 'blackjack', 'roulette', 'plinko', 'crash', 'tower', 'mines', 'dice', 'hilo', 'keno', 'wheel', 'limbo'];
 const st = (w) => w.p.stats;
 const g = (w, k) => st(w).games[k] || {};
 const parisHour = () => +new Intl.DateTimeFormat('en-GB', { timeZone: CONFIG.TIMEZONE, hour: '2-digit', hourCycle: 'h23' }).format(new Date());
@@ -36,7 +38,7 @@ export const ACHIEVEMENTS = [
   { id: 'wager-10m', cat: 'global', tier: 'gold', name: 'Baleine', desc: 'Miser 10 000 000 de Brundles au total.', test: (e, w) => st(w).totalWagered >= 1e7, progress: (w) => [st(w).totalWagered, 1e7] },
   { id: 'rounds-1000', cat: 'global', tier: 'silver', name: 'Marathonien', desc: 'Jouer 1 000 parties.', test: (e, w) => st(w).rounds >= 1000, progress: (w) => [st(w).rounds, 1000] },
   { id: 'rounds-10000', cat: 'global', tier: 'gold', name: 'Il n\'est jamais parti', desc: 'Jouer 10 000 parties.', test: (e, w) => st(w).rounds >= 10000, progress: (w) => [st(w).rounds, 10000] },
-  { id: 'all-games', cat: 'global', tier: 'silver', name: 'Touche-à-tout', desc: 'Jouer au moins une fois à chacun des 8 jeux de casino.', test: (e, w) => CASINO_GAMES.every((k) => g(w, k).rounds > 0), progress: (w) => [CASINO_GAMES.filter((k) => g(w, k).rounds > 0).length, 8] },
+  { id: 'all-games', cat: 'global', tier: 'silver', name: 'Touche-à-tout', desc: 'Jouer au moins une fois à chacun des 12 jeux de casino.', test: (e, w) => CASINO_GAMES.every((k) => g(w, k).rounds > 0), progress: (w) => [CASINO_GAMES.filter((k) => g(w, k).rounds > 0).length, CASINO_GAMES.length] },
   { id: 'x100', cat: 'global', tier: 'silver', name: 'Centuple', desc: 'Gagner au moins ×100 ta mise en une seule partie.', test: (e) => e.type === 'win' && e.bet > 0 && e.amount / e.bet >= 100 },
   { id: 'x1000', cat: 'global', tier: 'gold', name: 'Millénaire', desc: 'Gagner au moins ×1 000 ta mise en une seule partie.', test: (e) => e.type === 'win' && e.bet > 0 && e.amount / e.bet >= 1000 },
   { id: 'night-owl', cat: 'global', tier: 'bronze', name: 'Singe de nuit', desc: 'Jouer une partie entre 3 h et 5 h du matin.', test: (e) => isRound(e) && parisHour() >= 3 && parisHour() < 5 },
@@ -117,6 +119,50 @@ export const ACHIEVEMENTS = [
   { id: 'cap-100', cat: 'free', tier: 'silver', name: 'Atlas sur pattes', desc: 'Donner 100 bonnes réponses au quiz des capitales.', test: (e, w) => (st(w).capitalsCorrect || 0) >= 100, progress: (w) => [st(w).capitalsCorrect || 0, 100] },
   { id: 'mv-perfect', cat: 'free', tier: 'silver', name: 'Cinéphile', desc: 'Faire un sans-faute au quiz ciné.', test: (e, w) => (st(w).moviesPerfect || 0) >= 1 },
   { id: 'mv-100', cat: 'free', tier: 'silver', name: 'Critique aux Cahiers', desc: 'Donner 100 bonnes réponses au quiz ciné.', test: (e, w) => (st(w).moviesCorrect || 0) >= 100, progress: (w) => [st(w).moviesCorrect || 0, 100] },
+  /* ------------------------------ HI-LO ------------------------------ */
+  { id: 'hl-first', cat: 'hilo', tier: 'bronze', name: 'Flair de primate', desc: 'Encaisser une partie de Hi-Lo.', test: (e) => isRound(e, 'hilo') && !I(e).lost && I(e).steps > 0 },
+  { id: 'hl-8', cat: 'hilo', tier: 'silver', name: 'Devin de la jungle', desc: 'Enchaîner 8 bonnes réponses dans une partie de Hi-Lo.', test: (e) => isRound(e, 'hilo') && !I(e).lost && I(e).steps >= 8 },
+  { id: 'hl-x50', cat: 'hilo', tier: 'gold', name: 'Lecture des cartes', desc: 'Encaisser au moins ×50 au Hi-Lo.', test: (e) => isRound(e, 'hilo') && !I(e).lost && I(e).mult >= 50 },
+  { id: 'hl-eq', cat: 'hilo', tier: 'silver', name: 'Pile pareil', desc: 'Gagner un pari « Égal » au Hi-Lo puis encaisser.', test: (e) => isRound(e, 'hilo') && I(e).eq },
+  /* ------------------------------ KENO ------------------------------ */
+  { id: 'kn-first', cat: 'keno', tier: 'bronze', name: 'Numéro gagnant', desc: 'Gagner une partie de Keno.', test: (e) => isRound(e, 'keno') && e.payout > 0 },
+  { id: 'kn-zero', cat: 'keno', tier: 'bronze', name: 'Grille maudite', desc: 'Choisir 10 numéros au Keno et n\'en toucher aucun.', test: (e) => isRound(e, 'keno') && I(e).picks === 10 && I(e).hits === 0 },
+  { id: 'kn-7', cat: 'keno', tier: 'gold', name: 'Voyant extralucide', desc: 'Toucher au moins 7 numéros au Keno.', test: (e) => isRound(e, 'keno') && I(e).hits >= 7 },
+  { id: 'kn-100', cat: 'keno', tier: 'silver', name: 'Habitué du tirage', desc: 'Jouer 100 parties de Keno.', test: (e, w) => g(w, 'keno').rounds >= 100, progress: (w) => [g(w, 'keno').rounds || 0, 100] },
+  /* ------------------------------ ROUE ------------------------------ */
+  { id: 'wh-top', cat: 'wheel', tier: 'gold', name: 'Le gros lot', desc: 'Tomber sur la case ×29,7 de la roue en risque élevé.', test: (e) => isRound(e, 'wheel') && I(e).risk === 'high' && I(e).mult > 0 },
+  { id: 'wh-max', cat: 'wheel', tier: 'silver', name: 'Case violette', desc: 'Tomber sur la meilleure case en risque faible ou moyen.', test: (e) => isRound(e, 'wheel') && I(e).risk !== 'high' && I(e).top },
+  { id: 'wh-zero', cat: 'wheel', tier: 'bronze', name: 'Roue voilée', desc: 'Tomber 8 fois de suite sur ×0.', test: (e, w, c) => streak(c, 'wheel', 'zero') >= 8 },
+  { id: 'wh-100', cat: 'wheel', tier: 'silver', name: 'Tourne, tourne', desc: 'Faire tourner la roue 100 fois.', test: (e, w) => g(w, 'wheel').rounds >= 100, progress: (w) => [g(w, 'wheel').rounds || 0, 100] },
+  /* ------------------------------ LIMBO ------------------------------ */
+  { id: 'lb-first', cat: 'limbo', tier: 'bronze', name: 'Sous la barre', desc: 'Gagner une partie de Limbo.', test: (e) => isRound(e, 'limbo') && I(e).win },
+  { id: 'lb-100', cat: 'limbo', tier: 'silver', name: 'Plus bas que terre', desc: 'Gagner au Limbo avec une cible d\'au moins ×100.', test: (e) => isRound(e, 'limbo') && I(e).win && I(e).target >= 100 },
+  { id: 'lb-1000', cat: 'limbo', tier: 'gold', name: 'Limbo céleste', desc: 'Gagner au Limbo avec une cible d\'au moins ×1 000.', test: (e) => isRound(e, 'limbo') && I(e).win && I(e).target >= 1000 },
+  { id: 'lb-200', cat: 'limbo', tier: 'silver', name: 'Danseur de limbo', desc: 'Jouer 200 parties de Limbo.', test: (e, w) => g(w, 'limbo').rounds >= 200, progress: (w) => [g(w, 'limbo').rounds || 0, 200] },
+  /* ------------------------------ PROGRESSION ------------------------------ */
+  { id: 'vip-macaque', cat: 'progress', tier: 'bronze', name: 'Carte de membre', desc: 'Atteindre le rang VIP Macaque (25 000 misés).', test: (e, w) => vipOf(st(w).totalWagered).index >= 1, progress: (w) => [st(w).totalWagered, 25000] },
+  { id: 'vip-chimp', cat: 'progress', tier: 'silver', name: 'Salon VIP', desc: 'Atteindre le rang VIP Chimpanzé (1 000 000 misés).', test: (e, w) => vipOf(st(w).totalWagered).index >= 3, progress: (w) => [st(w).totalWagered, 1e6] },
+  { id: 'vip-gorille', cat: 'progress', tier: 'gold', name: 'Gorille en costume', desc: 'Atteindre le rang VIP Gorille (100 000 000 misés).', test: (e, w) => vipOf(st(w).totalWagered).index >= 5, progress: (w) => [st(w).totalWagered, 1e8] },
+  { id: 'vip-roi', cat: 'progress', tier: 'legend', name: 'Roi Singe', desc: 'Atteindre le rang VIP Roi Singe (1 milliard misé).', test: (e, w) => vipOf(st(w).totalWagered).index >= 6, progress: (w) => [st(w).totalWagered, 1e9] },
+  { id: 'cashback', cat: 'progress', tier: 'bronze', name: 'Remboursé !', desc: 'Toucher un remboursement VIP du lundi.', test: (e, w) => (st(w).cashbackTotal || 0) > 0 },
+  { id: 'quest-day', cat: 'progress', tier: 'bronze', name: 'Journée bien remplie', desc: 'Terminer les 3 quêtes du jour.', test: (e) => e.type === 'quest' && e.bonus },
+  { id: 'quest-30', cat: 'progress', tier: 'silver', name: 'Aventurier', desc: 'Terminer 30 quêtes du jour.', test: (e, w) => (st(w).questsDone || 0) >= 30, progress: (w) => [st(w).questsDone || 0, 30] },
+  { id: 'streak-7', cat: 'progress', tier: 'silver', name: 'Fidèle au poste', desc: 'Récupérer le bonus quotidien 7 jours d\'affilée.', test: (e, w) => ((w.p.streak && w.p.streak.n) || 0) >= 7, progress: (w) => [(w.p.streak && w.p.streak.n) || 0, 7] },
+  { id: 'streak-30', cat: 'progress', tier: 'gold', name: 'Un mois sans rater', desc: 'Récupérer le bonus quotidien 30 jours d\'affilée.', test: (e, w) => ((w.p.streak && w.p.streak.n) || 0) >= 30, progress: (w) => [(w.p.streak && w.p.streak.n) || 0, 30] },
+  { id: 'wheel-5000', cat: 'progress', tier: 'silver', name: 'Roue de la fortune', desc: 'Tomber sur la case 5 000 de la roue du jour.', test: (e) => e.type === 'daily' && e.base === 5000 },
+  { id: 'shop-1', cat: 'progress', tier: 'bronze', name: 'Premier achat', desc: 'Acheter un objet à la boutique.', test: (e, w) => Object.keys((w.p.shop && w.p.shop.owned) || {}).length >= 1 },
+  { id: 'shop-10', cat: 'progress', tier: 'silver', name: 'Collectionneur', desc: 'Posséder 10 objets de la boutique.', test: (e, w) => Object.keys((w.p.shop && w.p.shop.owned) || {}).length >= 10, progress: (w) => [Object.keys((w.p.shop && w.p.shop.owned) || {}).length, 10] },
+  { id: 'shop-1m', cat: 'progress', tier: 'gold', name: 'Flambeur', desc: 'Dépenser 1 000 000 de Brundles à la boutique.', test: (e, w) => (st(w).shopSpent || 0) >= 1e6, progress: (w) => [st(w).shopSpent || 0, 1e6] },
+  { id: 'week-win', cat: 'progress', tier: 'gold', name: 'Champion de la semaine', desc: 'Finir premier du classement de la semaine.', test: (e, w) => (w.weekWins || 0) >= 1 },
+  { id: 'jackpot', cat: 'progress', tier: 'legend', name: 'Jackpot !', desc: 'Remporter le jackpot commun de la slot.', test: (e, w) => (st(w).jackpotTotal || 0) > 0 },
+  /* ------------------------------ JEUX GRATUITS (V9) ------------------------------ */
+  { id: 'fl-perfect', cat: 'free', tier: 'silver', name: 'Porte-drapeau', desc: 'Faire un sans-faute au quiz drapeaux.', test: (e, w) => (st(w).flagsPerfect || 0) >= 1 },
+  { id: 'fl-expert', cat: 'free', tier: 'gold', name: 'Vexillologue', desc: 'Faire un sans-faute au quiz drapeaux en mode expert.', test: (e, w) => (st(w).flagsExpertPerfect || 0) >= 1 },
+  { id: 'mo-1', cat: 'free', tier: 'bronze', name: 'Mot de passe', desc: 'Trouver le mot du jour.', test: (e, w) => (st(w).motusWon || 0) >= 1 },
+  { id: 'mo-fast', cat: 'free', tier: 'gold', name: 'Lecteur de pensées', desc: 'Trouver le mot du jour en 2 essais ou moins.', test: (e, w) => (st(w).motusFast || 0) >= 1 },
+  { id: 'mo-7', cat: 'free', tier: 'silver', name: 'Dico vivant', desc: 'Trouver le mot du jour 7 jours d\'affilée.', test: (e, w) => (st(w).motusBestStreak || 0) >= 7, progress: (w) => [st(w).motusStreak || 0, 7] },
+  { id: 'hi-10', cat: 'free', tier: 'silver', name: 'Producteur averti', desc: 'Faire une série de 10 au Plus ou moins.', test: (e, w) => (st(w).higherBest || 0) >= 10, progress: (w) => [st(w).higherBest || 0, 10] },
+  { id: 'hi-15', cat: 'free', tier: 'gold', name: 'Nabab d\'Hollywood', desc: 'Aller au bout du Plus ou moins (15/15).', test: (e, w) => (st(w).higherPerfect || 0) >= 1 },
   { id: 'bk-1', cat: 'free', tier: 'bronze', name: 'Casseur', desc: 'Terminer un niveau de casse-briques.', test: (e, w) => st(w).breakerLevels >= 1 },
   { id: 'bk-10', cat: 'free', tier: 'silver', name: 'Démolisseur', desc: 'Terminer 10 niveaux de casse-briques.', test: (e, w) => st(w).breakerLevels >= 10, progress: (w) => [st(w).breakerLevels, 10] },
 ];

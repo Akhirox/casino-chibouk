@@ -3,13 +3,25 @@ import { CONFIG } from './config.js';
 import { monkeySVG } from './art.js';
 import { $, esc } from './ui.js';
 
-const CASINO = ['slots', 'blackjack', 'roulette', 'plinko', 'crash', 'tower', 'mines', 'dice'];
+const CASINO = ['slots', 'blackjack', 'roulette', 'plinko', 'crash', 'tower', 'mines', 'dice', 'hilo', 'keno', 'wheel', 'limbo'];
 const CUR = CONFIG.CURRENCY;
 
 // route : page où l'astuce a du sens ('*' = partout) ; when : condition facultative ; go : bouton vers une page
 export const TIPS = [
   { id: 'profile', route: ['lobby', 'stats', 'achievements'], when: (w) => !w.p.avatar || !w.p.bio, text: `Personnalise ton profil : une photo (ou un singe au choix) et une petite bio. Les autres joueurs les voient en cliquant sur ton pseudo dans les classements. Et le succès « Carte de visite » rapporte +100 ${CUR} !`, go: ['Mon profil', '#/profile'] },
-  { id: 'daily', route: ['*'], when: (w) => w.dailyAvailable(), text: `Ton bonus quotidien de ${CONFIG.DAILY_BONUS} ${CUR} t'attend : clique sur le bouton cadeau en haut. Il revient chaque jour à minuit.` },
+  { id: 'daily', route: ['*'], when: (w) => w.dailyAvailable(), text: `La roue du jour t'attend : bouton en haut à droite. Reviens chaque jour pour faire monter ta série, jusqu'à ×2 sur le gain !` },
+  { id: 'quests', route: ['lobby'], text: 'Trois quêtes du jour t\'attendent sur l\'accueil (facile, moyenne, difficile). Elles avancent toutes seules pendant que tu joues.' },
+  { id: 'vip', route: ['lobby', 'stats'], text: 'Plus tu mises, plus ton rang VIP monte. Chaque lundi, une partie de tes pertes de la semaine t\'est remboursée (jusqu\'à 7 % pour le Roi Singe).' },
+  { id: 'jackpot', route: ['lobby', 'slots'], text: 'Le jackpot commun grossit avec chaque spin de la Chibouk Slot, et il peut tomber sur n\'importe quel spin. Plus ta mise est grosse, plus tu as de chances.' },
+  { id: 'shop', route: ['lobby', 'profile'], when: (w) => w.balance >= 10000, text: `Tu as des ${CUR} qui dorment ? La boutique propose des cadres d'avatar, des titres, des dos de cartes, des thèmes de slot et des effets de victoire.`, go: ['Boutique', '#/shop'] },
+  { id: 'weekly', route: ['stats'], text: 'Le classement de la semaine compte ton bénéfice du lundi au dimanche : le premier gagne un trophée permanent sur son profil.' },
+  { id: 'history', route: CASINO, text: 'L\'onglet « Historique » du classement à côté du jeu montre tes 50 dernières parties.' },
+  { id: 'feed', route: ['lobby'], text: '« En direct de la jungle » montre les exploits de tout le monde : gros gains, succès rares, jackpots…' },
+  { id: 'menu', route: ['lobby'], text: 'Les jeux sont rangés dans les menus « Casino » et « Gratuit » en haut (en bas sur téléphone).' },
+  { id: 'motus', route: ['lobby', 'motus'], text: 'Le mot du jour est le même pour tout le monde. Une fois trouvé, « Copier mon résultat » te donne une grille à envoyer à tes potes, sans révéler le mot.' },
+  { id: 'hilo', route: ['hilo'], text: 'Au Hi-Lo, les flèches ↑ et ↓ du clavier servent à parier, et Espace pour miser ou encaisser.' },
+  { id: 'keno', route: ['keno'], text: 'Au Keno, le tableau sous la grille montre le gain et la probabilité pour chaque nombre de numéros touchés.' },
+  { id: 'higher', route: ['higher'], text: 'Au Plus ou moins, les flèches ↑ et ↓ du clavier répondent plus vite.' },
   { id: 'lobby-fold', route: ['lobby'], text: 'Tu peux replier les catégories de l\'accueil en cliquant sur leur titre. Pratique si tu ne viens que pour les jeux gratuits !' },
   { id: 'achievements', route: ['lobby'], text: `Il y a plein de succès à débloquer, certains bien tordus (perdre 5 mains de blackjack d'affilée…). Chacun rapporte de +100 à +10 000 ${CUR}.`, go: ['Voir les succès', '#/achievements'] },
   { id: 'ach-click', route: ['achievements'], text: 'Clique sur un succès pour voir quels joueurs l\'ont débloqué, et qui l\'a eu en premier.' },

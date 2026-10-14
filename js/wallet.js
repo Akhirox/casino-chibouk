@@ -12,7 +12,20 @@ export function msUntilParisMidnight() {
   return Math.max(0, (86400 - secs) * 1000);
 }
 
-const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'updatedAt', 'pseudo', 'pseudoLower'];
+const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'shop', 'day', 'streak', 'week', 'lastWeek', 'updatedAt', 'pseudo', 'pseudoLower'];
+
+// Semaine ISO (lundi → dimanche, heure de Paris), ex : « 2026-W42 »
+export function weekId(d = new Date()) {
+  const [y, m, day] = parisDate(d).split('-').map(Number);
+  const t = new Date(Date.UTC(y, m - 1, day));
+  const dow = (t.getUTCDay() + 6) % 7; // lundi = 0
+  t.setUTCDate(t.getUTCDate() - dow + 3); // jeudi de la même semaine
+  const y1 = new Date(Date.UTC(t.getUTCFullYear(), 0, 4));
+  const n = 1 + Math.round(((t - y1) / 86400000 - 3 + ((y1.getUTCDay() + 6) % 7)) / 7);
+  return `${t.getUTCFullYear()}-W${String(n).padStart(2, '0')}`;
+}
+export function prevWeekId(d = new Date()) { return weekId(new Date(d.getTime() - 7 * 86400000)); }
+export function yesterday(d = new Date()) { return parisDate(new Date(d.getTime() - 86400000)); }
 
 export class Wallet {
   constructor(backend, uid, profile) {
@@ -83,13 +96,23 @@ export class Wallet {
   }
 
   /* ---------- Opérations de jeu ---------- */
+  // Comptes de la semaine (jeux de casino uniquement) : classement hebdo et remboursement VIP
+  wk() {
+    const id = weekId();
+    if (!this.p.week || this.p.week.id !== id) {
+      if (this.p.week && this.p.week.id) this.p.lastWeek = { ...this.p.week, cb: false };
+      this.p.week = { id, wagered: 0, won: 0 };
+    }
+    return this.p.week;
+  }
+
   bet(game, amount) {
     amount = Math.floor(amount);
     if (!this.canAfford(amount)) return false;
     const s = this.p.stats, g = s.games[game];
     this.p.balance -= amount;
     s.totalWagered += amount;
-    if (g) g.wagered += amount;
+    if (g) { g.wagered += amount; this.wk().wagered += amount; }
     this.touch({ type: 'bet', game, amount });
     return true;
   }
@@ -118,6 +141,7 @@ export class Wallet {
     this.p.balance += amount;
     s.totalWon += amount;
     if (g) {
+      this.wk().won += amount;
       g.won += amount;
       if (amount > g.biggestWin) g.biggestWin = amount;
       if (bet > 0) { const m = Math.floor((amount / bet) * 100) / 100; if (m > (g.bestMult || 0)) g.bestMult = m; }
@@ -133,7 +157,7 @@ export class Wallet {
     const s = this.p.stats, g = s.games[game];
     this.p.balance += amount;
     s.totalWagered = Math.max(0, s.totalWagered - amount);
-    if (g) g.wagered = Math.max(0, g.wagered - amount);
+    if (g) { g.wagered = Math.max(0, g.wagered - amount); const w = this.wk(); w.wagered = Math.max(0, w.wagered - amount); }
     this.touch({ type: 'refund', game, amount });
   }
 
@@ -147,14 +171,44 @@ export class Wallet {
 
   /* ---------- Bonus ---------- */
   dailyAvailable() { return this.p.lastDaily !== parisDate(); }
-  async claimDaily() {
+  // Série de jours consécutifs si on récupère le bonus aujourd'hui
+  nextStreak() {
+    const st = this.p.streak || {};
+    if (st.last === parisDate()) return st.n || 1;
+    return st.last === yesterday() ? (st.n || 0) + 1 : 1;
+  }
+  // amount : gain de la roue du jour (déjà multiplié par la série)
+  async claimDaily(amount = CONFIG.DAILY_BONUS, info = {}) {
     if (!this.dailyAvailable()) return false;
+    amount = Math.floor(amount);
+    const n = this.nextStreak();
+    this.p.streak = { last: parisDate(), n, best: Math.max(n, (this.p.streak && this.p.streak.best) || 0) };
     this.p.lastDaily = parisDate();
-    this.p.balance += CONFIG.DAILY_BONUS;
+    this.p.balance += amount;
     this.p.stats.dailyClaims += 1;
-    this.p.stats.dailyTotal += CONFIG.DAILY_BONUS;
-    this.touch({ type: 'daily', amount: CONFIG.DAILY_BONUS });
+    this.p.stats.dailyTotal += amount;
+    this.touch({ type: 'daily', amount, streak: n, ...info });
     await this.flush(); // événement important : on enregistre tout de suite
+    return true;
+  }
+
+  // Crédit « hors jeu » (quêtes, remboursement VIP, jackpot…) compté dans stats[kind + 'Total']
+  credit(kind, amount, evt = {}) {
+    amount = Math.floor(amount);
+    if (!(amount > 0)) return;
+    this.p.balance += amount;
+    this.p.stats[kind + 'Total'] = (this.p.stats[kind + 'Total'] || 0) + amount;
+    this.touch({ type: kind, amount, ...evt });
+  }
+
+  // Dépense en boutique
+  spend(amount, item) {
+    amount = Math.floor(amount);
+    if (!this.canAfford(amount)) return false;
+    this.p.balance -= amount;
+    this.p.stats.shopSpent = (this.p.stats.shopSpent || 0) + amount;
+    this.touch({ type: 'shop', amount, item });
+    this.flush();
     return true;
   }
 
@@ -175,7 +229,7 @@ export class Wallet {
     s[kind + 'Total'] = (s[kind + 'Total'] || 0) + Math.max(0, amount);
     for (const [k, v] of Object.entries(extra)) s[kind + k] = (s[kind + k] || 0) + v;
     if (amount > 0) this.p.balance += amount;
-    this.touch({ type: 'free', game: kind, amount: Math.max(0, amount) });
+    this.touch({ type: 'free', game: kind, amount: Math.max(0, amount), extra });
     this.flush();
   }
 

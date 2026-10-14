@@ -61,6 +61,46 @@ service cloud.firestore {
       allow delete: if false;
     }
 
+    // Fil d'activité « En direct de la jungle » : chacun publie en son nom, personne ne modifie ni ne supprime
+    match /feed/{id} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.kind is string
+        && request.resource.data.kind.size() <= 20
+        && request.resource.data.at is number
+        && request.resource.data.size() <= 12;
+      allow update, delete: if false;
+    }
+
+    // Jackpot commun : on ne peut qu'ajouter (1 % des mises de la slot), ou le remporter (remise à zéro à son nom)
+    // (10000 = JACKPOT_SEED dans js/config.js)
+    match /meta/jackpot {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.amount is number
+        && request.resource.data.amount >= 0
+        && request.resource.data.amount <= 1000000000;
+      allow update: if request.auth != null && (
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['amount'])
+          && request.resource.data.amount > resource.data.amount
+          && request.resource.data.amount - resource.data.amount <= 1000000000)
+        || (request.resource.data.amount == 0
+          && request.resource.data.lastWinner == request.auth.uid
+          && request.resource.data.lastAmount == 10000 + resource.data.amount)
+      );
+      allow delete: if false;
+    }
+
+    // Palmarès des semaines : un document par semaine, créé une seule fois, jamais modifié
+    match /weeks/{id} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.winnerUid is string
+        && request.resource.data.profit is number;
+      allow update, delete: if false;
+    }
+
     // Tout le reste est fermé
     match /{document=**} {
       allow read, write: if false;

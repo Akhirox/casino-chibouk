@@ -22,6 +22,10 @@ export function emptyStats() {
       tower: { ...g() },
       mines: { ...g() },
       dice: { ...g() },
+      hilo: { ...g() },
+      keno: { ...g() },
+      wheel: { ...g() },
+      limbo: { ...g() },
     },
   };
 }
@@ -35,6 +39,11 @@ export function newProfile(pseudo) {
     breakerLevel: 0,
     slotFS: null,
     ach: { u: {}, c: {} },
+    shop: { owned: {}, eq: {} },
+    day: null,
+    streak: null,
+    week: null,
+    lastWeek: null,
     stats: emptyStats(),
     createdAt: Date.now(),
     updatedAt: Date.now(),
@@ -48,7 +57,8 @@ export function normalizeProfile(p) {
   stats.games = { ...base.stats.games };
   for (const k of Object.keys(base.stats.games)) stats.games[k] = { ...base.stats.games[k], ...((p.stats && p.stats.games && p.stats.games[k]) || {}) };
   const ach = { u: {}, c: {}, ...(p.ach || {}) };
-  return { ...base, ...p, stats, ach };
+  const shop = { owned: {}, eq: {}, ...(p.shop || {}) };
+  return { ...base, ...p, stats, ach, shop };
 }
 
 export function validatePseudo(pseudo) {
@@ -158,6 +168,39 @@ async function createFirebaseBackend() {
       batch.update(F.doc(db, 'users', uid), { balance: F.increment(t.amount), updatedAt: Date.now() });
       await batch.commit();
     },
+    // Fil d'activité : seulement les nouveaux messages depuis `since` (1 lecture s'il n'y a rien)
+    async postFeed(entry) { await F.addDoc(F.collection(db, 'feed'), { ...entry, at: Date.now() }); },
+    async fetchFeed(since = 0, n = 25) {
+      const q = F.query(F.collection(db, 'feed'), F.where('at', '>', since), F.orderBy('at', 'desc'), F.limit(n));
+      const snap = await F.getDocs(q);
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    },
+    // Jackpot commun : amount = montant accumulé au-dessus de la mise de départ
+    async getJackpot() {
+      const snap = await F.getDoc(F.doc(db, 'meta', 'jackpot'));
+      return snap.exists() ? { amount: 0, ...snap.data() } : { amount: 0 };
+    },
+    async addJackpot(delta) {
+      await F.setDoc(F.doc(db, 'meta', 'jackpot'), { amount: F.increment(Math.floor(delta)) }, { merge: true });
+    },
+    async winJackpot(uid, pseudo) {
+      const ref = F.doc(db, 'meta', 'jackpot');
+      return F.runTransaction(db, async (tx) => {
+        const snap = await tx.get(ref);
+        const amount = (snap.exists() && snap.data().amount) || 0;
+        const total = CONFIG.JACKPOT_SEED + amount;
+        tx.set(ref, { amount: 0, lastWinner: uid, lastPseudo: pseudo, lastAmount: total, lastAt: Date.now() }, { merge: true });
+        return total;
+      });
+    },
+    // Palmarès des semaines (un document par semaine, créé une seule fois)
+    async listWeeks() {
+      const snap = await F.getDocs(F.query(F.collection(db, 'weeks'), F.limit(200)));
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    },
+    async createWeek(id, data) {
+      try { await F.setDoc(F.doc(db, 'weeks', id), data); return true; } catch { return false; } // déjà créé par un autre joueur
+    },
   };
 }
 
@@ -168,6 +211,7 @@ function createDemoBackend() {
   const K_USERS = 'chibouk_demo_users';
   const K_SESSION = 'chibouk_demo_session';
   const K_TRANSFERS = 'chibouk_demo_transfers';
+  const K_FEED = 'chibouk_demo_feed', K_JACKPOT = 'chibouk_demo_jackpot', K_WEEKS = 'chibouk_demo_weeks';
   const kProfile = (uid) => 'chibouk_demo_profile_' + uid;
   const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
   const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -241,5 +285,23 @@ function createDemoBackend() {
       const p = read(kProfile(uid), null);
       if (p) { p.balance += t.amount; p.updatedAt = Date.now(); write(kProfile(uid), p); }
     },
+    async postFeed(entry) {
+      const list = read(K_FEED, []);
+      list.push({ ...entry, id: 'f_' + Math.random().toString(36).slice(2, 10), at: Date.now() });
+      write(K_FEED, list.slice(-100));
+    },
+    async fetchFeed(since = 0, n = 25) {
+      return read(K_FEED, []).filter((e) => e.at > since).sort((a, b) => b.at - a.at).slice(0, n);
+    },
+    async getJackpot() { return { amount: 0, ...read(K_JACKPOT, {}) }; },
+    async addJackpot(delta) { const j = read(K_JACKPOT, {}); j.amount = (j.amount || 0) + Math.floor(delta); write(K_JACKPOT, j); },
+    async winJackpot(uid, pseudo) {
+      const j = read(K_JACKPOT, {});
+      const total = CONFIG.JACKPOT_SEED + (j.amount || 0);
+      write(K_JACKPOT, { amount: 0, lastWinner: uid, lastPseudo: pseudo, lastAmount: total, lastAt: Date.now() });
+      return total;
+    },
+    async listWeeks() { return Object.entries(read(K_WEEKS, {})).map(([id, d]) => ({ id, ...d })); },
+    async createWeek(id, data) { const w = read(K_WEEKS, {}); if (w[id]) return false; w[id] = data; write(K_WEEKS, w); return true; },
   };
 }

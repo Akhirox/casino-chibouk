@@ -3,11 +3,13 @@ import { avatarHTML } from './profile.js';
 import { getPlayers } from './players.js';
 import { icon, coinSVG } from './art.js';
 import { $, $$, fmt, esc } from './ui.js';
+import { historyHTML } from './history.js';
 
 const TABS = {
   volume: { label: 'Volume', title: 'Plus gros parieurs', val: (g) => g.wagered || 0, fmt: (v) => fmt(v) },
   mult: { label: 'Multi', title: 'Meilleur multiplicateur', val: (g) => g.bestMult || 0, fmt: (v) => '×' + (v >= 1000 ? fmt(v) : v.toFixed(2).replace('.', ',')) },
   gain: { label: 'Gain', title: 'Plus gros gain', val: (g) => g.biggestWin || 0, fmt: (v) => fmt(v) },
+  hist: { label: 'Historique', title: 'Tes 50 dernières parties (sur cet appareil)' },
 };
 
 export function mountBoard(el, game, title, { wallet, backend }) {
@@ -32,10 +34,12 @@ export function mountBoard(el, game, title, { wallet, backend }) {
     $$('.gb-tabs button', el).forEach((b) => b.classList.toggle('on', b.dataset.t === tab));
     const T = TABS[tab];
     $('.gb-sub', el).textContent = T.title;
+    el.querySelector('.gb').classList.toggle('hist', tab === 'hist');
+    if (tab === 'hist') { $('.gb-list', el).innerHTML = historyHTML(game); $('.gb-me', el).innerHTML = ''; return; }
     if (!players) return;
     // ses propres stats sont toujours à jour en local
     const rows = players.map((p) => (p.uid === wallet.uid ? { ...p, stats: wallet.stats, pseudo: wallet.pseudo } : p))
-      .map((p) => ({ uid: p.uid, pseudo: p.pseudo, avatar: p.avatar, v: T.val((p.stats.games && p.stats.games[game]) || {}) }))
+      .map((p) => ({ uid: p.uid, pseudo: p.pseudo, avatar: p.avatar, shop: p.shop, v: T.val((p.stats.games && p.stats.games[game]) || {}) }))
       .filter((x) => x.v > 0).sort((a, b) => b.v - a.v);
     const top = rows.slice(0, 5);
     $('.gb-list', el).innerHTML = top.length
@@ -51,7 +55,7 @@ export function mountBoard(el, game, title, { wallet, backend }) {
   }
 
   // ses propres chiffres bougent en direct (sans lecture en base), au plus toutes les 1,5 s
-  const off = wallet.on(() => { if (!timer) timer = setTimeout(() => { timer = null; render(); }, 1500); });
+  const off = wallet.on(() => { if (!timer) timer = setTimeout(() => { timer = null; render(); }, tab === 'hist' ? 600 : 1500); });
   // la liste des autres joueurs se rafraîchit quand le cache expire
   const refresh = setInterval(load, 130000);
 

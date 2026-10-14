@@ -2,6 +2,43 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V9 — Boutique, jackpot commun, quêtes et 7 nouveaux jeux (14 octobre 2026)
+
+### Nouveaux jeux de casino
+
+- Hi-Lo : la carte suivante sera-t-elle plus haute ou plus basse ? Chaque bonne réponse fait grimper le multiplicateur, encaisse quand tu veux (flèches du clavier pour jouer).
+- Keno : choisis de 1 à 10 numéros sur 40, 10 sont tirés. 3 niveaux de risque, jusqu'à ×10 000, tableau des gains avec les probabilités.
+- Roue du Singe : 30 cases et 3 niveaux de risque, des petits gains fréquents jusqu'à une case unique à ×29,7.
+- Limbo : choisis un multiplicateur cible, si le tirage l'atteint tu gagnes mise × cible (de ×1,01 à ×1 000 000).
+- Les 4 ont un RTP de 99 %, les paris automatiques, leur classement et leurs succès.
+
+### Nouveaux jeux gratuits
+
+- Mot du jour : façon Motus, le même mot pour tout le monde, 6 essais, première lettre donnée. Jusqu'à +400 Brundles, et un bouton pour copier ta grille sans révéler le mot.
+- Quiz drapeaux : 159 pays, mode facile (4 choix, souvent des voisins aux drapeaux proches) ou expert (à écrire, gains doublés).
+- Plus ou moins : quel film a eu le plus gros budget ? Série jusqu'à 15, +10 Brundles par bonne réponse.
+
+### Progression
+
+- Roue du jour : le bonus quotidien devient une roue (500 à 5 000 Brundles), multipliée par ta série de jours consécutifs (+10 % par jour, jusqu'à ×2).
+- Quêtes du jour : 3 missions (facile, moyenne, difficile) renouvelées à minuit, de +300 à +1 000 Brundles, +500 si les 3 sont faites.
+- Rangs VIP selon le total misé (Ouistiti → Roi Singe) : chaque lundi, 1 à 7 % de tes pertes de la semaine aux jeux de casino te sont remboursées.
+- Classement de la semaine (bénéfice du lundi au dimanche) sur la page Stats, avec un trophée permanent pour le vainqueur et un palmarès.
+
+### Boutique et social
+
+- Boutique : cadres d'avatar (dont des animés), titres sous ton pseudo, dos de cartes, thèmes de la Chibouk Slot et effets de victoire. De 2 000 à 100 millions de Brundles.
+- Jackpot commun : 1 % de chaque mise à la Chibouk Slot l'alimente (payé par le casino), il peut tomber sur n'importe quel spin, plus souvent avec une grosse mise.
+- En direct de la jungle : le fil d'activité de l'accueil montre les gros gains, les succès rares, les jackpots, les rangs VIP et les vainqueurs de la semaine.
+- Historique de tes 50 dernières parties dans l'onglet « Historique » du classement à côté de chaque jeu.
+
+### Changements
+
+- Nouveau menu : Accueil, Casino ▾, Gratuit ▾, Boutique, Succès, Stats. Les jeux sont rangés dans les menus déroulants.
+- Accueil : jackpot, quêtes et rang VIP en haut de page, puis le fil d'activité (repliable comme les catégories).
+- 38 nouveaux succès (115 au total), dont une catégorie Progression.
+- Les notifications sont limitées à 4 à l'écran.
+
 ## V8 — Nouvelle slot, profils et singe conseiller (14 octobre 2026)
 
 ### Chibouk Slot
