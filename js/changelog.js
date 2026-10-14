@@ -1,9 +1,33 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '10';
+export const VERSION = '11';
 
 export const CHANGELOG = [
+  {
+    v: '11', date: '14 octobre 2026', title: 'Rakeback en continu, nouveaux rangs VIP et chiffres du casino',
+    groups: [
+      ['Rangs VIP', [
+        '11 rangs au lieu de 7, avec deux nouveaux tout en haut : Gorille argenté (2,5 milliards misés) et Roi Singe (10 milliards). Les rangs élevés demandent plus de mises qu\'avant.',
+        'Bonus de passage : chaque nouveau rang rapporte une prime en Brundles, de +500 (Tamarin) à +100 millions (Roi Singe). Si tu as déjà des rangs, leurs bonus te sont versés une fois à ta prochaine connexion.',
+        'Rakeback en continu : le remboursement du lundi est remplacé par une cagnotte. De 0,1 % à 1,35 % de chaque mise aux jeux de casino (gagnée ou perdue) y tombe, et tu la récupères quand tu veux depuis l\'accueil ou la fenêtre des rangs VIP.',
+      ]],
+      ['Nouveautés', [
+        'Nouvelle page Classements, séparée de Stats : classement de la semaine et palmarès, classement des soldes, meilleurs gains par jeu.',
+        'Le Casino Chibouk en chiffres : total misé et gagné par tout le monde, RTP réel du casino, Brundles distribués gratuitement (roue, quiz, succès, rakeback…), dépenses en boutique, plus gros gain de l\'histoire, et un tableau par jeu (volume, RTP, nombre de joueurs, plus gros parieur).',
+        'La page Stats ne montre plus que tes stats à toi.',
+        'Le titre « Légende de Chibouk » s\'appelle maintenant « Légende de la Chibouk ».',
+      ]],
+      ['En direct de la jungle', [
+        'Les tours gratuits de la slot n\'y apparaissent plus.',
+        'Les gros gains y apparaissent à partir de ×25.',
+        'Les passages de rang VIP affichent le bonus touché.',
+      ]],
+      ['Correctifs', [
+        'La description d\'un succès au survol reste dans le cadre du fil et passe à la ligne.',
+      ]],
+    ],
+  },
   {
     v: '10', date: '14 octobre 2026', title: 'Correctifs, Tower auto sur mesure et rangs VIP détaillés',
     groups: [

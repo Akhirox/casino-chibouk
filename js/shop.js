@@ -33,7 +33,7 @@ export const ITEMS = [
   { id: 'ti-gorille', cat: 'title', name: 'Gorille de salon', price: 100000 },
   { id: 'ti-chasseur', cat: 'title', name: 'Chasseur de jackpots', price: 500000 },
   { id: 'ti-parrain', cat: 'title', name: 'Le Parrain des singes', price: 2000000 },
-  { id: 'ti-legende', cat: 'title', name: 'Légende de Chibouk', price: 10000000 },
+  { id: 'ti-legende', cat: 'title', name: 'Légende de la Chibouk', price: 10000000 },
   { id: 'ti-milliard', cat: 'title', name: 'Milliardaire en bananes', price: 100000000 },
 
   { id: 'cb-classic', cat: 'cardback', name: 'Classique rouge', price: 0 },

@@ -1,6 +1,6 @@
 // Succès (achievements) : défis globaux et par jeu, débloqués automatiquement à partir des événements du portefeuille
 import { CONFIG } from './config.js';
-import { vipOf } from './progress.js';
+import { vipOf, vipIndex } from './progress.js';
 
 export const TIERS = {
   bronze: { name: 'Bronze', reward: 100 },
@@ -141,11 +141,11 @@ export const ACHIEVEMENTS = [
   { id: 'lb-1000', cat: 'limbo', tier: 'gold', name: 'Limbo céleste', desc: 'Gagner au Limbo avec une cible d\'au moins ×1 000.', test: (e) => isRound(e, 'limbo') && I(e).win && I(e).target >= 1000 },
   { id: 'lb-200', cat: 'limbo', tier: 'silver', name: 'Danseur de limbo', desc: 'Jouer 200 parties de Limbo.', test: (e, w) => g(w, 'limbo').rounds >= 200, progress: (w) => [g(w, 'limbo').rounds || 0, 200] },
   /* ------------------------------ PROGRESSION ------------------------------ */
-  { id: 'vip-macaque', cat: 'progress', tier: 'bronze', name: 'Carte de membre', desc: 'Atteindre le rang VIP Macaque (25 000 misés).', test: (e, w) => vipOf(st(w).totalWagered).index >= 1, progress: (w) => [st(w).totalWagered, 25000] },
-  { id: 'vip-chimp', cat: 'progress', tier: 'silver', name: 'Salon VIP', desc: 'Atteindre le rang VIP Chimpanzé (1 000 000 misés).', test: (e, w) => vipOf(st(w).totalWagered).index >= 3, progress: (w) => [st(w).totalWagered, 1e6] },
-  { id: 'vip-gorille', cat: 'progress', tier: 'gold', name: 'Gorille en costume', desc: 'Atteindre le rang VIP Gorille (100 000 000 misés).', test: (e, w) => vipOf(st(w).totalWagered).index >= 5, progress: (w) => [st(w).totalWagered, 1e8] },
-  { id: 'vip-roi', cat: 'progress', tier: 'legend', name: 'Roi Singe', desc: 'Atteindre le rang VIP Roi Singe (1 milliard misé).', test: (e, w) => vipOf(st(w).totalWagered).index >= 6, progress: (w) => [st(w).totalWagered, 1e9] },
-  { id: 'cashback', cat: 'progress', tier: 'bronze', name: 'Remboursé !', desc: 'Toucher un remboursement VIP du lundi.', test: (e, w) => (st(w).cashbackTotal || 0) > 0 },
+  { id: 'vip-macaque', cat: 'progress', tier: 'bronze', name: 'Carte de membre', desc: 'Atteindre le rang VIP Macaque (50 000 misés).', test: (e, w) => vipOf(st(w).totalWagered).index >= vipIndex('macaque'), progress: (w) => [st(w).totalWagered, 5e4] },
+  { id: 'vip-chimp', cat: 'progress', tier: 'silver', name: 'Salon VIP', desc: 'Atteindre le rang VIP Chimpanzé (5 000 000 misés).', test: (e, w) => vipOf(st(w).totalWagered).index >= vipIndex('chimpanze'), progress: (w) => [st(w).totalWagered, 5e6] },
+  { id: 'vip-gorille', cat: 'progress', tier: 'gold', name: 'Gorille en costume', desc: 'Atteindre le rang VIP Gorille (500 000 000 misés).', test: (e, w) => vipOf(st(w).totalWagered).index >= vipIndex('gorille'), progress: (w) => [st(w).totalWagered, 5e8] },
+  { id: 'vip-roi', cat: 'progress', tier: 'legend', name: 'Roi Singe', desc: 'Atteindre le rang VIP Roi Singe (10 milliards misés).', test: (e, w) => vipOf(st(w).totalWagered).index >= vipIndex('roi'), progress: (w) => [st(w).totalWagered, 1e10] },
+  { id: 'cashback', cat: 'progress', tier: 'bronze', name: 'Petite cagnotte', desc: 'Récupérer ta cagnotte de rakeback VIP.', test: (e, w) => (st(w).rakebackTotal || 0) > 0 },
   { id: 'quest-day', cat: 'progress', tier: 'bronze', name: 'Journée bien remplie', desc: 'Terminer les 3 quêtes du jour.', test: (e) => e.type === 'quest' && e.bonus },
   { id: 'quest-30', cat: 'progress', tier: 'silver', name: 'Aventurier', desc: 'Terminer 30 quêtes du jour.', test: (e, w) => (st(w).questsDone || 0) >= 30, progress: (w) => [st(w).questsDone || 0, 30] },
   { id: 'streak-7', cat: 'progress', tier: 'silver', name: 'Fidèle au poste', desc: 'Récupérer le bonus quotidien 7 jours d\'affilée.', test: (e, w) => ((w.p.streak && w.p.streak.n) || 0) >= 7, progress: (w) => [(w.p.streak && w.p.streak.n) || 0, 7] },

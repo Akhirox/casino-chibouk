@@ -12,7 +12,7 @@ export function msUntilParisMidnight() {
   return Math.max(0, (86400 - secs) * 1000);
 }
 
-const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'shop', 'day', 'streak', 'week', 'lastWeek', 'updatedAt', 'pseudo', 'pseudoLower'];
+const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'shop', 'day', 'streak', 'week', 'lastWeek', 'rake', 'vipLevel', 'updatedAt', 'pseudo', 'pseudoLower'];
 
 // Semaine ISO (lundi → dimanche, heure de Paris), ex : « 2026-W42 »
 export function weekId(d = new Date()) {
@@ -99,7 +99,7 @@ export class Wallet {
   }
 
   /* ---------- Opérations de jeu ---------- */
-  // Comptes de la semaine (jeux de casino uniquement) : classement hebdo et remboursement VIP
+  // Comptes de la semaine (jeux de casino uniquement) : classement de la semaine
   wk() {
     const id = weekId();
     if (!this.p.week || this.p.week.id !== id) {
@@ -195,7 +195,7 @@ export class Wallet {
     return true;
   }
 
-  // Crédit « hors jeu » (quêtes, remboursement VIP, jackpot…) compté dans stats[kind + 'Total']
+  // Crédit « hors jeu » (quêtes, rakeback, bonus VIP, jackpot…) compté dans stats[kind + 'Total']
   credit(kind, amount, evt = {}) {
     amount = Math.floor(amount);
     if (!(amount > 0)) return;

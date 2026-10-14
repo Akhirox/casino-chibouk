@@ -1,25 +1,32 @@
-// Fenêtre « Rangs VIP » : tous les rangs, leurs avantages et ta progression
-import { VIP, vipOf, vipProgress, cashbackInfo } from './progress.js';
-import { fmt, modal } from './ui.js';
+// Fenêtre « Rangs VIP » : tous les rangs, leurs avantages, ta progression et ta cagnotte de rakeback
+import { VIP, vipOf, vipProgress, rakePot, claimRake, pctFmt } from './progress.js';
+import { fmt, money, modal, toast, coinRain, CUR } from './ui.js';
+import { sfx } from './sfx.js';
 
-const pct = (x) => `${Math.round(x * 100)} %`;
-export function openVipModal(wallet) {
+export async function openVipModal(wallet) {
   const tw = wallet.stats.totalWagered || 0;
   const v = vipOf(tw), p = vipProgress(tw);
-  const cb = cashbackInfo(wallet);
+  const pot = Math.floor(rakePot(wallet));
   const rows = VIP.map((r, i) => {
     const state = i < v.index ? 'done' : i === v.index ? 'cur' : '';
     return `<tr class="${state}"><td><span class="vip-badge big vip-${r.id}" style="--vc:${r.color}">${r.name}</span>${state === 'cur' ? ' <small class="gold">← toi</small>' : ''}</td>
-      <td class="r">${r.min ? fmt(r.min) : '—'}</td><td class="r">${r.cb ? pct(r.cb) : '—'}</td><td class="r">${r.wheel ? '+' + pct(r.wheel) : '—'}</td><td class="r">${r.quest ? '+' + pct(r.quest) : '—'}</td></tr>`;
+      <td class="r">${r.min ? fmt(r.min) : '—'}</td><td class="r">${r.up ? '+' + fmt(r.up) : '—'}</td><td class="r">${r.rb ? pctFmt(r.rb) : '—'}</td>
+      <td class="r">${r.wheel ? '+' + pctFmt(r.wheel) : '—'}</td><td class="r">${r.quest ? '+' + pctFmt(r.quest) : '—'}</td></tr>`;
   }).join('');
-  modal({ title: 'Rangs VIP', cls: 'wide vip-modal', html: `
+  const res = await modal({ title: 'Rangs VIP', cls: 'wide vip-modal', html: `
     <div class="vip-head"><span class="vip-badge big vip-${v.id}" style="--vc:${v.color}">${v.name}</span>
       <div class="vip-prog"><div class="q-bar vip"><i style="width:${p}%;background:${v.next ? v.next.color : v.color}"></i></div>
-      <small>${v.next ? `<b>${p.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %</b> vers <b>${v.next.name}</b> · encore ${fmt(v.next.min - tw)} à miser (total misé : ${fmt(tw)})` : 'Rang maximum atteint, respect.'}</small></div></div>
-    <div class="tbl-scroll"><table class="tbl vip-tbl"><thead><tr><th>Rang</th><th class="r">Total misé</th><th class="r">Remboursement hebdo</th><th class="r">Roue du jour</th><th class="r">Quêtes</th></tr></thead><tbody>${rows}</tbody></table></div>
+      <small>${v.next ? `<b>${p.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %</b> vers <b>${v.next.name}</b> · encore ${fmt(v.next.min - tw)} à miser (total misé : ${fmt(tw)}) · bonus de passage : <b class="gold">+${fmt(v.next.up)}</b>` : 'Rang maximum atteint, respect.'}</small></div></div>
+    <div class="vip-rake"><div><small>Ta cagnotte de rakeback</small><b>${money(rakePot(wallet))}</b></div><small>${v.rb ? `${pctFmt(v.rb)} de chacune de tes mises aux jeux de casino y tombe. Récupère-la quand tu veux (à partir de 1 ${CUR}).` : 'Le rakeback commence au rang Tamarin (10 000 misés).'}</small></div>
+    <div class="tbl-scroll"><table class="tbl vip-tbl"><thead><tr><th>Rang</th><th class="r">Total misé</th><th class="r">Bonus de passage</th><th class="r">Rakeback</th><th class="r">Roue du jour</th><th class="r">Quêtes</th></tr></thead><tbody>${rows}</tbody></table></div>
     <ul class="muted vip-notes">
-      <li><b>Remboursement hebdo</b> : chaque lundi, tu récupères ce pourcentage de tes pertes nettes de la semaine précédente aux jeux de casino (misé − gagné, du lundi au dimanche). Bouton sur l'accueil.${cb.amount ? ` <b class="gold">${fmt(cb.amount)} Brundles t'attendent !</b>` : ''}</li>
+      <li><b>Bonus de passage</b> : versé une seule fois, dès que tu atteins le rang.</li>
+      <li><b>Rakeback</b> : un pourcentage de chaque mise aux jeux de casino, gagnée ou perdue, s'ajoute à ta cagnotte. Récupérable à tout moment ici ou sur l'accueil.</li>
       <li><b>Roue du jour</b> et <b>Quêtes</b> : bonus sur leurs gains, cumulé avec ta série de jours consécutifs.</li>
       <li>Le rang dépend du total misé depuis la création du compte : il ne redescend jamais.</li>
-    </ul>`, buttons: [{ label: 'Fermer', value: true, primary: true }] });
+    </ul>`, buttons: [...(pot >= 1 ? [{ label: `Récupérer ${fmt(pot)} ${CUR}`, value: 'claim' }] : []), { label: 'Fermer', value: true, primary: true }] });
+  if (res === 'claim') {
+    const a = claimRake(wallet);
+    if (a) { sfx.win(true); coinRain(25); toast(`+${fmt(a)} ${CUR} de rakeback récupérés !`, 'win'); }
+  }
 }

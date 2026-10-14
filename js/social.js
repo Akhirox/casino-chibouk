@@ -23,7 +23,7 @@ export function feedText(e) {
     case 'bigwin': return `a gagné ${fmt(e.amount)} Brundles (${mx(e.mult)}) ${AT(e.game)}`;
     case 'ach': return `a débloqué le succès « ${e.name} » (${e.tier})`;
     case 'jackpot': return `a remporté le JACKPOT : ${fmt(e.amount)} Brundles !`;
-    case 'vip': return `est passé au rang VIP ${e.rank}`;
+    case 'vip': return `est passé au rang VIP ${e.rank}${e.bonus ? ` (+${fmt(e.bonus)} Brundles)` : ''}`;
     case 'motus': return `a trouvé le mot du jour en ${e.tries} essai${e.tries > 1 ? 's' : ''}`;
     case 'shop': return `s'est offert « ${e.name} » à la boutique`;
     case 'week': return `remporte le classement de la semaine (${e.profit >= 0 ? '+' : ''}${fmt(e.profit)} Brundles)`;
@@ -32,7 +32,6 @@ export function feedText(e) {
     case 'fs': return `a déclenché ${e.spins} tours gratuits à la Chibouk Slot (${e.scatters} SCATTER)`;
     case 'perfect': return `a fait un sans-faute ${QUIZ_LABEL[e.game] || ''}${e.mode ? ` (${e.mode})` : ''}`;
     case 'wheel': return `a gagné ${fmt(e.amount)} Brundles à la roue du jour${e.streak > 1 ? ` (série de ${e.streak} jours)` : ''}`;
-    case 'cashback': return `a touché ${fmt(e.amount)} Brundles de remboursement VIP`;
     case 'streak': return `a gagné ${fmt(e.amount)} Brundles au Plus ou moins avec une série de ${e.n}`;
     default: return e.text || '';
   }
@@ -56,7 +55,7 @@ export function feedRich(e) {
       break;
     }
     case 'jackpot': t = `a remporté le ${L('#/slots', 'JACKPOT')} : <b class="gold">${fmt(e.amount)}</b> Brundles !`; break;
-    case 'vip': t = `est passé au rang VIP <button type="button" class="fd-link" data-vip>${esc(e.rank)}</button>`; break;
+    case 'vip': t = `est passé au rang VIP <button type="button" class="fd-link" data-vip>${esc(e.rank)}</button>${e.bonus ? ` et touche <b class="gold">${fmt(e.bonus)}</b> Brundles de bonus` : ''}`; break;
     case 'motus': t = `a trouvé le ${L('#/motus', 'mot du jour')} en ${e.tries} essai${e.tries > 1 ? 's' : ''}`; break;
     case 'shop': t = `s'est offert « ${esc(e.name)} » à la ${L('#/shop', 'boutique')}`; break;
     case 'week': t = `remporte le ${L('#/stats', 'classement de la semaine')} (${e.profit >= 0 ? '+' : ''}${fmt(e.profit)} Brundles)`; break;
@@ -65,12 +64,11 @@ export function feedRich(e) {
     case 'fs': t = `a déclenché <b class="gold">${e.spins} tours gratuits</b> à la ${L('#/slots', 'Chibouk Slot')} (${e.scatters} SCATTER)`; break;
     case 'perfect': t = `a fait un <b class="gold">sans-faute</b> ${QUIZ_ROUTE[e.game] ? L('#/' + QUIZ_ROUTE[e.game], esc(QUIZ_LABEL[e.game])) : ''}${e.mode ? ` (${esc(e.mode)})` : ''}`; break;
     case 'wheel': t = `a gagné <b class="gold">${fmt(e.amount)}</b> Brundles à la roue du jour${e.streak > 1 ? ` (série de ${e.streak} jours)` : ''}`; break;
-    case 'cashback': t = `a touché <b class="gold">${fmt(e.amount)}</b> Brundles de <button type="button" class="fd-link" data-vip>remboursement VIP</button>`; break;
     default: t = esc(feedText(e));
   }
   return `${who} ${t}`;
 }
-export const FEED_ICON = { bigwin: 'bolt', ach: 'medal', achs: 'medal', jackpot: 'trophy', vip: 'star', motus: 'motus', shop: 'shop', week: 'trophy', quests: 'check', fs: 'slots', perfect: 'quiz', wheel: 'wheel', cashback: 'star', streak: 'higher' };
+export const FEED_ICON = { bigwin: 'bolt', ach: 'medal', achs: 'medal', jackpot: 'trophy', vip: 'star', motus: 'motus', shop: 'shop', week: 'trophy', quests: 'check', perfect: 'quiz', wheel: 'wheel', streak: 'higher' };
 
 // Chance de remporter le jackpot sur un spin payant de la slot (proportionnelle à la mise, plafonnée à 1 %)
 export const JACKPOT_FACTOR = 1.5;
@@ -151,7 +149,6 @@ export function createSocial(wallet, backend) {
     } catch (e) { console.warn('Jackpot : échec', e); }
   }
 
-  let lastVip = vipOf(wallet.stats.totalWagered).index;
   const off = wallet.on((e) => {
     if (!e) return;
     if (e.type === 'bet' && e.game === 'slots') pending += e.amount * CONFIG.JACKPOT_RATE;
@@ -163,23 +160,18 @@ export function createSocial(wallet, backend) {
     if (e.type === 'win' && e.bet > 0) {
       const m = e.amount / e.bet;
       // seuils bas : on est entre potes, on veut voir passer les beaux coups
-      if ((m >= 15 && e.amount >= 150) || (m >= 4 && e.amount >= 5000) || e.amount >= 50000) post({ kind: 'bigwin', game: e.game, amount: e.amount, mult: Math.round(m * 10) / 10 });
+      if (m >= 25) post({ kind: 'bigwin', game: e.game, amount: e.amount, mult: Math.round(m * 10) / 10 });
     }
     if (e.type === 'ach') {
       const a = ACHIEVEMENTS.find((x) => x.id === e.id);
       if (a) post({ kind: 'ach', id: a.id, name: a.name, tier: TIERS[a.tier].name });
     }
     if (e.type === 'shop') { const it = ITEMS.find((i) => i.id === e.item); if (it) post({ kind: 'shop', name: it.name }); }
-    if (e.type === 'round' && e.game === 'slots' && e.info && e.info.bonus) post({ kind: 'fs', spins: e.info.scatters >= 5 ? 20 : e.info.scatters === 4 ? 15 : 10, scatters: e.info.scatters });
     if (e.type === 'free' && e.extra && e.extra.Perfect) post({ kind: 'perfect', game: e.game, mode: 'ExpertPerfect' in e.extra ? 'expert' : 'HardPerfect' in e.extra ? 'difficile' : 'MediumPerfect' in e.extra ? 'moyen' : 'EasyPerfect' in e.extra ? 'facile' : '' });
     if (e.type === 'free' && e.game === 'higher' && e.extra && !e.extra.Perfect && e.extra.Correct >= 7) post({ kind: 'streak', amount: e.amount, n: e.extra.Correct });
     if (e.type === 'daily' && e.amount >= 2000) post({ kind: 'wheel', amount: e.amount, streak: e.streak });
-    if (e.type === 'cashback') post({ kind: 'cashback', amount: e.amount });
     if (e.type === 'quest' && e.bonus) post({ kind: 'quests' });
-    if (e.type === 'bet') {
-      const v = vipOf(wallet.stats.totalWagered);
-      if (v.index > lastVip) { lastVip = v.index; post({ kind: 'vip', rank: v.name }); toast(`Nouveau rang VIP : <b>${v.name}</b> ! Remboursement de ${Math.round(v.cb * 100)} % de tes pertes chaque semaine.`, 'win', 6000); }
-    }
+    if (e.type === 'vipup') post({ kind: 'vip', rank: e.rank, bonus: e.amount });
   });
   const onCustom = (ev) => { const d = ev.detail || {}; if (d.type === 'motus' && d.won) post({ kind: 'motus', tries: d.tries }); if (d.type === 'week') post({ kind: 'week', winner: d.winner, profit: d.profit }); };
   window.addEventListener('chibouk:feed', onCustom);

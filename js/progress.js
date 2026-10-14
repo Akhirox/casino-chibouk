@@ -1,48 +1,71 @@
-// Progression : rangs VIP + remboursement hebdomadaire, roue du bonus quotidien avec série, quêtes du jour
+// Progression : rangs VIP + rakeback, roue du bonus quotidien avec série, quêtes du jour
 import { CONFIG } from './config.js';
-import { parisDate, weekId, prevWeekId } from './wallet.js';
+import { parisDate } from './wallet.js';
 import { randInt } from './games/slots-math.js';
 
 /* ------------------------------ VIP ------------------------------ */
-// Rang selon le total misé depuis toujours ; cb = part des pertes nettes de la semaine remboursée le lundi
-// cb = part des pertes nettes de la semaine remboursée le lundi ; wheel = bonus sur la roue du jour ; quest = bonus sur les quêtes
+// Rang selon le total misé depuis toujours.
+// rb = rakeback : part de chaque mise aux jeux de casino versée dans une cagnotte, récupérable quand on veut
+// wheel / quest = bonus sur la roue du jour et sur les quêtes ; up = Brundles offerts en atteignant le rang
 export const VIP = [
-  { id: 'ouistiti', name: 'Ouistiti', min: 0, cb: 0, wheel: 0, quest: 0, color: '#9aa79f' },
-  { id: 'macaque', name: 'Macaque', min: 25000, cb: 0.01, wheel: 0.05, quest: 0, color: '#cd7f32' },
-  { id: 'babouin', name: 'Babouin', min: 250000, cb: 0.02, wheel: 0.1, quest: 0.1, color: '#c0c9d0' },
-  { id: 'chimpanze', name: 'Chimpanzé', min: 1000000, cb: 0.03, wheel: 0.15, quest: 0.2, color: '#f5c542' },
-  { id: 'orang', name: 'Orang-outan', min: 10000000, cb: 0.04, wheel: 0.25, quest: 0.3, color: '#ff8a3d' },
-  { id: 'gorille', name: 'Gorille', min: 100000000, cb: 0.05, wheel: 0.35, quest: 0.4, color: '#3ddc84' },
-  { id: 'roi', name: 'Roi Singe', min: 1000000000, cb: 0.07, wheel: 0.5, quest: 0.5, color: '#c77dff' },
+  { id: 'ouistiti', name: 'Ouistiti', min: 0, rb: 0, wheel: 0, quest: 0, up: 0, color: '#9aa79f' },
+  { id: 'tamarin', name: 'Tamarin', min: 10000, rb: 0.001, wheel: 0.02, quest: 0, up: 500, color: '#d9a066' },
+  { id: 'macaque', name: 'Macaque', min: 50000, rb: 0.002, wheel: 0.05, quest: 0.05, up: 2000, color: '#cd7f32' },
+  { id: 'capucin', name: 'Capucin', min: 250000, rb: 0.003, wheel: 0.08, quest: 0.1, up: 7500, color: '#e6b88a' },
+  { id: 'babouin', name: 'Babouin', min: 1000000, rb: 0.004, wheel: 0.12, quest: 0.15, up: 25000, color: '#c0c9d0' },
+  { id: 'chimpanze', name: 'Chimpanzé', min: 5000000, rb: 0.005, wheel: 0.16, quest: 0.2, up: 100000, color: '#f5c542' },
+  { id: 'mandrill', name: 'Mandrill', min: 25000000, rb: 0.006, wheel: 0.2, quest: 0.25, up: 400000, color: '#2fb1ff' },
+  { id: 'orang', name: 'Orang-outan', min: 100000000, rb: 0.0075, wheel: 0.25, quest: 0.3, up: 1500000, color: '#ff8a3d' },
+  { id: 'gorille', name: 'Gorille', min: 500000000, rb: 0.009, wheel: 0.32, quest: 0.35, up: 6000000, color: '#3ddc84' },
+  { id: 'argente', name: 'Gorille argenté', min: 2500000000, rb: 0.011, wheel: 0.4, quest: 0.42, up: 25000000, color: '#e8eef2' },
+  { id: 'roi', name: 'Roi Singe', min: 10000000000, rb: 0.0135, wheel: 0.5, quest: 0.5, up: 100000000, color: '#c77dff' },
 ];
-// Avancement vers le rang suivant (0 à 100)
-export function vipProgress(totalWagered = 0) {
-  const v = vipOf(totalWagered);
-  return v.next ? Math.max(0, Math.min(100, ((totalWagered - v.min) / (v.next.min - v.min)) * 100)) : 100;
-}
+export const vipIndex = (id) => VIP.findIndex((v) => v.id === id);
 export function vipOf(totalWagered = 0) {
   let i = 0;
   while (i + 1 < VIP.length && totalWagered >= VIP[i + 1].min) i++;
   return { ...VIP[i], index: i, next: VIP[i + 1] || null };
 }
-export const vipBadge = (p) => { const v = vipOf((p.stats && p.stats.totalWagered) || 0); return `<span class="vip-badge vip-${v.id}" style="--vc:${v.color}" title="Rang VIP : ${v.name} (clique pour voir tous les rangs)" data-vip>${v.name}</span>`; };
-
-// Remboursement disponible pour la semaine dernière (pertes nettes aux jeux de casino × taux du rang actuel)
-export function cashbackInfo(wallet) {
-  wallet.wk();
-  const lw = wallet.p.lastWeek;
-  const v = vipOf(wallet.stats.totalWagered);
-  if (!lw || lw.id !== prevWeekId() || lw.cb) return { amount: 0, vip: v, loss: 0 };
-  const loss = Math.max(0, (lw.wagered || 0) - (lw.won || 0));
-  return { amount: Math.floor(loss * v.cb), vip: v, loss };
+// Avancement vers le rang suivant (0 à 100)
+export function vipProgress(totalWagered = 0) {
+  const v = vipOf(totalWagered);
+  return v.next ? Math.max(0, Math.min(100, ((totalWagered - v.min) / (v.next.min - v.min)) * 100)) : 100;
 }
-export function claimCashback(wallet) {
-  const c = cashbackInfo(wallet);
-  if (!c.amount) return 0;
-  wallet.p.lastWeek = { ...wallet.p.lastWeek, cb: true };
-  wallet.credit('cashback', c.amount, { rate: c.vip.cb });
+export const vipBadge = (p) => { const v = vipOf((p.stats && p.stats.totalWagered) || 0); return `<span class="vip-badge vip-${v.id}" style="--vc:${v.color}" title="Rang VIP : ${v.name} (clique pour voir tous les rangs)" data-vip>${v.name}</span>`; };
+export const pctFmt = (x) => (x * 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' %';
+
+// Cagnotte de rakeback (alimentée à chaque mise, récupérable à tout moment)
+export const rakePot = (wallet) => (wallet.p.rake && wallet.p.rake.pot) || 0;
+export function claimRake(wallet) {
+  const amount = Math.floor(rakePot(wallet));
+  if (amount < 1) return 0;
+  wallet.p.rake = { ...(wallet.p.rake || {}), pot: rakePot(wallet) - amount, total: ((wallet.p.rake && wallet.p.rake.total) || 0) + amount };
+  wallet.credit('rakeback', amount);
   wallet.flush();
-  return c.amount;
+  return amount;
+}
+
+// Suivi des rangs : rakeback sur chaque mise de casino + bonus de passage de rang (une seule fois par rang)
+export function initVip(wallet, onUp) {
+  const pay = () => {
+    const v = vipOf(wallet.stats.totalWagered);
+    const done = Number.isInteger(wallet.p.vipLevel) ? wallet.p.vipLevel : 0;
+    if (v.index <= done) return;
+    let bonus = 0;
+    for (let i = done + 1; i <= v.index; i++) bonus += VIP[i].up;
+    wallet.p.vipLevel = v.index;
+    if (bonus > 0) wallet.credit('vipup', bonus, { rank: v.name, index: v.index });
+    onUp && onUp(v, bonus);
+  };
+  const off = wallet.on((e) => {
+    if (!e || e.type !== 'bet' || !wallet.stats.games[e.game]) return;
+    const rate = vipOf(wallet.stats.totalWagered).rb;
+    if (rate > 0) wallet.p.rake = { ...(wallet.p.rake || { total: 0 }), pot: rakePot(wallet) + e.amount * rate };
+    pay();
+  });
+  // rattrapage : rangs déjà atteints avant leur création (bonus versés une fois)
+  setTimeout(pay, 1500);
+  return { destroy: off };
 }
 
 /* ------------------------------ Roue du jour ------------------------------ */

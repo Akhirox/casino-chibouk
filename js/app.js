@@ -25,7 +25,7 @@ import * as Flags from './games/flags.js';
 import * as Motus from './games/motus.js';
 import * as Higher from './games/higher.js';
 import * as Shop from './shop.js';
-import { initQuests, today, questText, vipOf, vipProgress, VIP, cashbackInfo, claimCashback } from './progress.js';
+import { initQuests, today, questText, vipOf, vipProgress, VIP, rakePot, claimRake, initVip, pctFmt } from './progress.js';
 import { createSocial, feedRich, FEED_ICON, jackpotChance, chanceText } from './social.js';
 import { openVipModal } from './vip.js';
 import { syncWeeks } from './weekly.js';
@@ -36,6 +36,7 @@ import { initAchievements, achSummary, TIERS } from './achievements.js';
 import * as AchPage from './achpage.js';
 import * as News from './changelog.js';
 import * as Stats from './stats.js';
+import * as Ranking from './ranking.js';
 import { createTracker } from './tracker.js';
 import { getPlayers } from './players.js';
 import * as Profile from './profile.js';
@@ -53,6 +54,7 @@ let achievements = null;
 let inboxTimer = null;
 let tips = null;
 let quests = null;
+let vip = null;
 let social = null;
 let historyOff = null;
 let weeksTimer = null;
@@ -80,6 +82,7 @@ const ROUTES = {
   breaker: { label: 'Casse-briques', icon: 'breaker', mount: Breaker.mount, group: 'free' },
   shop: { label: 'Boutique', icon: 'shop', mount: Shop.mount },
   achievements: { label: 'Succès', icon: 'medal', mount: AchPage.mount },
+  ranking: { label: 'Classements', icon: 'trophy', mount: Ranking.mount },
   stats: { label: 'Stats', icon: 'stats', mount: Stats.mount },
   news: { label: 'Nouveautés', icon: 'scroll', mount: News.mount, nav: false },
   profile: { label: 'Mon profil', icon: 'user', mount: Profile.mount, nav: false },
@@ -97,7 +100,7 @@ function navHTML() {
     return `<div class="nav-group" data-g="${g}"><button type="button" class="nav-gbtn ${g === 'free' ? 'nav-free' : ''}" aria-haspopup="true"><span class="ni">${icon(GROUPS[g].icon)}</span><span class="nl">${GROUPS[g].label} <i class="chev">${icon('chev')}</i></span></button>
       <div class="nav-pop ${g}"><div class="nav-pop-title">${GROUPS[g].label === 'Casino' ? 'Jeux de casino' : 'Jeux gratuits'}</div><div class="nav-pop-grid">${items.map(([k, r]) => link(k, r, g === 'free' ? 'nav-free' : '')).join('')}</div></div></div>`;
   };
-  return link('lobby', ROUTES.lobby) + group('casino') + group('free') + ['shop', 'achievements', 'stats'].map((k) => link(k, ROUTES[k])).join('');
+  return link('lobby', ROUTES.lobby) + group('casino') + group('free') + ['shop', 'achievements', 'ranking', 'stats'].map((k) => link(k, ROUTES[k])).join('');
 }
 
 /* ============================== DÉMARRAGE ============================== */
@@ -121,6 +124,7 @@ async function boot() {
     if (achievements) { achievements.destroy(); achievements = null; }
     if (tips) { tips.destroy(); tips = null; }
     if (quests) { quests.destroy(); quests = null; }
+    if (vip) { vip.destroy(); vip = null; }
     if (social) { social.destroy(); social = null; }
     if (historyOff) { historyOff(); historyOff = null; }
     clearInterval(weeksTimer);
@@ -233,7 +237,7 @@ function renderShell() {
         <button class="icon-btn tracker-btn" title="Suivi de balance">${icon('chart')}</button>
         <button class="icon-btn mute-btn" title="Son">${icon(sfx.muted ? 'mute' : 'sound')}</button>
         <div class="user-menu"><button class="user-btn"><span class="ub-av">${Profile.avatarHTML(wallet.p, 'av-xs')}</span><span class="ub-name">${esc(wallet.pseudo)}</span> ▾</button>
-          <div class="user-drop"><a href="#/profile">Mon profil</a><a href="#/shop">Boutique</a><a href="#/stats">Mes stats</a><a href="#/achievements">Mes succès</a><a href="#/news">Nouveautés</a><button class="send-menu">Envoyer des ${CUR}</button><button class="tip-menu">Un conseil du singe</button><button class="tip-toggle"></button><button class="logout">Se déconnecter</button></div></div>
+          <div class="user-drop"><a href="#/profile">Mon profil</a><a href="#/shop">Boutique</a><a href="#/stats">Mes stats</a><a href="#/ranking">Classements</a><a href="#/achievements">Mes succès</a><a href="#/news">Nouveautés</a><button class="send-menu">Envoyer des ${CUR}</button><button class="tip-menu">Un conseil du singe</button><button class="tip-toggle"></button><button class="logout">Se déconnecter</button></div></div>
       </div>
     </header>
     <main id="view"></main>
@@ -274,6 +278,9 @@ function renderShell() {
     sfx.bonus();
   });
   social = createSocial(wallet, backend);
+  vip = initVip(wallet, (v, bonus) => {
+    if (bonus > 0) { toast(`<span class="ach-toast">${icon('star')}<span><small>Nouveau rang VIP</small><b>${esc(v.name)}</b><em>+${fmt(bonus)} ${CUR} de bonus</em></span></span>`, 'ach', 6000); sfx.bonus(); coinRain(40); }
+  });
   syncWeeks(backend, wallet);
   weeksTimer = setInterval(() => wallet && syncWeeks(backend, wallet), 15 * 60000);
   tips = createTips(wallet);
@@ -457,12 +464,12 @@ function questsHTML() {
 }
 function vipHTML() {
   const v = vipOf(wallet.stats.totalWagered);
-  const cb = cashbackInfo(wallet);
   const pct = vipProgress(wallet.stats.totalWagered);
+  const pot = rakePot(wallet);
   return `<div class="dash-head">${icon('star')}<b>Rang VIP</b><button type="button" class="btn btn-ghost btn-sm" data-vip>Tous les rangs</button></div>
-    <div class="vip-now"><button type="button" class="vip-badge big vip-${v.id}" style="--vc:${v.color}" data-vip>${v.name}</button><small>${v.cb ? `${Math.round(v.cb * 100)} % de tes pertes de la semaine remboursées le lundi, +${Math.round(v.wheel * 100)} % sur la roue du jour${v.quest ? `, +${Math.round(v.quest * 100)} % sur les quêtes` : ''}` : 'Pas encore d\'avantage : mise 25 000 au total pour devenir Macaque'}</small></div>
-    ${v.next ? `<div class="vip-pct"><div class="q-bar vip"><i style="width:${pct}%;background:${v.next.color}"></i></div><b>${pct.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %</b></div><small class="muted">Prochain rang : <b>${v.next.name}</b> à ${fmt(v.next.min)} misés (encore ${fmt(v.next.min - wallet.stats.totalWagered)})</small>` : '<small class="muted">Rang maximum atteint !</small>'}
-    ${cb.amount ? `<button class="btn btn-gold wide" id="cb-claim">Récupérer ${fmt(cb.amount)} ${CUR} remboursés</button>` : `<small class="muted cb-note">${cb.loss === 0 && wallet.p.lastWeek && wallet.p.lastWeek.cb ? 'Remboursement de la semaine dernière déjà récupéré.' : 'Le remboursement de la semaine arrive lundi (pertes nettes aux jeux de casino).'}</small>`}`;
+    <div class="vip-now"><button type="button" class="vip-badge big vip-${v.id}" style="--vc:${v.color}" data-vip>${v.name}</button><small>${v.rb ? `Rakeback ${pctFmt(v.rb)} sur chaque mise, +${pctFmt(v.wheel)} sur la roue du jour${v.quest ? `, +${pctFmt(v.quest)} sur les quêtes` : ''}` : 'Pas encore d\'avantage : mise 10 000 au total pour devenir Tamarin'}</small></div>
+    ${v.next ? `<div class="vip-pct"><div class="q-bar vip"><i style="width:${pct}%;background:${v.next.color}"></i></div><b>${pct.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %</b></div><small class="muted">Prochain rang : <b>${v.next.name}</b> à ${fmt(v.next.min)} misés · bonus <b class="gold">+${fmt(v.next.up)}</b></small>` : '<small class="muted">Rang maximum atteint !</small>'}
+    <div class="rake-row"><div><small class="muted">Cagnotte de rakeback</small><b>${money(pot)}</b></div><button class="btn btn-gold btn-sm" id="rk-claim" ${pot >= 1 ? '' : 'disabled'}>Récupérer</button></div>`;
 }
 // mise actuelle de la slot (mémorisée) pour afficher la chance de jackpot
 const jpBet = () => { try { const v = Math.floor(+localStorage.getItem('chibouk_slot_total')); return v >= 10 ? v : 100; } catch { return 100; } };
@@ -553,7 +560,8 @@ function mountLobby(view, { wallet: w }) {
       <div><span>Bilan</span><b class="${s.totalWon - s.totalWagered >= 0 ? 'pos' : 'neg'}">${s.totalWon - s.totalWagered >= 0 ? '+' : ''}${fmt(s.totalWon - s.totalWagered)}</b></div>
       <div><span>Plus gros gain</span><b>${money(s.biggestWin)}</b></div>
       <a class="btn btn-ghost" href="#/shop">${icon('shop')}Boutique</a>
-      <a class="btn btn-ghost" href="#/stats">Stats & classement ${icon('arrow')}</a>
+      <a class="btn btn-ghost" href="#/ranking">${icon('trophy')}Classements</a>
+      <a class="btn btn-ghost" href="#/stats">Mes stats ${icon('arrow')}</a>
     </section>`;
   renderLobbyDaily($('#lobby-daily', view));
   // catégories repliables (état mémorisé)
@@ -570,7 +578,7 @@ function mountLobby(view, { wallet: w }) {
   const dash = () => {
     const q = $('#dash-quests', view), v = $('#dash-vip', view);
     if (q) q.innerHTML = questsHTML();
-    if (v) { v.innerHTML = vipHTML(); const b = $('#cb-claim', v); if (b) b.onclick = () => { const a = claimCashback(w); if (a) { sfx.win(true); coinRain(30); toast(`+${fmt(a)} ${CUR} remboursés, merci de ta fidélité !`, 'win'); } dash(); }; }
+    if (v) { v.innerHTML = vipHTML(); const b = $('#rk-claim', v); if (b) b.onclick = () => { const a = claimRake(w); if (a) { sfx.win(true); coinRain(25); toast(`+${fmt(a)} ${CUR} de rakeback récupérés !`, 'win'); } dash(); }; }
   };
   dash();
   let jpShown = null;
@@ -590,6 +598,17 @@ function mountLobby(view, { wallet: w }) {
     if (!t) t = setTimeout(() => { t = null; dash(); }, 400);
   });
   const ago = setInterval(() => { const fb = $('#feed-box', view); if (fb && lastSocial) fb.innerHTML = feedHTML(lastSocial); }, 60000);
+  // la bulle de description d'un succès reste toujours dans le cadre du fil
+  view.addEventListener('mouseover', (e) => {
+    const a = e.target.closest('.fd-ach'); if (!a) return;
+    const card = a.querySelector('.hover-card'), fb = $('#feed-box', view); if (!card || !fb) return;
+    card.style.left = '0px';
+    const box = fb.getBoundingClientRect(), r = card.getBoundingClientRect();
+    let dx = 0;
+    if (r.right > box.right - 10) dx = box.right - 10 - r.right;
+    if (r.left + dx < box.left + 10) dx = box.left + 10 - r.left;
+    card.style.left = dx + 'px';
+  });
   view.addEventListener('click', (e) => { if (e.target.closest('[data-feedmore]')) { feedAll = !feedAll; const fb = $('#feed-box', view); if (fb && lastSocial) fb.innerHTML = feedHTML(lastSocial); } });
   return () => { off(); offSocial(); clearTimeout(t); clearInterval(ago); };
 }
