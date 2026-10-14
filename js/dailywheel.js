@@ -1,6 +1,6 @@
 // Roue du bonus quotidien : un tour par jour, gain multiplié par la série de jours consécutifs
 import { CONFIG } from './config.js';
-import { spinDaily, streakMult } from './progress.js';
+import { spinDaily, streakMult, vipOf } from './progress.js';
 import { h, $, fmt, money, toast, coinRain, sleep, CUR } from './ui.js';
 import { sfx } from './sfx.js';
 
@@ -20,14 +20,14 @@ function wheelSVG() {
 
 export function openDailyWheel(wallet, onDone) {
   if (!wallet.dailyAvailable()) { toast('Roue déjà tournée aujourd\'hui. Reviens après minuit !'); return; }
-  const n = wallet.nextStreak(), mult = streakMult(n);
+  const n = wallet.nextStreak(), mult = streakMult(n), vip = vipOf(wallet.stats.totalWagered);
   const days = Array.from({ length: 7 }, (_, i) => i + 1);
   const m = h(`<div class="modal-backdrop"><div class="modal dw-modal" role="dialog" aria-modal="true">
     <h2 class="modal-title">Roue du jour</h2>
     <div class="modal-body">
       <div class="dw-streak"><b>Série : ${n} jour${n > 1 ? 's' : ''}</b> → gain ${xfmt(mult)}
         <div class="dw-days">${days.map((d) => `<i class="${d <= Math.min(n, 7) ? 'on' : ''}">${d}</i>`).join('')}<span>${n > 7 ? `+${n - 7}` : ''}</span></div>
-        <small class="muted">+${Math.round(CONFIG.STREAK_STEP * 100)} % par jour consécutif, jusqu'à ${xfmt(CONFIG.STREAK_MAX)}. Un jour raté et la série repart à 1.</small></div>
+        <small class="muted">+${Math.round(CONFIG.STREAK_STEP * 100)} % par jour consécutif, jusqu'à ${xfmt(CONFIG.STREAK_MAX)}. Un jour raté et la série repart à 1.</small>${vip.wheel ? `<small>Bonus VIP ${vip.name} : <b>+${Math.round(vip.wheel * 100)} %</b></small>` : ''}</div>
       <div class="dw-box"><div class="dw-pointer"></div>${wheelSVG()}</div>
       <p class="dw-res" id="dw-res">Tourne la roue pour gagner de ${fmt(Math.min(...CONFIG.DAILY_WHEEL))} à ${fmt(Math.max(...CONFIG.DAILY_WHEEL))} ${CUR}${mult > 1 ? `, multipliés par ${xfmt(mult)}` : ''} !</p>
     </div>
@@ -58,7 +58,7 @@ export function openDailyWheel(wallet, onDone) {
     await sleep(4300);
     clearInterval(ticks);
     spinning = false; done = true;
-    $('#dw-res', m).innerHTML = `<b>${fmt(r.base)}</b>${r.mult > 1 ? ` ${xfmt(r.mult)} (série de ${r.streak} jours)` : ''} = <span class="big">+${money(r.amount)}</span>`;
+    $('#dw-res', m).innerHTML = `<b>${fmt(r.base)}</b>${r.mult > 1 ? ` ${xfmt(r.mult)} (série de ${r.streak} jours)` : ''}${r.vip ? ` +${Math.round(r.vip * 100)} % VIP` : ''} = <span class="big">+${money(r.amount)}</span>`;
     const btn = $('#dw-spin', m);
     btn.disabled = false; btn.textContent = 'Super !';
     $('[data-x]', m).disabled = false;

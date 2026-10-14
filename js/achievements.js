@@ -113,6 +113,7 @@ export const ACHIEVEMENTS = [
 
   /* ------------------------------ JEUX GRATUITS ------------------------------ */
   { id: 'qz-perfect', cat: 'free', tier: 'silver', name: 'Calculatrice humaine', desc: 'Faire un sans-faute au calcul mental.', test: (e, w) => (st(w).quizPerfect || 0) >= 1 },
+  { id: 'qz-hard', cat: 'free', tier: 'gold', name: 'Calculatrice de compétition', desc: 'Faire un sans-faute au calcul mental en mode difficile.', test: (e, w) => (st(w).quizHardPerfect || 0) >= 1 },
   { id: 'qz-100', cat: 'free', tier: 'silver', name: 'Prof de maths', desc: 'Donner 100 bonnes réponses au calcul mental.', test: (e, w) => (st(w).quizCorrect || 0) >= 100, progress: (w) => [st(w).quizCorrect || 0, 100] },
   { id: 'cap-perfect', cat: 'free', tier: 'silver', name: 'Globe-trotteur', desc: 'Faire un sans-faute au quiz des capitales.', test: (e, w) => (st(w).capitalsPerfect || 0) >= 1 },
   { id: 'cap-expert', cat: 'free', tier: 'gold', name: 'Géographe de compétition', desc: 'Faire un sans-faute au quiz des capitales en mode expert.', test: (e, w) => (st(w).capitalsExpertPerfect || 0) >= 1 },

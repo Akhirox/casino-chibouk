@@ -55,6 +55,9 @@ export class Wallet {
       }
     } catch {}
     w.start();
+    // dernière connexion (affichée sur la fiche du joueur) : 1 écriture à l'ouverture
+    w.p.lastLogin = Date.now();
+    backend.saveProfile(user.uid, { lastLogin: w.p.lastLogin }).catch(() => {});
     return w;
   }
 

@@ -5,21 +5,27 @@ import { randInt } from './games/slots-math.js';
 
 /* ------------------------------ VIP ------------------------------ */
 // Rang selon le total misé depuis toujours ; cb = part des pertes nettes de la semaine remboursée le lundi
+// cb = part des pertes nettes de la semaine remboursée le lundi ; wheel = bonus sur la roue du jour ; quest = bonus sur les quêtes
 export const VIP = [
-  { id: 'ouistiti', name: 'Ouistiti', min: 0, cb: 0, color: '#9aa79f' },
-  { id: 'macaque', name: 'Macaque', min: 25000, cb: 0.01, color: '#cd7f32' },
-  { id: 'babouin', name: 'Babouin', min: 250000, cb: 0.02, color: '#c0c9d0' },
-  { id: 'chimpanze', name: 'Chimpanzé', min: 1000000, cb: 0.03, color: '#f5c542' },
-  { id: 'orang', name: 'Orang-outan', min: 10000000, cb: 0.04, color: '#ff8a3d' },
-  { id: 'gorille', name: 'Gorille', min: 100000000, cb: 0.05, color: '#3ddc84' },
-  { id: 'roi', name: 'Roi Singe', min: 1000000000, cb: 0.07, color: '#c77dff' },
+  { id: 'ouistiti', name: 'Ouistiti', min: 0, cb: 0, wheel: 0, quest: 0, color: '#9aa79f' },
+  { id: 'macaque', name: 'Macaque', min: 25000, cb: 0.01, wheel: 0.05, quest: 0, color: '#cd7f32' },
+  { id: 'babouin', name: 'Babouin', min: 250000, cb: 0.02, wheel: 0.1, quest: 0.1, color: '#c0c9d0' },
+  { id: 'chimpanze', name: 'Chimpanzé', min: 1000000, cb: 0.03, wheel: 0.15, quest: 0.2, color: '#f5c542' },
+  { id: 'orang', name: 'Orang-outan', min: 10000000, cb: 0.04, wheel: 0.25, quest: 0.3, color: '#ff8a3d' },
+  { id: 'gorille', name: 'Gorille', min: 100000000, cb: 0.05, wheel: 0.35, quest: 0.4, color: '#3ddc84' },
+  { id: 'roi', name: 'Roi Singe', min: 1000000000, cb: 0.07, wheel: 0.5, quest: 0.5, color: '#c77dff' },
 ];
+// Avancement vers le rang suivant (0 à 100)
+export function vipProgress(totalWagered = 0) {
+  const v = vipOf(totalWagered);
+  return v.next ? Math.max(0, Math.min(100, ((totalWagered - v.min) / (v.next.min - v.min)) * 100)) : 100;
+}
 export function vipOf(totalWagered = 0) {
   let i = 0;
   while (i + 1 < VIP.length && totalWagered >= VIP[i + 1].min) i++;
   return { ...VIP[i], index: i, next: VIP[i + 1] || null };
 }
-export const vipBadge = (p) => { const v = vipOf((p.stats && p.stats.totalWagered) || 0); return `<span class="vip-badge vip-${v.id}" style="--vc:${v.color}" title="Rang VIP : ${v.name}">${v.name}</span>`; };
+export const vipBadge = (p) => { const v = vipOf((p.stats && p.stats.totalWagered) || 0); return `<span class="vip-badge vip-${v.id}" style="--vc:${v.color}" title="Rang VIP : ${v.name} (clique pour voir tous les rangs)" data-vip>${v.name}</span>`; };
 
 // Remboursement disponible pour la semaine dernière (pertes nettes aux jeux de casino × taux du rang actuel)
 export function cashbackInfo(wallet) {
@@ -45,7 +51,8 @@ export function spinDaily(wallet) {
   const seg = randInt(CONFIG.DAILY_WHEEL.length);
   const n = wallet.nextStreak();
   const mult = streakMult(n);
-  return { seg, base: CONFIG.DAILY_WHEEL[seg], streak: n, mult, amount: Math.round(CONFIG.DAILY_WHEEL[seg] * mult) };
+  const vip = vipOf(wallet.stats.totalWagered);
+  return { seg, base: CONFIG.DAILY_WHEEL[seg], streak: n, mult, vip: vip.wheel, vipName: vip.name, amount: Math.round(CONFIG.DAILY_WHEEL[seg] * mult * (1 + vip.wheel)) };
 }
 
 /* ------------------------------ Quêtes du jour ------------------------------ */
@@ -109,7 +116,7 @@ export function initQuests(wallet, onDone) {
       if (t.set) { if (!q.seen.includes(v)) { q.seen.push(v); q.p = q.seen.length; changed = true; } } else { q.p = Math.min(q.n, q.p + v); changed = true; }
       if (q.p >= q.n) {
         q.done = true;
-        setTimeout(() => { wallet.p.stats.questsDone = (wallet.p.stats.questsDone || 0) + 1; wallet.credit('quest', q.r, { quest: q.id }); onDone && onDone(q, false); }, 0);
+        setTimeout(() => { wallet.p.stats.questsDone = (wallet.p.stats.questsDone || 0) + 1; wallet.credit('quest', Math.round(q.r * (1 + vipOf(wallet.stats.totalWagered).quest)), { quest: q.id }); onDone && onDone(q, false); }, 0);
       }
     }
     if (changed && !day.bonus && day.quests.every((q) => q.done)) {

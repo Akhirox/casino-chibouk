@@ -3,6 +3,8 @@ import { STRIPS, PAYTABLE, PAYLINES, LINE_COUNT, SYMBOLS, FREE_SPINS_AWARD, FREE
 import { symbolSVG, monkeySVG, goldMonkeySVG, icon } from '../art.js';
 import { $, $$, fmt, money, modal, toast, countUp, coinRain, sleep, autoHTML, bindAuto, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
+import { jackpotChance, chanceText, JACKPOT_FACTOR } from '../social.js';
+import { CONFIG } from '../config.js';
 
 // Paliers des boutons − / + de la mise TOTALE (aucune limite : on peut taper n'importe quel montant ou cliquer MAX)
 const MIN_BET = 10;
@@ -17,7 +19,7 @@ const mx = (m) => '×' + multFmt.format(m);
 const TIERS = [[100, 'GAIN ÉNORME !'], [50, 'MÉGA GAIN !'], [25, 'SUPER GAIN !'], [10, 'GROS GAIN !']];
 const BIG_WIN_MIN = 10;
 
-export function mount(view, { wallet }) {
+export function mount(view, { wallet, social }) {
   let curBet = 100;
   try {
     const v = Math.floor(+localStorage.getItem('chibouk_slot_total'));
@@ -46,6 +48,7 @@ export function mount(view, { wallet }) {
         <svg class="win-lines" viewBox="0 0 500 300" preserveAspectRatio="none"></svg>
         <div class="big-win"><div class="bw-rays"></div><div class="bw-title"></div><div class="bw-mult"></div><div class="bw-amount"></div><small class="bw-skip">Clique pour passer</small></div>
       </div>
+      <button type="button" class="slot-jp" id="sl-jp" title="Comment marche le jackpot ?"><span>JACKPOT</span><b id="sl-jp-amt">—</b><small id="sl-jp-ch"></small></button>
       <div class="slot-info">
         <div class="win-display"><span>GAIN</span><b class="win-amt">0</b><small class="win-mult"></small></div>
         <div class="slot-msg">Bonne chance ! 3 SCATTER n'importe où = tours gratuits ×2</div>
@@ -113,7 +116,17 @@ export function mount(view, { wallet }) {
     spinBtn.disabled = (spinning && !autoLeft) || (fs && fs.left > 0);
     spinBtn.classList.toggle('stop', autoLeft > 0);
     spinBtn.querySelector('span').textContent = autoLeft > 0 ? 'STOP' : 'SPIN';
+    updateJp();
   }
+  // jackpot commun : montant et chance de le remporter avec la mise actuelle
+  let jpAmount = CONFIG.JACKPOT_SEED;
+  function updateJp() {
+    const a = $('#sl-jp-amt', view), c = $('#sl-jp-ch', view);
+    if (!a) return;
+    a.innerHTML = money(jpAmount);
+    c.textContent = fs && fs.left > 0 ? 'Pas de jackpot pendant les tours gratuits' : `Ta chance par spin : ${chanceText(jackpotChance(totalBet(), jpAmount))}`;
+  }
+  const offJp = social ? social.subscribe((st) => { jpAmount = st.jackpot; if (alive) updateJp(); }) : () => {};
   const setBet = (v) => { curBet = Math.max(MIN_BET, Math.floor(v) || MIN_BET); try { localStorage.setItem('chibouk_slot_total', curBet); } catch {} updateBet(); };
   $('#bet-down', view).onclick = () => { const prev = [...STEPS].reverse().find((x) => x < curBet); setBet(prev || Math.floor(curBet / 2)); sfx.click(); };
   $('#bet-up', view).onclick = () => { const next = STEPS.find((x) => x > curBet); setBet(next || curBet * 2); sfx.click(); };
@@ -135,6 +148,13 @@ export function mount(view, { wallet }) {
   };
   document.addEventListener('keydown', onKey);
   $('#paytable', view).onclick = showPaytable;
+  $('#sl-jp', view).onclick = () => modal({ title: 'Le jackpot commun', html: `
+    <p>Montant actuel : <b>${money(jpAmount)}</b></p>
+    <ul class="muted"><li><b>1 %</b> de chaque mise à la Chibouk Slot est ajouté au jackpot (payé par le casino : tes gains normaux ne changent pas).</li>
+    <li>Chaque <b>spin payant</b> a une chance de le remporter, proportionnelle à ta mise : chance = ${String(JACKPOT_FACTOR * CONFIG.JACKPOT_RATE * 100).replace('.', ',')} % × mise ÷ jackpot, plafonnée à 1 %.</li>
+    <li>Avec ta mise de ${money(totalBet())} : <b>${chanceText(jackpotChance(totalBet(), jpAmount))}</b> par spin.</li>
+    <li>Exemples avec un jackpot de 10 000 : mise de 100 → 1 sur 6 667, mise de 1 000 → 1 sur 667, mise de 6 667 ou plus → 1 sur 100 (plafond).</li>
+    <li>Quand il tombe, il repart à ${fmt(CONFIG.JACKPOT_SEED)}. En moyenne, il redistribue un peu plus que ce qu'il reçoit.</li></ul>`, buttons: [{ label: 'Compris', value: true, primary: true }] });
 
   const auto = bindAuto(view, 'sl-auto', { wallet, game: 'slots', delay: 50,
     play: async () => {
@@ -419,6 +439,7 @@ export function mount(view, { wallet }) {
   }
 
   return () => {
+    offJp();
     alive = false;
     autoLeft = 0;
     auto.stop();

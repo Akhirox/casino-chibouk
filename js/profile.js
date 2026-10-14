@@ -78,6 +78,24 @@ function trophies(p) {
   return n ? `<span class="trophy-badge" title="Vainqueur du classement de la semaine">${icon('trophy')}×${n}</span>` : '';
 }
 
+// « Dernière connexion il y a… » avec une échelle qui s'adapte à la durée
+export function agoText(t) {
+  const s = Math.max(0, (Date.now() - t) / 1000);
+  if (s < 60) return 'à l\'instant';
+  const m = Math.floor(s / 60); if (m < 60) return `il y a ${m} min`;
+  const h = Math.floor(m / 60); if (h < 24) return `il y a ${h} h${m % 60 && h < 6 ? ` ${m % 60} min` : ''}`;
+  const d = Math.floor(h / 24); if (d === 1) return 'hier';
+  if (d < 7) return `il y a ${d} jours`;
+  const w = Math.floor(d / 7); if (d < 30) return `il y a ${w} semaine${w > 1 ? 's' : ''}`;
+  const mo = Math.floor(d / 30); if (d < 365) return `il y a ${mo} mois`;
+  const y = Math.floor(d / 365); return `il y a ${y} an${y > 1 ? 's' : ''}`;
+}
+function seenHTML(p, me) {
+  const t = Math.max(p.lastLogin || 0, p.updatedAt || 0);
+  if (me || (t && Date.now() - t < 3 * 60000)) return '<small class="pf-seen on"><i></i>En ligne</small>';
+  return t ? `<small class="pf-seen"><i></i>Dernière connexion ${agoText(t)}</small>` : '';
+}
+
 // Carte de profil (sert sur la page « Mon profil » et dans la fiche des autres joueurs)
 export function cardHTML(p, { me = false } = {}) {
   const s = p.stats || {};
@@ -91,6 +109,7 @@ export function cardHTML(p, { me = false } = {}) {
       <div class="pf-id"><h2>${esc(p.pseudo)}${me ? ' <small>(toi)</small>' : ''}</h2>
         <div class="pf-badges">${vipBadge(p)}${titleHTML(p)}${trophies(p)}</div>
         ${p.createdAt ? `<small class="muted">Membre depuis le ${dateFmt.format(new Date(p.createdAt))}</small>` : ''}
+        ${seenHTML(p, me)}
         <p class="pf-bio ${p.bio ? '' : 'empty'}">${p.bio ? esc(p.bio) : me ? 'Pas encore de bio. Présente-toi en dessous !' : 'Ce singe n\'a rien écrit pour l\'instant.'}</p></div></div>
     <div class="pf-stats">
       <div><span>Solde</span><b>${money(p.balance)}</b></div>

@@ -1,9 +1,29 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '9';
+export const VERSION = '10';
 
 export const CHANGELOG = [
+  {
+    v: '10', date: '14 octobre 2026', title: 'Correctifs, Tower auto sur mesure et rangs VIP détaillés',
+    groups: [
+      ['Nouveautés', [
+        'Tower : l\'auto suit le parcours que tu traces en cliquant sur les cases du plateau (étage par étage), avec « Jusqu\'en haut » et « Parcours au hasard ». Les cases se découvrent rapidement l\'une après l\'autre.',
+        'Calcul mental : 3 modes. Facile (10 s, +10 par bonne réponse), Moyen (12 s, +15) et Difficile (15 s, +25 : multiplications à deux chiffres, carrés, pourcentages…).',
+        'Jackpot : ta chance de le remporter avec ta mise actuelle est affichée au-dessus des rouleaux et sur l\'accueil (clic pour le détail du calcul).',
+        'Rangs VIP : clic sur n\'importe quel rang pour voir le tableau de tous les rangs et leurs avantages. Nouveaux avantages : bonus sur la roue du jour (jusqu\'à +50 %) et sur les quêtes (jusqu\'à +50 %). Le pourcentage de progression vers le rang suivant est affiché.',
+        'Succès : menu « Trier » (mes derniers obtenus, derniers obtenus par tout le monde, les plus rares, les plus courants) et pourcentage de joueurs qui ont chaque succès.',
+        'Fiche des joueurs : « En ligne » ou « Dernière connexion il y a… » (minutes, heures, jours, semaines…).',
+        'Fil d\'activité : liens vers le jeu concerné, fiche du joueur au clic sur son pseudo, et description du succès au survol.',
+        'Nouveau succès Or : sans-faute au calcul mental en mode difficile.',
+        'En direct de la jungle : beaucoup plus de choses y apparaissent. Tous les succès (regroupés quand plusieurs tombent ensemble), les gains à partir de ×15 (ou ×4 dès 5 000 Brundles), les tours gratuits de la slot, les sans-faute aux quiz, les belles séries au Plus ou moins, les grosses roues du jour, les remboursements VIP, tous les achats en boutique, les passages de rang VIP et les quêtes du jour terminées.',
+      ]],
+      ['Correctifs', [
+        'Les onglets du classement à côté des jeux ne dépassent plus du cadre.',
+        'Un même événement ne s\'affiche plus deux fois dans « En direct de la jungle ».',
+      ]],
+    ],
+  },
   {
     v: '9', date: '14 octobre 2026', title: 'Boutique, jackpot commun, quêtes et 7 nouveaux jeux',
     groups: [

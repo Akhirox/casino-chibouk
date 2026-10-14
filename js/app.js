@@ -25,8 +25,9 @@ import * as Flags from './games/flags.js';
 import * as Motus from './games/motus.js';
 import * as Higher from './games/higher.js';
 import * as Shop from './shop.js';
-import { initQuests, today, questText, vipOf, VIP, cashbackInfo, claimCashback } from './progress.js';
-import { createSocial, feedText, feedWho, FEED_ICON } from './social.js';
+import { initQuests, today, questText, vipOf, vipProgress, VIP, cashbackInfo, claimCashback } from './progress.js';
+import { createSocial, feedRich, FEED_ICON, jackpotChance, chanceText } from './social.js';
+import { openVipModal } from './vip.js';
 import { syncWeeks } from './weekly.js';
 import { initHistory } from './history.js';
 import { openDailyWheel } from './dailywheel.js';
@@ -110,6 +111,8 @@ async function boot() {
   }
   document.body.addEventListener('pointerdown', () => sfx.unlock(), { once: true });
   setupTabGuard();
+  // clic sur un rang VIP => tableau des rangs
+  document.addEventListener('click', (e) => { if (wallet && e.target.closest('[data-vip]') && !e.target.closest('.modal')) { e.preventDefault(); openVipModal(wallet); } });
   // clic sur un pseudo (classements) => fiche du joueur
   Profile.initPlayerCards({ get backend() { return backend; }, get wallet() { return wallet; } });
   backend.onAuth(async (user) => {
@@ -413,7 +416,7 @@ function route() {
     $('.nav-gbtn .nl', g).innerHTML = `${on ? ROUTES[cur].label : GROUPS[g.dataset.g].label} <i class="chev">${icon('chev')}</i>`;
   });
   window.scrollTo(0, 0);
-  const ctx = { wallet, backend, navigate: (k) => (location.hash = '#/' + k) };
+  const ctx = { wallet, backend, social, navigate: (k) => (location.hash = '#/' + k) };
   const boardTitle = BOARD_GAMES[key];
   if (boardTitle) {
     // jeu + classement du jeu à côté
@@ -455,25 +458,30 @@ function questsHTML() {
 function vipHTML() {
   const v = vipOf(wallet.stats.totalWagered);
   const cb = cashbackInfo(wallet);
-  const pct = v.next ? Math.min(100, ((wallet.stats.totalWagered - v.min) / (v.next.min - v.min)) * 100) : 100;
-  return `<div class="dash-head">${icon('star')}<b>Rang VIP</b></div>
-    <div class="vip-now"><span class="vip-badge big vip-${v.id}" style="--vc:${v.color}">${v.name}</span><small>${v.cb ? `${Math.round(v.cb * 100)} % de tes pertes de la semaine remboursées le lundi` : 'Pas encore de remboursement'}</small></div>
-    ${v.next ? `<div class="q-bar vip"><i style="width:${pct}%;background:${v.next.color}"></i></div><small class="muted">Prochain rang : <b>${v.next.name}</b> à ${fmt(v.next.min)} misés (${Math.round(v.next.cb * 100)} % remboursés)</small>` : '<small class="muted">Rang maximum atteint !</small>'}
+  const pct = vipProgress(wallet.stats.totalWagered);
+  return `<div class="dash-head">${icon('star')}<b>Rang VIP</b><button type="button" class="btn btn-ghost btn-sm" data-vip>Tous les rangs</button></div>
+    <div class="vip-now"><button type="button" class="vip-badge big vip-${v.id}" style="--vc:${v.color}" data-vip>${v.name}</button><small>${v.cb ? `${Math.round(v.cb * 100)} % de tes pertes de la semaine remboursées le lundi, +${Math.round(v.wheel * 100)} % sur la roue du jour${v.quest ? `, +${Math.round(v.quest * 100)} % sur les quêtes` : ''}` : 'Pas encore d\'avantage : mise 25 000 au total pour devenir Macaque'}</small></div>
+    ${v.next ? `<div class="vip-pct"><div class="q-bar vip"><i style="width:${pct}%;background:${v.next.color}"></i></div><b>${pct.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %</b></div><small class="muted">Prochain rang : <b>${v.next.name}</b> à ${fmt(v.next.min)} misés (encore ${fmt(v.next.min - wallet.stats.totalWagered)})</small>` : '<small class="muted">Rang maximum atteint !</small>'}
     ${cb.amount ? `<button class="btn btn-gold wide" id="cb-claim">Récupérer ${fmt(cb.amount)} ${CUR} remboursés</button>` : `<small class="muted cb-note">${cb.loss === 0 && wallet.p.lastWeek && wallet.p.lastWeek.cb ? 'Remboursement de la semaine dernière déjà récupéré.' : 'Le remboursement de la semaine arrive lundi (pertes nettes aux jeux de casino).'}</small>`}`;
 }
+// mise actuelle de la slot (mémorisée) pour afficher la chance de jackpot
+const jpBet = () => { try { const v = Math.floor(+localStorage.getItem('chibouk_slot_total')); return v >= 10 ? v : 100; } catch { return 100; } };
 function jackpotHTML(st) {
   const last = st && st.last && st.last.lastPseudo ? `Dernier gagnant : <b>${esc(st.last.lastPseudo)}</b> (${fmt(st.last.lastAmount)})` : 'Personne ne l\'a encore remporté !';
   return `<div class="dash-head">${icon('trophy')}<b>Jackpot commun</b></div>
     <div class="jp-amount" id="jp-amount">${money(st ? st.jackpot : CONFIG.JACKPOT_SEED)}</div>
     <small class="muted">1 % de chaque mise à la Chibouk Slot l'alimente. Il peut tomber sur n'importe quel spin, plus souvent avec une grosse mise.</small>
+    <small class="jp-odds">Ta chance par spin à ${fmt(jpBet())} : <b>${chanceText(jackpotChance(jpBet(), st ? st.jackpot : CONFIG.JACKPOT_SEED))}</b></small>
     <small class="jp-last">${last}</small>
     <a class="btn btn-ghost btn-sm" href="#/slots">Tenter ma chance ${icon('arrow')}</a>`;
 }
+let feedAll = false;
 function feedHTML(st) {
   const list = (st && st.entries) || [];
-  if (!list.length) return '<p class="muted">Rien pour l\'instant… Les gros gains, les succès rares et les jackpots de tout le monde apparaîtront ici.</p>';
+  if (!list.length) return '<p class="muted">Rien pour l\'instant… Les gros gains, les succès, les quêtes et les jackpots de tout le monde apparaîtront ici.</p>';
   const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'à l\'instant' : m < 60 ? `il y a ${m} min` : m < 1440 ? `il y a ${Math.round(m / 60)} h` : `il y a ${Math.round(m / 1440)} j`; };
-  return `<ul class="feed">${list.slice(0, 12).map((e) => `<li class="fd-${e.kind}"><span class="fd-ic">${icon(FEED_ICON[e.kind] || 'bolt')}</span><span class="fd-txt"><b>${esc(feedWho(e))}</b> ${esc(feedText(e))}</span><small>${ago(e.at)}</small></li>`).join('')}</ul>`;
+  const n = feedAll ? 30 : 10;
+  return `<ul class="feed">${list.slice(0, n).map((e) => `<li class="fd-${e.kind}"><span class="fd-ic">${icon(FEED_ICON[e.kind] || 'bolt')}</span><span class="fd-txt">${feedRich(e)}</span><small>${ago(e.at)}</small></li>`).join('')}</ul>${list.length > 10 ? `<button type="button" class="feed-more" data-feedmore>${feedAll ? 'Voir moins' : `Voir les ${Math.min(30, list.length)} derniers`}</button>` : ''}`;
 }
 
 function card(key, title, desc, tag, art) {
@@ -516,7 +524,7 @@ function mountLobby(view, { wallet: w }) {
       <div class="dash-card" id="dash-vip"></div>
     </section>
     <section class="lobby-sec" data-sec="feed">
-    <h2 class="lobby-cat feed-cat"><button type="button" class="lc-toggle" aria-expanded="true">${icon('bolt')}En direct de la jungle<small class="lc-count">gros gains, succès rares, jackpots</small><span class="lc-chev">${icon('arrow')}</span></button></h2>
+    <h2 class="lobby-cat feed-cat"><button type="button" class="lc-toggle" aria-expanded="true">${icon('bolt')}En direct de la jungle<small class="lc-count">gros gains, succès, quêtes, jackpots, boutique…</small><span class="lc-chev">${icon('arrow')}</span></button></h2>
     <div class="lc-body"><div class="feed-box" id="feed-box"></div></div></section>
     <section class="lobby-sec" data-sec="casino">
     <h2 class="lobby-cat"><button type="button" class="lc-toggle" aria-expanded="true">${icon('chip')}Jeux de casino<small class="lc-count">${casinoCards.length} jeux</small><span class="lc-chev">${icon('arrow')}</span></button></h2>
@@ -582,6 +590,7 @@ function mountLobby(view, { wallet: w }) {
     if (!t) t = setTimeout(() => { t = null; dash(); }, 400);
   });
   const ago = setInterval(() => { const fb = $('#feed-box', view); if (fb && lastSocial) fb.innerHTML = feedHTML(lastSocial); }, 60000);
+  view.addEventListener('click', (e) => { if (e.target.closest('[data-feedmore]')) { feedAll = !feedAll; const fb = $('#feed-box', view); if (fb && lastSocial) fb.innerHTML = feedHTML(lastSocial); } });
   return () => { off(); offSocial(); clearTimeout(t); clearInterval(ago); };
 }
 

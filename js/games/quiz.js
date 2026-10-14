@@ -8,6 +8,28 @@ import { sfx } from '../sfx.js';
 const r = (a, b) => a + randInt(b - a + 1);
 
 // Problème selon la difficulté (0 = facile, 1 = moyen, 2 = un peu plus dur)
+// Modes : facile / moyen / difficile (temps, gains et calculs différents)
+export const QUIZ_MODES = {
+  easy: { label: 'Facile', desc: 'Additions, soustractions et tables de 2 à 9.', seconds: 10, per: 10, bonus: 50, stat: 'Easy' },
+  medium: { label: 'Moyen', desc: 'De plus en plus dur : divisions et calculs à deux opérations à la fin.', seconds: 12, per: 15, bonus: 75, stat: 'Medium' },
+  hard: { label: 'Difficile', desc: 'Multiplications à deux chiffres, carrés, pourcentages, grandes soustractions.', seconds: 15, per: 25, bonus: 125, stat: 'Hard' },
+};
+
+export function makeHard() {
+  const k = ['mul2', 'mul21', 'sq', 'div3', 'mix3', 'sub3', 'pct'][randInt(7)];
+  let a, b, c, d;
+  switch (k) {
+    case 'mul2': a = r(12, 19); b = r(11, 19); return { q: `${a} × ${b}`, ans: a * b };
+    case 'mul21': a = r(21, 99); b = r(3, 9); return { q: `${a} × ${b}`, ans: a * b };
+    case 'sq': a = r(11, 25); return { q: `${a}²`, ans: a * a };
+    case 'div3': b = r(3, 9); c = r(12, 60); return { q: `${b * c} ÷ ${b}`, ans: c };
+    case 'mix3': a = r(3, 12); b = r(3, 12); c = r(3, 12); d = r(2, 9); return { q: `${a} × ${b} + ${c} × ${d}`, ans: a * b + c * d };
+    case 'sub3': a = r(150, 999); b = r(37, 149); return { q: `${a} − ${b}`, ans: a - b };
+    case 'pct': { const p = [10, 20, 25, 50, 75][randInt(5)]; const n = r(2, 20) * (p === 75 || p === 25 ? 20 : 10); return { q: `${p} % de ${n}`, ans: (p * n) / 100 }; }
+  }
+  return { q: '12 × 12', ans: 144 };
+}
+
 export function makeProblem(level) {
   const kinds = level === 0 ? ['add', 'sub', 'mul'] : level === 1 ? ['add', 'sub', 'mul', 'div'] : ['mul', 'div', 'mix', 'add2'];
   const k = kinds[randInt(kinds.length)];
@@ -24,7 +46,11 @@ export function makeProblem(level) {
 }
 
 export function mount(view, { wallet }) {
-  const N = CONFIG.QUIZ_QUESTIONS, SECS = CONFIG.QUIZ_SECONDS;
+  const N = CONFIG.QUIZ_QUESTIONS;
+  let modeKey = 'medium';
+  try { const m = localStorage.getItem('chibouk_quiz_mode'); if (QUIZ_MODES[m]) modeKey = m; } catch {}
+  const M = () => QUIZ_MODES[modeKey];
+  let SECS = M().seconds;
   let alive = true;
   let state = 'intro'; // intro | ask | feedback | done
   let qi = 0, correct = 0, results = [], current = null;
@@ -33,7 +59,7 @@ export function mount(view, { wallet }) {
   view.innerHTML = `
   <div class="qz-wrap">
     <div class="game-head"><h1>Calcul <span>mental</span></h1>
-      <div class="actions"><span class="gc-tag">Gratuit · ${CONFIG.QUIZ_PER_CORRECT} ${CUR} par bonne réponse</span></div></div>
+      <div class="actions"><span class="gc-tag">Gratuit · jusqu'à ${QUIZ_MODES.hard.per} ${CUR} par bonne réponse</span></div></div>
     <div class="qz-stage">
       <div class="qz-dots" id="qz-dots">${Array.from({ length: N }, () => '<i></i>').join('')}</div>
       <div class="qz-body" id="qz-body"></div>
@@ -49,12 +75,15 @@ export function mount(view, { wallet }) {
 
   function intro() {
     state = 'intro';
+    SECS = M().seconds;
     body.innerHTML = `<div class="qz-card">${monkeySVG({ cap: true })}
       <h2>${N} calculs, ${SECS} secondes chacun</h2>
-      <p>Additions, soustractions, tables de multiplication et divisions.<br>
-      <b>+${CONFIG.QUIZ_PER_CORRECT} ${CUR}</b> par bonne réponse, <b>+${CONFIG.QUIZ_PERFECT_BONUS} ${CUR}</b> de bonus pour un sans-faute (jusqu'à ${fmt(N * CONFIG.QUIZ_PER_CORRECT + CONFIG.QUIZ_PERFECT_BONUS)}).</p>
+      <p>${M().desc}<br>
+      <b>+${M().per} ${CUR}</b> par bonne réponse, <b>+${M().bonus} ${CUR}</b> de bonus pour un sans-faute (jusqu'à ${fmt(N * M().per + M().bonus)}).</p>
+      <div class="mcq-modes three">${Object.entries(QUIZ_MODES).map(([k, m]) => `<button type="button" class="mcq-mode ${k === modeKey ? 'on' : ''}" data-m="${k}"><b>${m.label}</b><span>${m.desc}</span><small>${m.seconds} s · +${m.per} ${CUR} / bonne rép. · +${m.bonus} sans-faute</small></button>`).join('')}</div>
       <button class="btn btn-gold btn-lg" id="qz-start">Commencer</button></div>`;
     $('#qz-start', view).onclick = start;
+    $$('.mcq-mode', view).forEach((b) => (b.onclick = () => { modeKey = b.dataset.m; try { localStorage.setItem('chibouk_quiz_mode', modeKey); } catch {} sfx.click(); intro(); }));
     renderDots();
   }
 
@@ -66,7 +95,7 @@ export function mount(view, { wallet }) {
 
   function ask() {
     state = 'ask';
-    current = makeProblem(qi < 4 ? 0 : qi < 8 ? 1 : 2);
+    current = modeKey === 'easy' ? makeProblem(qi < 6 || randInt(3) > 0 ? 0 : 1) : modeKey === 'hard' ? (qi < 2 ? makeProblem(2) : makeHard()) : makeProblem(qi < 4 ? 0 : qi < 8 ? 1 : 2);
     body.innerHTML = `
       <div class="qz-q"><span class="qz-num">Question ${qi + 1}/${N}</span><div class="qz-expr">${current.q} = <span class="qz-ans" id="qz-ans">?</span></div></div>
       <div class="qz-timer"><div class="qz-bar" id="qz-bar"></div><span id="qz-sec">${SECS}</span></div>
@@ -113,7 +142,7 @@ export function mount(view, { wallet }) {
     const q = $('.qz-q', view);
     q.classList.add(ok ? 'good' : 'bad');
     $('#qz-ans', view).textContent = current.ans;
-    q.insertAdjacentHTML('beforeend', `<div class="qz-verdict">${ok ? `Bravo ! +${CONFIG.QUIZ_PER_CORRECT}` : timeout ? 'Temps écoulé…' : `Raté, c'était ${current.ans}`}</div>`);
+    q.insertAdjacentHTML('beforeend', `<div class="qz-verdict">${ok ? `Bravo ! +${M().per}` : timeout ? 'Temps écoulé…' : `Raté, c'était ${current.ans}`}</div>`);
     $$('.qz-form input, .qz-form button, .qz-pad button', view).forEach((el) => (el.disabled = true));
     if (ok) sfx.coin(); else sfx.lose();
     renderDots();
@@ -128,8 +157,8 @@ export function mount(view, { wallet }) {
     if (credited) return 0;
     credited = true;
     const perfect = correct === N;
-    const amount = correct * CONFIG.QUIZ_PER_CORRECT + (perfect ? CONFIG.QUIZ_PERFECT_BONUS : 0);
-    wallet.freeReward('quiz', amount, { Correct: correct, Perfect: perfect ? 1 : 0 });
+    const amount = correct * M().per + (perfect ? M().bonus : 0);
+    wallet.freeReward('quiz', amount, { Correct: correct, Perfect: perfect ? 1 : 0, [M().stat + 'Correct']: correct, [M().stat + 'Perfect']: perfect ? 1 : 0 });
     return amount;
   }
 
@@ -140,14 +169,15 @@ export function mount(view, { wallet }) {
     renderDots();
     body.innerHTML = `<div class="qz-card">${monkeySVG(perfect ? { crown: true, fur: '#c98a00', face: '#ffe6a6', ear: '#ffd36b' } : { wink: correct >= N / 2 })}
       <h2>${correct}/${N} bonnes réponses${perfect ? ' : sans-faute !' : ''}</h2>
-      <p>${amount > 0 ? `+${money(amount)} ajoutés à ton solde${perfect ? ` (dont ${CONFIG.QUIZ_PERFECT_BONUS} de bonus)` : ''}.` : 'Pas de Brundles cette fois, retente ta chance !'}</p>
-      <button class="btn btn-gold btn-lg" id="qz-again">Rejouer</button></div>`;
+      <p>${amount > 0 ? `+${money(amount)} ajoutés à ton solde${perfect ? ` (dont ${M().bonus} de bonus)` : ''}.` : 'Pas de Brundles cette fois, retente ta chance !'}</p>
+      <div class="qz-end-btns"><button class="btn btn-gold btn-lg" id="qz-again">Rejouer (${M().label})</button><button class="btn btn-ghost" id="qz-modes">Changer de mode</button></div></div>`;
     $('#qz-again', view).onclick = start;
+    $('#qz-modes', view).onclick = intro;
     if (amount > 0) { sfx.win(perfect); coinRain(perfect ? 40 : 15); }
   }
 
   const onKey = (e) => {
-    if (state === 'intro' || state === 'done') { if (e.key === 'Enter' && !document.querySelector('.modal-backdrop')) { e.preventDefault(); start(); } return; }
+    if (state === 'intro' || state === 'done') { if (e.key === 'Enter' && !document.querySelector('.modal-backdrop') && !e.target.closest('button')) { e.preventDefault(); start(); } return; }
     if (state !== 'ask' || e.target.id === 'qz-input') return;
     const input = $('#qz-input', view);
     if (/^[0-9]$/.test(e.key) && input.value.length < 5) { input.value += e.key; $('#qz-ans', view).textContent = input.value; }
@@ -165,7 +195,7 @@ export function mount(view, { wallet }) {
     // partie interrompue : on crédite les bonnes réponses déjà données (sans le bonus)
     if ((state === 'ask' || state === 'feedback') && correct > 0 && !credited) {
       credited = true;
-      wallet.freeReward('quiz', correct * CONFIG.QUIZ_PER_CORRECT, { Correct: correct });
+      wallet.freeReward('quiz', correct * M().per, { Correct: correct, [M().stat + 'Correct']: correct });
     }
   };
 }

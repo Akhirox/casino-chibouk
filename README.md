@@ -5,14 +5,14 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 - Connexion par **pseudo + mot de passe**, sans email.
 - **1 000 Brundles offerts** à la création du compte, puis la **roue du jour** (500 à 5 000 Brundles, une fois par jour, remise à zéro à minuit heure de Paris), multipliée par la série de jours consécutifs (jusqu'à ×2).
 - **Quêtes du jour** : 3 missions renouvelées à minuit (+300 / +600 / +1 000, +500 si les 3 sont faites).
-- **Rangs VIP** selon le total misé, avec un **remboursement le lundi** de 1 à 7 % des pertes de la semaine aux jeux de casino.
+- **Rangs VIP** selon le total misé : **remboursement le lundi** de 1 à 7 % des pertes de la semaine aux jeux de casino, bonus sur la roue du jour et sur les quêtes (jusqu'à +50 %). Clic sur un rang pour voir le tableau complet.
 - **Classement de la semaine** (bénéfice du lundi au dimanche), trophée permanent pour le vainqueur et palmarès.
 - **Boutique cosmétique** : cadres d'avatar, titres, dos de cartes, thèmes de la slot, effets de victoire (de 2 000 à 100 millions de Brundles). Ça donne une utilité aux Brundles et freine l'inflation des soldes.
-- **Jackpot commun** alimenté par 1 % des mises de la slot (payé par le casino), qui peut tomber sur n'importe quel spin.
+- **Jackpot commun** alimenté par 1 % des mises de la slot (payé par le casino), qui peut tomber sur n'importe quel spin. Chance par spin = 1,5 % × mise ÷ jackpot, plafonnée à 1 % (ex. : jackpot de 10 000 et mise de 100 → 1 sur 6 667), affichée sur la slot.
 - **En direct de la jungle** : fil d'activité de l'accueil (gros gains, succès rares, jackpots, rangs VIP, vainqueurs de la semaine).
 - **Historique** des 50 dernières parties de chaque jeu (onglet du classement à côté du jeu, gardé sur l'appareil).
 - **Aucune mise maximum** : mise libre + bouton MAX (Slot, Plinkoko, Crashibouk, Tower, Mines, Dice), jetons jusqu'à 25k + « Tapis » (blackjack), jetons jusqu'à 25k empilables (roulette).
-- **Succès** : 115 défis (globaux et par jeu) qui rapportent de +100 à +10 000 Brundles, avec une page dédiée et une notification à chaque déblocage. Un clic sur un succès montre qui l'a débloqué, et qui l'a eu en premier (avec la date).
+- **Succès** : 116 défis (globaux et par jeu) qui rapportent de +100 à +10 000 Brundles, avec une page dédiée et une notification à chaque déblocage. Un clic sur un succès montre qui l'a débloqué, et qui l'a eu en premier (avec la date).
 - **Profils** : photo (ou un des 12 singes) et petite bio, visibles en cliquant sur un pseudo dans les classements. La photo est réduite à quelques Ko et stockée dans Firestore (pas besoin de Firebase Storage, donc ça reste gratuit).
 - **Singe conseiller** : petites astuces contextuelles sur chaque page, désactivables depuis le menu du pseudo.
 - **Paris automatiques** sur les 12 jeux de casino : nombre de paris libre ou infini, arrêt sur objectif de gain ou limite de perte.
@@ -32,14 +32,14 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 | **Roulette Banane** | Roulette européenne à un zéro, roue et bille animées. | 97,3 % |
 | **Plinkoko** | 8, 12 ou 16 rangées, risque faible / moyen / élevé, jusqu'à ×1000, billes multiples. | 99 % |
 | **Crashibouk** | Le multiplicateur grimpe, encaisse avant l'explosion. Encaissement auto possible. | 99 % |
-| **Tower** | 9 étages, 5 difficultés (de 1 bombe sur 4 cases à 3 bombes sur 4). Chaque étage monte le multi, encaisse quand tu veux. | 99 % |
+| **Tower** | 9 étages, 5 difficultés (de 1 bombe sur 4 cases à 3 bombes sur 4). Chaque étage monte le multi, encaisse quand tu veux. Auto avec parcours tracé sur le plateau. | 99 % |
 | **Mines** | Grille 5×5, 1 à 24 mines. Chaque banane trouvée augmente le multi, encaisse avant de tomber sur une mine. | 99 % |
 | **Dice** | Tirage de 0,00 à 100,00. Choisis « en dessous » ou « au-dessus » et ta chance (0,01 % à 98 %) : multi = 99 ÷ chance. | 99 % |
 | **Hi-Lo** | Plus haut ou plus bas que la carte affichée ? Paquet infini, chaque bonne réponse multiplie le gain (0,99 ÷ probabilité), encaissement quand on veut. | 99 % |
 | **Keno** | 1 à 10 numéros sur 40, 10 tirés, 3 niveaux de risque, jusqu'à ×10 000. Tables calculées exactement (`tools/keno-rtp.mjs`). | 99 % |
 | **Roue du Singe** | 30 cases équiprobables, 3 niveaux de risque (jusqu'à ×29,7). | 99 % |
 | **Limbo** | Cible de ×1,01 à ×1 000 000 : on gagne mise × cible si le tirage l'atteint (chance = 99 ÷ cible). | 99 % |
-| **Calcul mental** | Gratuit : 10 calculs (additions, soustractions, tables, divisions), 10 s chacun. +10 Brundles par bonne réponse, +50 de bonus pour un sans-faute. | — |
+| **Calcul mental** | Gratuit : 10 calculs, 3 modes. Facile (10 s, +10 par bonne réponse, +50 sans-faute), Moyen (12 s, +15, +75), Difficile (15 s, +25, +125 : multiplications à deux chiffres, carrés, pourcentages). | — |
 | **Quiz capitales** | Gratuit : 10 questions dans les deux sens (pays → capitale, capitale → pays), 127 pays. Mode facile (4 choix, 10 s, +10 par bonne réponse, +50 sans-faute) ou expert (réponse à écrire, 15 s, +20 par bonne réponse, +100 sans-faute). | — |
 | **Quiz ciné** | Gratuit : 10 questions à 4 choix sur 800 films (réalisateur, acteurs, année de sortie), 15 s chacune. Même barème. Données : `data/movies.json`, extrait de la base TMDB (The Movies Dataset). | — |
 | **Quiz drapeaux** | Gratuit : 10 drapeaux parmi 159 pays (SVG du projet flag-icons, licence MIT, dans `data/flags/`). Modes facile et expert comme les capitales. | — |

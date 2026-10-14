@@ -10,6 +10,10 @@ const CUR = CONFIG.CURRENCY;
 export const TIPS = [
   { id: 'profile', route: ['lobby', 'stats', 'achievements'], when: (w) => !w.p.avatar || !w.p.bio, text: `Personnalise ton profil : une photo (ou un singe au choix) et une petite bio. Les autres joueurs les voient en cliquant sur ton pseudo dans les classements. Et le succès « Carte de visite » rapporte +100 ${CUR} !`, go: ['Mon profil', '#/profile'] },
   { id: 'daily', route: ['*'], when: (w) => w.dailyAvailable(), text: `La roue du jour t'attend : bouton en haut à droite. Reviens chaque jour pour faire monter ta série, jusqu'à ×2 sur le gain !` },
+  { id: 'tower-plan', route: ['tower'], text: 'Pour l\'auto de la Tower, clique sur les cases du plateau avant de lancer : tu traces ton parcours étage par étage. « Jusqu\'en haut » le fait grimper les 9 étages.' },
+  { id: 'vip-click', route: ['lobby', 'stats', 'profile'], text: 'Clique sur un rang VIP (n\'importe où sur le site) pour voir tous les rangs et leurs avantages : remboursement, bonus sur la roue et les quêtes.' },
+  { id: 'ach-sort', route: ['achievements'], text: 'Le menu « Trier » de la page des succès montre les plus rares, ou les derniers obtenus par tout le monde.' },
+  { id: 'jp-odds', route: ['slots'], text: 'Le bandeau JACKPOT au-dessus des rouleaux affiche ta chance de le remporter avec ta mise actuelle. Clique dessus pour les détails.' },
   { id: 'quests', route: ['lobby'], text: 'Trois quêtes du jour t\'attendent sur l\'accueil (facile, moyenne, difficile). Elles avancent toutes seules pendant que tu joues.' },
   { id: 'vip', route: ['lobby', 'stats'], text: 'Plus tu mises, plus ton rang VIP monte. Chaque lundi, une partie de tes pertes de la semaine t\'est remboursée (jusqu\'à 7 % pour le Roi Singe).' },
   { id: 'jackpot', route: ['lobby', 'slots'], text: 'Le jackpot commun grossit avec chaque spin de la Chibouk Slot, et il peut tomber sur n\'importe quel spin. Plus ta mise est grosse, plus tu as de chances.' },
