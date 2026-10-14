@@ -14,7 +14,7 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 - **Classements** : classement de la semaine et palmarès, soldes, meilleurs gains par jeu.
 - **Historique** des 50 dernières parties de chaque jeu (onglet du classement à côté du jeu, gardé sur l'appareil).
 - **Aucune mise maximum** : mise libre + bouton MAX (Slot, Plinkoko, Crashibouk, Tower, Mines, Dice), jetons jusqu'à 25k + « Tapis » (blackjack), jetons jusqu'à 25k empilables (roulette).
-- **Succès** : 116 défis (globaux et par jeu) qui rapportent de +100 à +10 000 Brundles, avec une page dédiée et une notification à chaque déblocage. Un clic sur un succès montre qui l'a débloqué, et qui l'a eu en premier (avec la date).
+- **Succès** : 134 défis (globaux et par jeu) qui rapportent de +100 à +10 000 Brundles, avec une page dédiée et une notification à chaque déblocage. Un clic sur un succès montre qui l'a débloqué, et qui l'a eu en premier (avec la date).
 - **Profils** : photo (ou un des 12 singes) et petite bio, visibles en cliquant sur un pseudo dans les classements. La photo est réduite à quelques Ko et stockée dans Firestore (pas besoin de Firebase Storage, donc ça reste gratuit).
 - **Singe conseiller** : petites astuces contextuelles sur chaque page, désactivables depuis le menu du pseudo.
 - **Paris automatiques** sur les 12 jeux de casino : nombre de paris libre ou infini, arrêt sur objectif de gain ou limite de perte.
@@ -47,6 +47,12 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 | **Quiz drapeaux** | Gratuit : 10 drapeaux parmi 159 pays (SVG du projet flag-icons, licence MIT, dans `data/flags/`). Modes facile et expert comme les capitales. | — |
 | **Mot du jour** | Gratuit, une fois par jour : façon Motus, même mot pour tout le monde, 6 essais. +400 à +70 selon le nombre d'essais. Dictionnaire de 77 000 mots dans `data/mots.txt` (projet an-array-of-french-words, licence MIT), 346 mots à deviner dans `data/mots-cibles.json`. | — |
 | **Plus ou moins** | Gratuit : quel film a eu le plus gros budget ? Série jusqu'à 15, +10 par bonne réponse, +50 au bout. Budgets tirés de ta base TMDB. | — |
+| **Queens** | Gratuit : une reine par ligne, colonne et zone de couleur, jamais deux reines qui se touchent. Grilles 7×7, 8×8, 9×9 générées à la volée avec une solution unique. +60 / +90 / +130, +50 % sous le temps de référence. | — |
+| **Tango** | Gratuit : grille 6×6 de soleils et de lunes (3 de chaque par ligne et colonne, jamais 3 pareils d'affilée, signes = et ×). 3 niveaux, solution unique. +40 / +70 / +100, +50 % si rapide. | — |
+| **Pinpoint** | Gratuit : trouver la catégorie commune à 5 indices dévoilés un par un (235 catégories, réponses tolérantes). +100 au 1er indice, puis +70 / +50 / +30 / +15. | — |
+| **Sudoku** | Gratuit : 3 niveaux (40 / 32 / 25 chiffres donnés), solution unique, notes. +80 / +160 / +300, +50 % si rapide. | — |
+| **Démineur** | Gratuit, contre la montre : 9×9 (10 mines, 3 min), 16×16 (40 mines, 8 min), 16×30 (99 mines, 15 min). +40 / +120 / +300, jusqu'au double selon le temps restant. | — |
+| **Snake** | Gratuit : 3 niveaux (bords traversables, murs, puis accélération). +1 / +2 / +4 par banane. | — |
 | **Casse-briques** | Gratuit, sans mise, accessible à tout moment : +100 Brundles par niveau terminé (6 niveaux en boucle, de plus en plus durs). | — |
 
 Si tu quittes la page au milieu d'une partie de Tower ou de Mines, elle est encaissée automatiquement au palier atteint (ou la mise est remboursée si aucune case n'a été choisie). Pareil pour le Crash (encaissement au multiplicateur du moment) et le Blackjack (la main est terminée en restant).
@@ -226,6 +232,13 @@ js/games/limbo.js          Limbo
 js/games/flags.js          Quiz drapeaux (+ flags-data.js)
 js/games/motus.js          Mot du jour
 js/games/higher.js         Plus ou moins
+js/games/free-common.js    outils communs des jeux de réflexion (chrono, niveaux, fin de partie)
+js/games/queens.js         Queens (+ queens-gen.js : génération à solution unique)
+js/games/tango.js          Tango (+ tango-gen.js)
+js/games/pinpoint.js       Pinpoint (+ pinpoint-data.js : 235 catégories)
+js/games/sudoku.js         Sudoku (+ sudoku-gen.js)
+js/games/demineur.js       Démineur
+js/games/snake.js          Snake
 data/                      films, drapeaux, dictionnaire
 firestore.rules            règles de sécurité à publier
 tools/simulate-rtp.mjs     RTP de la slot (calcul exact + simulation)

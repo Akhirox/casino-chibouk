@@ -157,6 +157,12 @@ const ICONS = {
   chev: `<path d="m6 9 6 6 6-6" stroke-width="2"/>`,
   fire: `<path d="M12 21c-4 0-7-2.8-7-6.6 0-3.4 2.6-5.4 3.7-8.4.5 2 1.6 3 2.6 3.5C11.6 6 13 4 15 3c-.3 3 1.5 4.6 2.8 6.6A7 7 0 0 1 19 14.4C19 18.2 16 21 12 21z" ${D}/>`,
   globe: `<circle cx="12" cy="12" r="8.5" ${D}/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5M12 3.5C9.4 5.9 8.2 8.7 8.2 12s1.2 6.1 3.8 8.5" stroke-width="1.5"/>`,
+  queens: `<path d="M3.5 18h17l-1.5-9.5-4.3 3.8L12 5l-2.7 7.3L5 8.5z" ${D}/><path d="M3.5 21h17" />`,
+  tango: `<circle cx="8" cy="9" r="3.6" ${D}/><path d="M8 2.6v1.2M8 14.2v1.2M1.6 9h1.2M13.2 9h1.2M3.5 4.5l.9.9M11.6 12.6l.9.9M3.5 13.5l.9-.9M11.6 5.4l.9-.9" stroke-width="1.4"/><path d="M19.5 12.5a5 5 0 1 0 1.5 7.2 4 4 0 0 1-1.5-7.2z" ${D}/>`,
+  pinpoint: `<path d="M12 21.5s-6.5-6.4-6.5-11.3a6.5 6.5 0 0 1 13 0c0 4.9-6.5 11.3-6.5 11.3z" ${D}/><circle cx="12" cy="10.2" r="2.4" />`,
+  sudoku: `<rect x="3.5" y="3.5" width="17" height="17" rx="2" ${D}/><path d="M9.2 3.5v17M14.8 3.5v17M3.5 9.2h17M3.5 14.8h17" stroke-width="1.3"/>`,
+  snake: `<path d="M4 18.5c3 0 3-4 6-4s3 4 6 4 3.5-2.5 3.5-5-2-4.5-5-4.5H9.5A2.5 2.5 0 0 1 9.5 4H18" ${D} stroke-width="2.2"/><circle cx="18.5" cy="4" r="1.2" fill="currentColor"/>`,
+  demineur: `<rect x="3.5" y="3.5" width="17" height="17" rx="2.5" ${D}/><circle cx="12" cy="13" r="4" fill="currentColor"/><path d="M12 6.5V8.5M15.5 9.5l1.2-1.2M8.5 9.5 7.3 8.3" stroke-width="1.6"/>`,
   film: `<rect x="3.5" y="9" width="17" height="11.5" rx="2" ${D}/><path d="m3.8 9 15.4-4.2-.9-3.3L3 5.7z" ${D}/><path d="m7.6 4.7 2 3M12.4 3.4l2 3" stroke-width="1.5"/><path d="M3.5 13h17" stroke-width="1.3"/>`,
 };
 export function icon(name, cls = '') {
@@ -299,4 +305,55 @@ export function higherArtSVG() {
     <rect x="30" y="22" width="60" height="88" rx="6" fill="#3a1420" stroke="#ff8a3d"/><text x="60" y="72" text-anchor="middle" font-family="Bungee, sans-serif" font-size="14" fill="#fff">160 M$</text>
     <rect x="110" y="22" width="60" height="88" rx="6" fill="#14324a" stroke="#2fb1ff"/><text x="140" y="72" text-anchor="middle" font-family="Bungee, sans-serif" font-size="22" fill="#f5c542">?</text>
     <path d="M100 52l7 9h-14zM100 92l7-9h-14z" fill="#f5c542"/><text x="100" y="134" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="800" font-size="11" fill="#cfe0d5">plus ou moins ?</text></svg>`;
+}
+
+/* --------------------------- Jeux de réflexion (cartes du lobby) --------------------------- */
+export function queensArtSVG() {
+  const C = ['#f2a65a', '#8ecae6', '#e9d36c', '#c7a0d9', '#9ed67a'];
+  const reg = ['00112', '00112', '33112', '33442', '34444'], Q = { '0,1': 1, '1,3': 1, '2,0': 1, '3,4': 1, '4,2': 1 };
+  let h = '';
+  reg.forEach((row, r) => [...row].forEach((g, c) => {
+    h += `<rect x="${55 + c * 18}" y="${18 + r * 18}" width="18" height="18" fill="${C[+g]}" stroke="#0004"/>`;
+    if (Q[r + ',' + c]) h += `<path transform="translate(${57 + c * 18} ${20 + r * 18}) scale(.58)" d="M3 18.5h18l-1.6-10-4.6 4.2L12 5.5l-2.8 7.2-4.6-4.2z" fill="#1a1400"/>`;
+  }));
+  return `<svg viewBox="0 0 200 145" class="art-queens" aria-hidden="true"><rect x="53" y="16" width="94" height="94" rx="4" fill="#0006"/>${h}<text x="100" y="134" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="800" font-size="11" fill="#cfe0d5">une reine par couleur</text></svg>`;
+}
+export function tangoArtSVG() {
+  const sun = (x, y) => `<g transform="translate(${x} ${y})"><circle r="6" fill="#ffb627"/><g stroke="#ffb627" stroke-width="2" stroke-linecap="round"><path d="M0-10v2M0 8v2M-10 0h2M8 0h2M-7-7l1.4 1.4M5.6 5.6 7 7M-7 7l1.4-1.4M5.6-5.6 7-7"/></g></g>`;
+  const moon = (x, y) => `<path transform="translate(${x - 10} ${y - 10}) scale(.85)" d="M15.5 3.2a9 9 0 1 0 5.3 13.4A7.2 7.2 0 0 1 15.5 3.2z" fill="#7fb2ff"/>`;
+  const g = ['SML', 'MSS', 'LMS'];
+  let h = '';
+  g.forEach((row, r) => [...row].forEach((v, c) => { const x = 66 + c * 34, y = 30 + r * 34; h += `<rect x="${x - 15}" y="${y - 15}" width="30" height="30" rx="5" fill="#ffffff12" stroke="#ffffff22"/>` + (v === 'S' ? sun(x, y) : v === 'M' ? moon(x, y) : ''); }));
+  return `<svg viewBox="0 0 200 145" class="art-tango" aria-hidden="true">${h}<text x="83" y="34" text-anchor="middle" font-family="Bungee, sans-serif" font-size="12" fill="#f5c542">×</text><text x="117" y="102" text-anchor="middle" font-family="Bungee, sans-serif" font-size="12" fill="#f5c542">=</text><text x="100" y="134" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="800" font-size="11" fill="#cfe0d5">soleils et lunes</text></svg>`;
+}
+export function pinpointArtSVG() {
+  const c = ['Mercure', 'Vénus', '?', '?', '?'];
+  return `<svg viewBox="0 0 200 145" class="art-pinpoint" aria-hidden="true">${c.map((t, i) => `<rect x="40" y="${10 + i * 22}" width="120" height="18" rx="5" fill="${t === '?' ? '#ffffff10' : '#2fb1ff33'}" stroke="${t === '?' ? '#ffffff22' : '#2fb1ff'}"/><text x="100" y="${23 + i * 22}" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="700" font-size="11" fill="${t === '?' ? '#8fa597' : '#fff'}">${t}</text>`).join('')}
+    <path d="M168 40s-9-9-9-16a9 9 0 0 1 18 0c0 7-9 16-9 16z" fill="#ff4d5e"/><circle cx="168" cy="24" r="3.4" fill="#fff"/></svg>`;
+}
+export function sudokuArtSVG() {
+  const d = '53..7....6..195....98....6.8...6...34..8.3..17...2...6.6....28....419..5....8..79';
+  let h = '';
+  for (let i = 0; i < 81; i++) { const r = Math.floor(i / 9), c = i % 9; if (d[i] !== '.') h += `<text x="${57 + c * 10 + 5}" y="${12 + r * 10 + 8}" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="700" font-size="7.5" fill="${(r + c) % 5 ? '#eaf2ec' : '#f5c542'}">${d[i]}</text>`; }
+  const lines = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9].map((k) => `<path d="M${57 + k * 10} 12v90M57 ${12 + k * 10}h90" stroke="${k % 3 ? '#ffffff26' : '#f5c54299'}" stroke-width="${k % 3 ? 0.6 : 1.4}"/>`).join('');
+  return `<svg viewBox="0 0 200 145" class="art-sudoku" aria-hidden="true"><rect x="57" y="12" width="90" height="90" fill="#0005"/>${lines}${h}<text x="100" y="128" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="800" font-size="11" fill="#cfe0d5">3 niveaux</text></svg>`;
+}
+export function snakeArtSVG() {
+  const body = [[3, 5], [4, 5], [5, 5], [6, 5], [6, 4], [6, 3], [7, 3], [8, 3], [9, 3], [10, 3], [10, 4]];
+  return `<svg viewBox="0 0 200 145" class="art-snake" aria-hidden="true"><rect x="30" y="12" width="140" height="105" rx="6" fill="#10241a" stroke="#ffffff1a"/>
+    ${body.map(([x, y], i) => `<rect x="${24 + x * 11}" y="${2 + y * 11 + 10}" width="10" height="10" rx="3" fill="${i === body.length - 1 ? '#3ddc84' : '#2fa866'}"/>`).join('')}
+    <circle cx="${24 + 10 * 11 + 3}" cy="${2 + 4 * 11 + 16}" r="1.3" fill="#0a100c"/><circle cx="${24 + 10 * 11 + 7}" cy="${2 + 4 * 11 + 16}" r="1.3" fill="#0a100c"/>
+    <path transform="translate(133 88) rotate(-25)" d="M-9 0a10 10 0 0 0 18 0a12 12 0 0 1-18 0z" fill="#ffd23f"/><text x="100" y="136" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="800" font-size="11" fill="#cfe0d5">mange les bananes</text></svg>`;
+}
+export function demineurArtSVG() {
+  const g = ['1.  2', '11 2*', ' 1*21', '11 1.', '*1  .'];
+  const col = { 1: '#5fa8ff', 2: '#3ddc84' };
+  let h = '';
+  g.forEach((row, r) => [...row].forEach((v, c) => {
+    const x = 60 + c * 16, y = 14 + r * 16, closed = v === '.' || v === '*';
+    h += `<rect x="${x}" y="${y}" width="15" height="15" rx="2" fill="${closed ? '#2f5a3f' : '#0f1d15'}" stroke="#0006"/>`;
+    if (v === '*') h += `<path d="M${x + 4} ${y + 12}V${y + 3}" stroke="#eaf2ec" stroke-width="1.2"/><path d="M${x + 4.6} ${y + 3}h6l-1.8 2.3 1.8 2.3h-6z" fill="#ff4d5e"/>`;
+    else if (col[v]) h += `<text x="${x + 7.5}" y="${y + 11.5}" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="800" font-size="10" fill="${col[v]}">${v}</text>`;
+  }));
+  return `<svg viewBox="0 0 200 145" class="art-demineur" aria-hidden="true">${h}<text x="100" y="114" text-anchor="middle" font-family="Bungee, sans-serif" font-size="13" fill="#f5c542">2:47</text><text x="100" y="134" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="800" font-size="11" fill="#cfe0d5">contre la montre</text></svg>`;
 }

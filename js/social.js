@@ -15,6 +15,8 @@ const mx = (m) => '×' + m.toLocaleString('fr-FR', { maximumFractionDigits: 1 })
 
 const QUIZ_LABEL = { quiz: 'au calcul mental', capitals: 'au quiz capitales', movies: 'au quiz ciné', flags: 'au quiz drapeaux', higher: 'au Plus ou moins' };
 const QUIZ_ROUTE = { quiz: 'quiz', capitals: 'capitals', movies: 'movies', flags: 'flags', higher: 'higher' };
+// Jeux de réflexion : exploits publiés avec un texte (« a résolu un » + lien vers le jeu + « difficile en 5 min »)
+export const FEAT_GAMES = { queens: 'Queens', tango: 'Tango', pinpoint: 'Pinpoint', sudoku: 'Sudoku', demineur: 'Démineur', snake: 'Snake' };
 // Qui est le sujet du message (pour la semaine : le vainqueur, pas celui qui a publié)
 export const feedWho = (e) => (e.kind === 'week' && e.winner ? e.winner : e.pseudo);
 // Texte d'un message du fil (le pseudo est ajouté à l'affichage)
@@ -33,6 +35,7 @@ export function feedText(e) {
     case 'perfect': return `a fait un sans-faute ${QUIZ_LABEL[e.game] || ''}${e.mode ? ` (${e.mode})` : ''}`;
     case 'wheel': return `a gagné ${fmt(e.amount)} Brundles à la roue du jour${e.streak > 1 ? ` (série de ${e.streak} jours)` : ''}`;
     case 'streak': return `a gagné ${fmt(e.amount)} Brundles au Plus ou moins avec une série de ${e.n}`;
+    case 'feat': return `${e.txt || ''} ${FEAT_GAMES[e.game] || ''}${e.tail ? ' ' + e.tail : ''}`;
     default: return e.text || '';
   }
 }
@@ -58,17 +61,18 @@ export function feedRich(e) {
     case 'vip': t = `est passé au rang VIP <button type="button" class="fd-link" data-vip>${esc(e.rank)}</button>${e.bonus ? ` et touche <b class="gold">${fmt(e.bonus)}</b> Brundles de bonus` : ''}`; break;
     case 'motus': t = `a trouvé le ${L('#/motus', 'mot du jour')} en ${e.tries} essai${e.tries > 1 ? 's' : ''}`; break;
     case 'shop': t = `s'est offert « ${esc(e.name)} » à la ${L('#/shop', 'boutique')}`; break;
-    case 'week': t = `remporte le ${L('#/stats', 'classement de la semaine')} (${e.profit >= 0 ? '+' : ''}${fmt(e.profit)} Brundles)`; break;
+    case 'week': t = `remporte le ${L('#/ranking', 'classement de la semaine')} (${e.profit >= 0 ? '+' : ''}${fmt(e.profit)} Brundles)`; break;
     case 'quests': t = `a terminé ses 3 ${L('#/lobby', 'quêtes du jour')}`; break;
     case 'achs': t = `a débloqué ${(e.ids || []).length} succès : ${(e.ids || []).map((id, i) => achLink(id, (e.names || [])[i])).join(', ')}`; break;
     case 'fs': t = `a déclenché <b class="gold">${e.spins} tours gratuits</b> à la ${L('#/slots', 'Chibouk Slot')} (${e.scatters} SCATTER)`; break;
     case 'perfect': t = `a fait un <b class="gold">sans-faute</b> ${QUIZ_ROUTE[e.game] ? L('#/' + QUIZ_ROUTE[e.game], esc(QUIZ_LABEL[e.game])) : ''}${e.mode ? ` (${esc(e.mode)})` : ''}`; break;
     case 'wheel': t = `a gagné <b class="gold">${fmt(e.amount)}</b> Brundles à la roue du jour${e.streak > 1 ? ` (série de ${e.streak} jours)` : ''}`; break;
+    case 'feat': t = `${esc(e.txt || '')} ${FEAT_GAMES[e.game] ? L('#/' + e.game, FEAT_GAMES[e.game]) : ''}${e.tail ? ' ' + esc(e.tail) : ''}`; break;
     default: t = esc(feedText(e));
   }
   return `${who} ${t}`;
 }
-export const FEED_ICON = { bigwin: 'bolt', ach: 'medal', achs: 'medal', jackpot: 'trophy', vip: 'star', motus: 'motus', shop: 'shop', week: 'trophy', quests: 'check', perfect: 'quiz', wheel: 'wheel', streak: 'higher' };
+export const FEED_ICON = { bigwin: 'bolt', ach: 'medal', achs: 'medal', jackpot: 'trophy', vip: 'star', motus: 'motus', shop: 'shop', week: 'trophy', quests: 'check', perfect: 'quiz', wheel: 'wheel', streak: 'higher', feat: 'bulb' };
 
 // Chance de remporter le jackpot sur un spin payant de la slot (proportionnelle à la mise, plafonnée à 1 %)
 export const JACKPOT_FACTOR = 1.5;
@@ -171,6 +175,7 @@ export function createSocial(wallet, backend) {
     if (e.type === 'free' && e.game === 'higher' && e.extra && !e.extra.Perfect && e.extra.Correct >= 7) post({ kind: 'streak', amount: e.amount, n: e.extra.Correct });
     if (e.type === 'daily' && e.amount >= 2000) post({ kind: 'wheel', amount: e.amount, streak: e.streak });
     if (e.type === 'quest' && e.bonus) post({ kind: 'quests' });
+    if (e.type === 'free' && e.meta && e.meta.feed && FEAT_GAMES[e.game]) post({ kind: 'feat', game: e.game, txt: String(e.meta.feed.txt || '').slice(0, 80), tail: String(e.meta.feed.tail || '').slice(0, 40) });
     if (e.type === 'vipup') post({ kind: 'vip', rank: e.rank, bonus: e.amount });
   });
   const onCustom = (ev) => { const d = ev.detail || {}; if (d.type === 'motus' && d.won) post({ kind: 'motus', tries: d.tries }); if (d.type === 'week') post({ kind: 'week', winner: d.winner, profit: d.profit }); };

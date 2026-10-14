@@ -104,7 +104,16 @@ TEMPLATES.push(
   { id: 'motus', tier: 2, n: 1, text: () => 'Trouve le mot du jour', ev: (e) => (e.type === 'free' && e.game === 'motus' && e.extra && e.extra.Won ? 1 : 0) },
   { id: 'higher8', tier: 2, n: 1, text: () => 'Fais une série de 8 au Plus ou moins', ev: (e) => (e.type === 'free' && e.game === 'higher' && e.extra && e.extra.Correct >= 8 ? 1 : 0) },
   { id: 'bjbj', tier: 2, n: 1, text: () => 'Fais un blackjack naturel', ev: (e) => (e.type === 'round' && e.game === 'blackjack' && e.info && e.info.bj ? 1 : 0) },
-  { id: 'free3', tier: 0, n: 3, text: (n) => `Termine ${n} parties de jeux gratuits (quiz, Plus ou moins…)`, ev: (e) => (e.type === 'free' ? 1 : 0) },
+  { id: 'queens1', tier: 0, n: 1, text: () => 'Résous une grille de Queens', ev: (e) => (e.type === 'free' && e.game === 'queens' && e.extra && e.extra.Won ? 1 : 0) },
+  { id: 'pinpoint1', tier: 0, n: 1, text: () => 'Trouve une catégorie à Pinpoint', ev: (e) => (e.type === 'free' && e.game === 'pinpoint' && e.extra && e.extra.Won ? 1 : 0) },
+  { id: 'snake10', tier: 0, n: 1, text: () => 'Mange 10 bananes en une partie de Snake', ev: (e) => (e.type === 'free' && e.game === 'snake' && e.extra && e.extra.Bananas >= 10 ? 1 : 0) },
+  { id: 'tango2', tier: 1, n: 2, text: (n) => `Résous ${n} grilles de Tango`, ev: (e) => (e.type === 'free' && e.game === 'tango' && e.extra && e.extra.Won ? 1 : 0) },
+  { id: 'sudoku1', tier: 1, n: 1, text: () => 'Résous un sudoku', ev: (e) => (e.type === 'free' && e.game === 'sudoku' && e.extra && e.extra.Won ? 1 : 0) },
+  { id: 'mines1', tier: 1, n: 1, text: () => 'Gagne une partie de démineur', ev: (e) => (e.type === 'free' && e.game === 'demineur' && e.extra && e.extra.Won ? 1 : 0) },
+  { id: 'sudokuMed', tier: 2, n: 1, text: () => 'Résous un sudoku moyen ou difficile', ev: (e) => (e.type === 'free' && e.game === 'sudoku' && e.extra && (e.extra.Won1 || e.extra.Won2) ? 1 : 0) },
+  { id: 'queens9', tier: 2, n: 1, text: () => 'Résous une grille de Queens en 9 × 9', ev: (e) => (e.type === 'free' && e.game === 'queens' && e.extra && e.extra.Won9 ? 1 : 0) },
+  { id: 'msMid', tier: 2, n: 1, text: () => 'Gagne au démineur en moyen ou difficile', ev: (e) => (e.type === 'free' && e.game === 'demineur' && e.extra && (e.extra.Won1 || e.extra.Won2) ? 1 : 0) },
+  { id: 'free3', tier: 0, n: 3, text: (n) => `Termine ${n} parties de jeux gratuits (quiz, Sudoku, Snake…)`, ev: (e) => (e.type === 'free' ? 1 : 0) },
 );
 export const QUEST_REWARD = [300, 600, 1000];
 

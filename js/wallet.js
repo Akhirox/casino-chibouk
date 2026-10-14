@@ -261,14 +261,15 @@ export class Wallet {
   }
 
   // Récompense d'un jeu gratuit (calcul mental…) — comptée à part, comme le casse-briques
-  freeReward(kind, amount, extra = {}) {
+  // meta (facultatif) : infos non comptées dans les stats, transmises avec l'événement (ex. texte pour le fil d'activité)
+  freeReward(kind, amount, extra = {}, meta = null) {
     amount = Math.floor(amount);
     const s = this.p.stats;
     s[kind + 'Rounds'] = (s[kind + 'Rounds'] || 0) + 1;
     s[kind + 'Total'] = (s[kind + 'Total'] || 0) + Math.max(0, amount);
     for (const [k, v] of Object.entries(extra)) s[kind + k] = (s[kind + k] || 0) + v;
     if (amount > 0) this.p.balance += amount;
-    this.touch({ type: 'free', game: kind, amount: Math.max(0, amount), extra });
+    this.touch({ type: 'free', game: kind, amount: Math.max(0, amount), extra, meta });
     this.vipBonus(kind, amount);
     this.flush();
   }

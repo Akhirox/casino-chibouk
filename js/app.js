@@ -24,6 +24,13 @@ import * as Limbo from './games/limbo.js';
 import * as Flags from './games/flags.js';
 import * as Motus from './games/motus.js';
 import * as Higher from './games/higher.js';
+import * as Queens from './games/queens.js';
+import * as Tango from './games/tango.js';
+import * as Pinpoint from './games/pinpoint.js';
+import * as Sudoku from './games/sudoku.js';
+import * as Snake from './games/snake.js';
+import * as Demineur from './games/demineur.js';
+import { queensArtSVG, tangoArtSVG, pinpointArtSVG, sudokuArtSVG, snakeArtSVG, demineurArtSVG } from './art.js';
 import * as Shop from './shop.js';
 import { initQuests, today, questText, vipOf, vipProgress, VIP, rakePot, claimRake, initVip, pctFmt, freeMult, xMult } from './progress.js';
 import { createSocial, feedRich, FEED_ICON, jackpotChance, chanceText } from './social.js';
@@ -79,6 +86,12 @@ const ROUTES = {
   movies: { label: 'Quiz ciné', icon: 'film', mount: Movies.mount, group: 'free' },
   higher: { label: 'Plus ou moins', icon: 'higher', mount: Higher.mount, group: 'free' },
   motus: { label: 'Mot du jour', icon: 'motus', mount: Motus.mount, group: 'free' },
+  queens: { label: 'Queens', icon: 'queens', mount: Queens.mount, group: 'free' },
+  tango: { label: 'Tango', icon: 'tango', mount: Tango.mount, group: 'free' },
+  pinpoint: { label: 'Pinpoint', icon: 'pinpoint', mount: Pinpoint.mount, group: 'free' },
+  sudoku: { label: 'Sudoku', icon: 'sudoku', mount: Sudoku.mount, group: 'free' },
+  demineur: { label: 'Démineur', icon: 'demineur', mount: Demineur.mount, group: 'free' },
+  snake: { label: 'Snake', icon: 'snake', mount: Snake.mount, group: 'free' },
   breaker: { label: 'Casse-briques', icon: 'breaker', mount: Breaker.mount, group: 'free' },
   shop: { label: 'Boutique', icon: 'shop', mount: Shop.mount },
   achievements: { label: 'Succès', icon: 'medal', mount: AchPage.mount },
@@ -490,7 +503,7 @@ function feedHTML(st) {
   if (!list.length) return '<p class="muted">Rien pour l\'instant… Les gros gains, les succès, les quêtes et les jackpots de tout le monde apparaîtront ici.</p>';
   const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'à l\'instant' : m < 60 ? `il y a ${m} min` : m < 1440 ? `il y a ${Math.round(m / 60)} h` : `il y a ${Math.round(m / 1440)} j`; };
   const n = feedAll ? 30 : 10;
-  return `<ul class="feed">${list.slice(0, n).map((e) => `<li class="fd-${e.kind}"><span class="fd-ic">${icon(FEED_ICON[e.kind] || 'bolt')}</span><span class="fd-txt">${feedRich(e)}</span><small>${ago(e.at)}</small></li>`).join('')}</ul>${list.length > 10 ? `<button type="button" class="feed-more" data-feedmore>${feedAll ? 'Voir moins' : `Voir les ${Math.min(30, list.length)} derniers`}</button>` : ''}`;
+  return `<ul class="feed">${list.slice(0, n).map((e) => `<li class="fd-${e.kind}"><span class="fd-ic">${icon(e.kind === 'feat' && ROUTES[e.game] ? ROUTES[e.game].icon : FEED_ICON[e.kind] || 'bolt')}</span><span class="fd-txt">${feedRich(e)}</span><small>${ago(e.at)}</small></li>`).join('')}</ul>${list.length > 10 ? `<button type="button" class="feed-more" data-feedmore>${feedAll ? 'Voir moins' : `Voir les ${Math.min(30, list.length)} derniers`}</button>` : ''}`;
 }
 
 function card(key, title, desc, tag, art) {
@@ -539,11 +552,17 @@ function mountLobby(view, { wallet: w }) {
     <h2 class="lobby-cat"><button type="button" class="lc-toggle" aria-expanded="true">${icon('chip')}Jeux de casino<small class="lc-count">${casinoCards.length} jeux</small><span class="lc-chev">${icon('arrow')}</span></button></h2>
     <div class="lc-body"><section class="games-grid">${casinoCards.join('')}</section></div></section>
     <section class="lobby-sec" data-sec="free">
-    <h2 class="lobby-cat free"><button type="button" class="lc-toggle" aria-expanded="true">${icon('gift')}Gagner des ${CUR} gratuitement<small class="lc-count">roue du jour, quiz, mot du jour, casse-briques</small>${freeMult(w) > 1 ? `<span class="vip-x big" title="Multiplicateur VIP sur tous les gains gratuits">VIP ${xMult(freeMult(w))}</span>` : ''}<span class="lc-chev">${icon('arrow')}</span></button></h2>
+    <h2 class="lobby-cat free"><button type="button" class="lc-toggle" aria-expanded="true">${icon('gift')}Gagner des ${CUR} gratuitement<small class="lc-count">roue du jour, jeux de réflexion, quiz, arcade</small>${freeMult(w) > 1 ? `<span class="vip-x big" title="Multiplicateur VIP sur tous les gains gratuits">VIP ${xMult(freeMult(w))}</span>` : ''}<span class="lc-chev">${icon('arrow')}</span></button></h2>
     <div class="lc-body">
     <section id="lobby-daily" class="daily-card"></section>
     <section class="games-grid free-grid">
       ${card('motus', 'Mot du jour', 'Le même mot pour tout le monde, 6 essais, la première lettre est donnée. Jusqu\'à +400 ' + CUR + '.', today(w).motus && today(w).motus.done ? 'Fait aujourd\'hui' : 'Une fois par jour', motusArtSVG())}
+      ${card('queens', 'Queens', 'Une reine par ligne, colonne et zone de couleur, sans jamais qu\'elles se touchent. Grilles de 7×7 à 9×9.', `+${Queens.QUEENS_LEVELS[0].reward} à +${Math.round(Queens.QUEENS_LEVELS[2].reward * 1.5)} ${CUR}`, queensArtSVG())}
+      ${card('tango', 'Tango', 'Soleils et lunes à parts égales, jamais trois pareils d\'affilée, et respecte les signes = et ×.', `+${Tango.TANGO_LEVELS[0].reward} à +${Math.round(Tango.TANGO_LEVELS[2].reward * 1.5)} ${CUR}`, tangoArtSVG())}
+      ${card('pinpoint', 'Pinpoint', 'Trouve le point commun entre des indices dévoilés un par un. Moins il en faut, plus ça rapporte.', `+${Pinpoint.PP_REWARDS[4]} à +${Pinpoint.PP_REWARDS[0]} ${CUR}`, pinpointArtSVG())}
+      ${card('sudoku', 'Sudoku', 'Le grand classique en 3 niveaux, avec notes et bonus de vitesse.', `+${Sudoku.SUDOKU_INFO[0].reward} à +${Math.round(Sudoku.SUDOKU_INFO[2].reward * 1.5)} ${CUR}`, sudokuArtSVG())}
+      ${card('demineur', 'Démineur', 'Déminer avant la fin du chrono : 9×9, 16×16 ou 16×30. Plus tu es rapide, plus ça rapporte.', `+${Demineur.MS_LEVELS[0].reward} à +${Demineur.MS_LEVELS[2].reward * 2} ${CUR}`, demineurArtSVG())}
+      ${card('snake', 'Snake', 'Le serpent de la jungle a faim : mange un max de bananes sans te mordre la queue.', `+1 à +4 ${CUR} par banane`, snakeArtSVG())}
       ${card('quiz', 'Calcul mental', `${CONFIG.QUIZ_QUESTIONS} calculs, ${CONFIG.QUIZ_SECONDS} s chacun : +${CONFIG.QUIZ_PER_CORRECT} ${CUR} par bonne réponse, bonus pour un sans-faute.`, 'Gratuit', quizArtSVG())}
       ${card('capitals', 'Quiz capitales', `${CONFIG.QUIZ_QUESTIONS} questions dans les deux sens, mode facile ou expert (gains doublés).`, 'Gratuit', capitalsArtSVG())}
       ${card('flags', 'Quiz drapeaux', `${CONFIG.QUIZ_QUESTIONS} drapeaux à reconnaître parmi ${Flags.FLAGS.length} pays, mode facile ou expert.`, 'Gratuit', flagsArtSVG())}

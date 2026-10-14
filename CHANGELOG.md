@@ -2,6 +2,27 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V13 — Six nouveaux jeux gratuits (14 octobre 2026)
+
+### Jeux de réflexion
+
+- Queens : une reine par ligne, par colonne et par zone de couleur, sans que deux reines se touchent. Grilles 7×7, 8×8 et 9×9, toujours avec une seule solution. Clic pour une croix puis une reine, glisse pour poser plein de croix.
+- Tango : remplis la grille 6×6 de soleils et de lunes (3 de chaque par ligne et colonne, jamais 3 pareils d'affilée, signes = et ×). 3 niveaux.
+- Pinpoint : devine la catégorie commune à des indices dévoilés un par un. +100 au premier indice, de moins en moins ensuite. 235 catégories, et pas besoin de la formulation exacte.
+- Sudoku : 3 niveaux, avec notes, surlignage des chiffres identiques et des doublons.
+- Toutes les grilles sont générées à la volée : on peut jouer à l'infini. Bonus de +50 % si tu bats le temps de référence, et records personnels.
+
+### Arcade
+
+- Démineur contre la montre : 9×9, 16×16 ou 16×30. Le premier clic ne tombe jamais sur une mine, appui long pour un drapeau sur téléphone. Plus tu finis vite, plus ça rapporte (jusqu'au double).
+- Snake : le serpent de la jungle mange des bananes. 3 niveaux (bords traversables, murs, puis accélération), +1 à +4 par banane. Flèches, glissés ou boutons à l'écran.
+
+### Et aussi
+
+- 18 nouveaux succès, 9 nouvelles quêtes du jour et des stats pour chaque nouveau jeu.
+- Les beaux exploits (grilles difficiles, Pinpoint au premier indice, grosses parties de Snake) apparaissent dans « En direct de la jungle ».
+- Le multiplicateur VIP s'applique aussi à ces six jeux.
+
 ## V12 — Le VIP multiplie tes gains gratuits (14 octobre 2026)
 
 ### Rangs VIP
