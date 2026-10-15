@@ -129,7 +129,7 @@ export function mount(view, { wallet }) {
     const bonus = speedBonus(L.reward, sec, L.par), amount = L.reward + bonus;
     const s = wallet.stats, key = 'queensBest' + L.n, record = !s[key] || sec < s[key];
     if (record) s[key] = sec;
-    wallet.freeReward('queens', amount, { Won: 1, ['Won' + L.n]: 1 }, L.n === 9 ? { feed: { txt: `a résolu une grille 9×9 de`, tail: `en ${fmtTimeLong(sec)}` } } : null);
+    wallet.freeReward('queens', amount, { Won: 1, ['Won' + L.n]: 1 }, L.n === 9 && record ? { feed: { txt: `a battu son record en 9×9 à`, tail: `: ${fmtTimeLong(sec)}` } } : null);
     $('#qn-board', stage).classList.add('solved');
     sfx.win(true); coinRain(25);
     setTimeout(() => {

@@ -1,9 +1,25 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '15';
+export const VERSION = '15.2';
 
 export const CHANGELOG = [
+  {
+    v: '15.2', date: '15 octobre 2026', title: 'Fil d\'activité plus lisible, Plinkoko en arrière-plan',
+    groups: [
+      ['En direct de la jungle', [
+        'Les messages semblables d\'un même joueur sont regroupés en une seule ligne (même jeu, à moins de 6 h d\'écart), avec un compteur « +18 » à cliquer pour voir le détail. Les succès débloqués d\'affilée sont fusionnés, et pour les gros gains c\'est le plus gros qui s\'affiche.',
+        'Queens, Tango, Sudoku, Démineur et Snake n\'y apparaissent plus que pour un nouveau record personnel.',
+      ]],
+      ['Correctifs', [
+        'Plinkoko : dans un onglet en arrière-plan (où l\'animation est en pause), les gains n\'étaient pas comptés tant que les noix n\'étaient pas tombées, et ils étaient perdus si on fermait l\'onglet. Le gain est désormais enregistré dès le lâcher, et les noix tombent immédiatement quand l\'onglet passe en arrière-plan.',
+      ]],
+    ],
+  },
+  {
+    v: '15.1', date: '15 octobre 2026', title: 'Pinpoint rééquilibré',
+    groups: [['Équilibrage', ['Pinpoint rapporte 60 % de moins : +40 au premier indice, puis +28 / +20 / +12 / +6.']]],
+  },
   {
     v: '15', date: '15 octobre 2026', title: 'Graines d\'or et achat de bananes',
     groups: [

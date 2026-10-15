@@ -105,7 +105,7 @@ export function mount(view, { wallet }) {
     const s = wallet.stats, key = 'sudokuBest' + lv, record = !s[key] || sec < s[key];
     if (record) s[key] = sec;
     sel = -1; render();
-    wallet.freeReward('sudoku', amount, { Won: 1, ['Won' + lv]: 1 }, lv === 2 ? { feed: { txt: 'a résolu un', tail: `difficile en ${fmtTimeLong(sec)}` } } : null);
+    wallet.freeReward('sudoku', amount, { Won: 1, ['Won' + lv]: 1 }, lv === 2 && record ? { feed: { txt: 'a battu son record au', tail: `difficile : ${fmtTimeLong(sec)}` } } : null);
     $('#sd-board', stage).classList.add('solved');
     sfx.win(true); coinRain(lv === 2 ? 45 : 25);
     setTimeout(() => {

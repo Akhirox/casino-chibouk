@@ -116,19 +116,29 @@ export function mount(view, { wallet }) {
       p += path[r] ? 0.5 : -0.5;
     }
     pts.push({ x: geo.bins[bin].x, y: geo.bins[bin].y });
-    balls.push({ pts, seg: 0, t: 0, bin, mult, payout, amount, rows, risk, done: false, x: pts[0].x, y: pts[0].y });
+    // Gain crédité tout de suite (rien n'est perdu si l'onglet passe en arrière-plan ou se ferme),
+    // affiché (solde, succès, fil…) seulement quand la noix tombe dans sa case
+    const reveal = wallet.deferEvents(() => {
+      if (payout > 0) wallet.win('plinko', payout, amount);
+      wallet.round('plinko', payout > amount ? payout : 0, { bet: amount, mult, rows, risk, edge: bin === 0 || bin === rows });
+    });
+    const ball = { pts, seg: 0, t: 0, bin, mult, payout, amount, rows, risk, done: false, x: pts[0].x, y: pts[0].y, reveal };
+    // onglet en arrière-plan : l'animation est en pause, la noix tombe directement
+    if (document.hidden) { land(ball, true); return true; }
+    balls.push(ball);
     sfx.click();
     updateSide();
     return true;
   }
 
-  function land(b) {
+  function land(b, quiet = false) {
+    if (b.done) return;
     b.done = true;
-    if (b.payout > 0) wallet.win('plinko', b.payout, b.amount);
-    wallet.round('plinko', b.payout > b.amount ? b.payout : 0, { bet: b.amount, mult: b.mult, rows: b.rows, risk: b.risk, edge: b.bin === 0 || b.bin === b.rows });
+    b.reveal();
     if (!alive) return;
+    history.unshift(b.mult); history = history.slice(0, 40);
+    if (quiet) return;
     if (b.rows === rows) binPulse[b.bin] = 1;
-    history.unshift(b.mult);
     renderHist();
     if (b.mult >= 10) { sfx.win(true); coinRain(Math.min(50, 10 + b.mult / 10)); toast(`×${fmtMult(b.mult)} ! +${fmt(b.payout)} ${CUR}`, 'win'); }
     else if (b.mult >= 1) sfx.coin(); else sfx.bounce(0.6);
@@ -221,6 +231,9 @@ export function mount(view, { wallet }) {
       buttons: [{ label: 'Compris', value: true, primary: true }] });
   }
 
+  // l'onglet passe en arrière-plan : toutes les noix en l'air tombent tout de suite
+  const onVis = () => { if (document.hidden && balls.length) { for (const b of balls) land(b, true); balls = []; if (alive) { renderHist(); updateSide(); } } };
+  document.addEventListener('visibilitychange', onVis);
   layout(); updateSide(); renderHist();
   raf = requestAnimationFrame(loop);
 
@@ -230,8 +243,9 @@ export function mount(view, { wallet }) {
     auto.stop();
     cancelAnimationFrame(raf);
     document.removeEventListener('keydown', onKey);
-    // les billes encore en l'air sont payées immédiatement
-    for (const b of balls) if (!b.done) land(b);
+    document.removeEventListener('visibilitychange', onVis);
+    // les billes encore en l'air : leur gain (déjà crédité) est affiché tout de suite
+    for (const b of balls) if (!b.done) land(b, true);
     balls = [];
   };
 }

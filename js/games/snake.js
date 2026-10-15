@@ -152,7 +152,7 @@ export function mount(view, { wallet }) {
     const record = score > (s[key] || 0);
     if (record) s[key] = score;
     const amount = score * L.per;
-    wallet.freeReward('snake', amount, { Bananas: score }, score >= L.feed ? { feed: { txt: `a mangé ${score} bananes au`, tail: `(${L.name.toLowerCase()})` } } : null);
+    wallet.freeReward('snake', amount, { Bananas: score }, score >= L.feed && record ? { feed: { txt: `a battu son record avec ${score} bananes au`, tail: `(${L.name.toLowerCase()})` } } : null);
     return { amount, record };
   }
 

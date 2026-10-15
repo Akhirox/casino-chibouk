@@ -168,7 +168,7 @@ export function mount(view, { wallet }) {
     const bonus = Math.round(L.reward * (left / L.limit)), amount = L.reward + bonus;
     const s = wallet.stats, key = 'demineurBest' + lv, record = !s[key] || sec < s[key];
     if (record) s[key] = sec;
-    wallet.freeReward('demineur', amount, { Won: 1, ['Won' + lv]: 1 }, lv >= 1 ? { feed: { txt: `a déminé une grille ${['facile', 'moyenne', 'difficile'][lv]} au`, tail: `en ${fmtTimeLong(sec)}` } } : null);
+    wallet.freeReward('demineur', amount, { Won: 1, ['Won' + lv]: 1 }, lv >= 1 && record ? { feed: { txt: `a battu son record en grille ${['facile', 'moyenne', 'difficile'][lv]} au`, tail: `: ${fmtTimeLong(sec)}` } } : null);
     render();
     $('#ms-board', stage).classList.add('solved');
     sfx.win(true); coinRain(lv === 2 ? 50 : 25);

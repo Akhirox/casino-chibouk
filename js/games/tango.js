@@ -128,7 +128,7 @@ export function mount(view, { wallet }) {
     const bonus = speedBonus(L.reward, sec, L.par), amount = L.reward + bonus;
     const s = wallet.stats, key = 'tangoBest' + lv, record = !s[key] || sec < s[key];
     if (record) s[key] = sec;
-    wallet.freeReward('tango', amount, { Won: 1, ['Won' + lv]: 1 }, lv === 2 ? { feed: { txt: 'a résolu un', tail: `difficile en ${fmtTimeLong(sec)}` } } : null);
+    wallet.freeReward('tango', amount, { Won: 1, ['Won' + lv]: 1 }, lv === 2 && record ? { feed: { txt: 'a battu son record au', tail: `difficile : ${fmtTimeLong(sec)}` } } : null);
     $('#tg-board', stage).classList.add('solved');
     sfx.win(true); coinRain(20);
     setTimeout(() => {

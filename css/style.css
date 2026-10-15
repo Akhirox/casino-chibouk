@@ -1945,3 +1945,10 @@ td.vol .bar-track { height: 8px; }
 .fm-seedbox .btn { margin-top: 8px; }
 .fm-mtabs { display: flex; margin-bottom: 12px; }
 .fm-mtabs button { flex: 1; }
+/* fil : messages regroupés */
+.fd-count { all: unset; display: inline-block; margin-left: 4px; padding: 0 7px; border-radius: 999px; font-size: .72rem; font-weight: 800; line-height: 1.5; color: #1a1400; background: var(--gold); cursor: pointer; vertical-align: 1px; }
+.fd-count:hover { filter: brightness(1.1); }
+.fd-sub { list-style: none; margin: 6px 0 2px; padding: 4px 0 0 10px; border-left: 2px solid var(--line); display: grid; gap: 2px; }
+.fd-sub li { display: flex; justify-content: space-between; gap: 10px; font-size: .78rem; color: var(--muted); padding: 1px 0 !important; border: 0 !important; background: none !important; }
+.fd-sub small { white-space: nowrap; }
+.feed li.fd-group { align-items: flex-start; } .feed li.fd-group .fd-ic, .feed li.fd-group > small { margin-top: 2px; }

@@ -77,6 +77,40 @@ export function feedRich(e) {
   }
   return `${who} ${t}`;
 }
+// Regroupe les messages semblables d'un même joueur (même type, même jeu, à moins de 6 h d'écart) pour éviter
+// qu'un joueur qui enchaîne les parties remplisse tout le fil. Les succès d'un joueur sont fusionnés en une ligne.
+const groupKey = (e) => {
+  if (e.kind === 'week') return null;
+  const k = e.kind === 'achs' ? 'ach' : e.kind === 'replant' ? 'farm' : e.kind;
+  return `${e.uid}|${k}|${e.game || ''}`;
+};
+export function groupFeed(list, windowMs = 6 * 3600000) {
+  const out = [], open = new Map();
+  for (const e of list) { // du plus récent au plus ancien
+    const k = groupKey(e);
+    const g = k && open.get(k);
+    if (g && g.items[g.items.length - 1].at - e.at <= windowMs) { g.items.push(e); continue; }
+    const ng = { key: k ? `${k}|${e.at}` : String(e.id || e.at), items: [e] };
+    if (k) open.set(k, ng);
+    out.push(ng);
+  }
+  return out;
+}
+// Ligne affichée pour un groupe : le message le plus récent (ou le plus gros gain), les succès fusionnés
+export function groupRich(g) {
+  const items = g.items, e = items[0];
+  if (items.length === 1) return feedRich(e);
+  if (e.kind === 'ach' || e.kind === 'achs') {
+    const ids = [], names = [];
+    for (const x of items) {
+      if (x.kind === 'achs') { (x.ids || []).forEach((id, i) => { ids.push(id); names.push((x.names || [])[i]); }); }
+      else { ids.push(x.id); names.push(x.name); }
+    }
+    return feedRich({ ...e, kind: 'achs', ids, names });
+  }
+  if (e.kind === 'bigwin') return feedRich(items.reduce((a, b) => ((b.amount || 0) > (a.amount || 0) ? b : a), e));
+  return feedRich(e);
+}
 export const FEED_ICON = { bigwin: 'bolt', ach: 'medal', achs: 'medal', jackpot: 'trophy', vip: 'star', motus: 'motus', shop: 'shop', week: 'trophy', quests: 'check', perfect: 'quiz', wheel: 'wheel', streak: 'higher', feat: 'bulb', farm: 'banana', replant: 'banana' };
 
 // Chance de remporter le jackpot sur un spin payant de la slot (proportionnelle à la mise, plafonnée à 1 %)
@@ -99,7 +133,7 @@ export function createSocial(wallet, backend) {
     try {
       // contributions de la slot accumulées depuis le dernier passage
       if (pending >= 1) { const d = Math.floor(pending); pending -= d; try { await backend.addJackpot(d); } catch (e) { pending += d; throw e; } }
-      const [fresh, jp] = await Promise.all([backend.fetchFeed(since, first ? 25 : 15), backend.getJackpot()]);
+      const [fresh, jp] = await Promise.all([backend.fetchFeed(since, first ? 40 : 20), backend.getJackpot()]);
       jackpot = jp || { amount: 0 };
       if (fresh.length) {
         since = Math.max(since, ...fresh.map((e) => e.at || 0));
@@ -107,7 +141,7 @@ export function createSocial(wallet, backend) {
         const known = new Set(entries.map((e) => e.id));
         const add = fresh.filter((e) => !known.has(e.id));
         const cids = new Set(add.map((e) => e.cid).filter(Boolean));
-        entries = [...add, ...entries.filter((e) => !(e.cid && cids.has(e.cid) && String(e.id).startsWith('local_')))].sort((a, b) => b.at - a.at).slice(0, 30);
+        entries = [...add, ...entries.filter((e) => !(e.cid && cids.has(e.cid) && String(e.id).startsWith('local_')))].sort((a, b) => b.at - a.at).slice(0, 80);
         // petits toasts pour les exploits des autres (pas au premier chargement)
         if (!first) add.filter((e) => e.uid !== wallet.uid && ['jackpot', 'bigwin', 'week'].includes(e.kind)).slice(0, 2)
           .forEach((e) => toast(`<b>${esc(feedWho(e))}</b> ${esc(feedText(e))}`, e.kind === 'jackpot' ? 'win' : 'info', 5000));
@@ -139,7 +173,7 @@ export function createSocial(wallet, backend) {
     lastPost = Date.now();
     const full = { ...e, uid: wallet.uid, pseudo: wallet.pseudo, cid: Math.random().toString(36).slice(2, 10) };
     try { await backend.postFeed(full); } catch (err) { console.warn('Publication impossible', err); return; }
-    entries = [{ ...full, id: 'local_' + Date.now(), at: Date.now() }, ...entries].slice(0, 30);
+    entries = [{ ...full, id: 'local_' + Date.now(), at: Date.now() }, ...entries].slice(0, 80);
     notify();
     if (queue.length) { clearTimeout(flushTimer); flushTimer = setTimeout(flushQueue, GAP); }
   }

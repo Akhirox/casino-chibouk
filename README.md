@@ -50,7 +50,7 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 | **Plus ou moins** | Gratuit : quel film a eu le plus gros budget ? Série jusqu'à 15, +10 par bonne réponse, +50 au bout. Budgets tirés de ta base TMDB. | — |
 | **Queens** | Gratuit : une reine par ligne, colonne et zone de couleur, jamais deux reines qui se touchent. Grilles 7×7, 8×8, 9×9 générées à la volée avec une solution unique. +60 / +90 / +130, +50 % sous le temps de référence. | — |
 | **Tango** | Gratuit : grille 6×6 de soleils et de lunes (3 de chaque par ligne et colonne, jamais 3 pareils d'affilée, signes = et ×). 3 niveaux, solution unique. +40 / +70 / +100, +50 % si rapide. | — |
-| **Pinpoint** | Gratuit : trouver la catégorie commune à 5 indices dévoilés un par un (235 catégories, réponses tolérantes). +100 au 1er indice, puis +70 / +50 / +30 / +15. | — |
+| **Pinpoint** | Gratuit : trouver la catégorie commune à 5 indices dévoilés un par un (235 catégories, réponses tolérantes). +40 au 1er indice, puis +28 / +20 / +12 / +6. | — |
 | **Sudoku** | Gratuit : 3 niveaux (40 / 32 / 25 chiffres donnés), solution unique, notes. +80 / +160 / +300, +50 % si rapide. | — |
 | **Démineur** | Gratuit, contre la montre : 9×9 (10 mines, 3 min), 16×16 (40 mines, 8 min), 16×30 (99 mines, 15 min). +40 / +120 / +300, jusqu'au double selon le temps restant. | — |
 | **Snake** | Gratuit : 3 niveaux (bords traversables, murs, puis accélération). +1 / +2 / +4 par banane. | — |

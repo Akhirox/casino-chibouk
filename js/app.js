@@ -35,7 +35,7 @@ import * as FarmCore from './farm-core.js';
 import { queensArtSVG, tangoArtSVG, pinpointArtSVG, sudokuArtSVG, snakeArtSVG, demineurArtSVG } from './art.js';
 import * as Shop from './shop.js';
 import { initQuests, today, questText, vipOf, vipProgress, VIP, rakePot, claimRake, initVip, pctFmt, freeMult, xMult } from './progress.js';
-import { createSocial, feedRich, FEED_ICON, jackpotChance, chanceText } from './social.js';
+import { createSocial, feedRich, feedText, groupFeed, groupRich, FEED_ICON, jackpotChance, chanceText } from './social.js';
 import { openVipModal } from './vip.js';
 import { syncWeeks } from './weekly.js';
 import { initHistory } from './history.js';
@@ -504,12 +504,21 @@ function jackpotHTML(st) {
     <a class="btn btn-ghost btn-sm" href="#/slots">Tenter ma chance ${icon('arrow')}</a>`;
 }
 let feedAll = false;
+const feedOpen = new Set();
 function feedHTML(st) {
   const list = (st && st.entries) || [];
   if (!list.length) return '<p class="muted">Rien pour l\'instant… Les gros gains, les succès, les quêtes et les jackpots de tout le monde apparaîtront ici.</p>';
   const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'à l\'instant' : m < 60 ? `il y a ${m} min` : m < 1440 ? `il y a ${Math.round(m / 60)} h` : `il y a ${Math.round(m / 1440)} j`; };
+  const groups = groupFeed(list);
   const n = feedAll ? 30 : 10;
-  return `<ul class="feed">${list.slice(0, n).map((e) => `<li class="fd-${e.kind}"><span class="fd-ic">${icon(e.kind === 'feat' && ROUTES[e.game] ? ROUTES[e.game].icon : FEED_ICON[e.kind] || 'bolt')}</span><span class="fd-txt">${feedRich(e)}</span><small>${ago(e.at)}</small></li>`).join('')}</ul>${list.length > 10 ? `<button type="button" class="feed-more" data-feedmore>${feedAll ? 'Voir moins' : `Voir les ${Math.min(30, list.length)} derniers`}</button>` : ''}`;
+  const ic = (e) => icon(e.kind === 'feat' && ROUTES[e.game] ? ROUTES[e.game].icon : FEED_ICON[e.kind] || 'bolt');
+  const merged = (g) => g.items[0].kind === 'ach' || g.items[0].kind === 'achs';
+  return `<ul class="feed">${groups.slice(0, n).map((g) => {
+    const e = g.items[0], more = g.items.length - 1, isOpen = feedOpen.has(g.key);
+    const chip = more && !merged(g) ? `<button type="button" class="fd-count" data-fdx="${esc(g.key)}" title="${isOpen ? 'Replier' : 'Voir le détail'}">+${more}</button>` : '';
+    const sub = more && !merged(g) && isOpen ? `<ul class="fd-sub">${g.items.slice(1).map((x) => `<li><span>${esc(feedText(x))}</span><small>${ago(x.at)}</small></li>`).join('')}</ul>` : '';
+    return `<li class="fd-${e.kind}${more ? ' fd-group' : ''}"><span class="fd-ic">${ic(e)}</span><span class="fd-txt">${groupRich(g)} ${chip}${sub}</span><small>${ago(e.at)}</small></li>`;
+  }).join('')}</ul>${groups.length > 10 ? `<button type="button" class="feed-more" data-feedmore>${feedAll ? 'Voir moins' : `Voir plus (${Math.min(30, groups.length)})`}</button>` : ''}`;
 }
 
 function card(key, title, desc, tag, art) {
@@ -637,7 +646,13 @@ function mountLobby(view, { wallet: w }) {
     if (r.left + dx < box.left + 10) dx = box.left + 10 - r.left;
     card.style.left = dx + 'px';
   });
-  view.addEventListener('click', (e) => { if (e.target.closest('[data-feedmore]')) { feedAll = !feedAll; const fb = $('#feed-box', view); if (fb && lastSocial) fb.innerHTML = feedHTML(lastSocial); } });
+  view.addEventListener('click', (e) => {
+    const more = e.target.closest('[data-feedmore]'), fx = e.target.closest('[data-fdx]');
+    if (fx) { const k = fx.dataset.fdx; feedOpen.has(k) ? feedOpen.delete(k) : feedOpen.add(k); }
+    else if (more) feedAll = !feedAll;
+    else return;
+    const fb = $('#feed-box', view); if (fb && lastSocial) fb.innerHTML = feedHTML(lastSocial);
+  });
   const farmBox = $('#fm-lobby', view);
   const farmCard = () => {
     if (!farmBox) return;

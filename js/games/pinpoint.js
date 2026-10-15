@@ -6,7 +6,7 @@ import { monkeySVG } from '../art.js';
 import { sfx } from '../sfx.js';
 import { endCardHTML } from './free-common.js';
 
-export const PP_REWARDS = [100, 70, 50, 30, 15];
+export const PP_REWARDS = [40, 28, 20, 12, 6]; // réduits de 60 % (V15.1)
 const STOP = new Set(['le', 'la', 'les', 'l', 'de', 'des', 'du', 'd', 'un', 'une', 'et', 'en', 'a', 'au', 'aux', 'qui', 'que', 'ce', 'ces', 'sont', 'c', 'est', 'on', 'y']);
 
 // « Les Planètes du système solaire ! » → « planete systeme solaire »
