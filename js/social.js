@@ -36,6 +36,7 @@ export function feedText(e) {
     case 'perfect': return `a fait un sans-faute ${QUIZ_LABEL[e.game] || ''}${e.mode ? ` (${e.mode})` : ''}`;
     case 'wheel': return `a gagné ${fmt(e.amount)} Brundles à la roue du jour${e.streak > 1 ? ` (série de ${e.streak} jours)` : ''}`;
     case 'streak': return `a gagné ${fmt(e.amount)} Brundles au Plus ou moins avec une série de ${e.n}`;
+    case 'replant': return `a replanté sa ferme et gagne ${e.gain} graine${e.gain > 1 ? 's' : ''} d'or (${e.seeds} au total)`;
     case 'farm': return `a une ferme qui produit plus de ${fmt(e.n)} bananes par heure`;
     case 'feat': return `${e.txt || ''} ${FEAT_GAMES[e.game] || ''}${e.tail ? ' ' + e.tail : ''}`;
     default: return e.text || '';
@@ -69,13 +70,14 @@ export function feedRich(e) {
     case 'fs': t = `a déclenché <b class="gold">${e.spins} tours gratuits</b> à la ${L('#/slots', 'Chibouk Slot')} (${e.scatters} SCATTER)`; break;
     case 'perfect': t = `a fait un <b class="gold">sans-faute</b> ${QUIZ_ROUTE[e.game] ? L('#/' + QUIZ_ROUTE[e.game], esc(QUIZ_LABEL[e.game])) : ''}${e.mode ? ` (${esc(e.mode)})` : ''}`; break;
     case 'wheel': t = `a gagné <b class="gold">${fmt(e.amount)}</b> Brundles à la roue du jour${e.streak > 1 ? ` (série de ${e.streak} jours)` : ''}`; break;
+    case 'replant': t = `a replanté sa ${L('#/farm', 'ferme')} et gagne <b class="gold">${e.gain} graine${e.gain > 1 ? 's' : ''} d'or</b> (${e.seeds} au total)`; break;
     case 'farm': t = `a une ${L('#/farm', 'ferme')} qui produit plus de <b class="gold">${fmt(e.n)}</b> bananes par heure`; break;
     case 'feat': t = `${esc(e.txt || '')} ${FEAT_GAMES[e.game] ? L('#/' + e.game, FEAT_GAMES[e.game]) : ''}${e.tail ? ' ' + esc(e.tail) : ''}`; break;
     default: t = esc(feedText(e));
   }
   return `${who} ${t}`;
 }
-export const FEED_ICON = { bigwin: 'bolt', ach: 'medal', achs: 'medal', jackpot: 'trophy', vip: 'star', motus: 'motus', shop: 'shop', week: 'trophy', quests: 'check', perfect: 'quiz', wheel: 'wheel', streak: 'higher', feat: 'bulb', farm: 'banana' };
+export const FEED_ICON = { bigwin: 'bolt', ach: 'medal', achs: 'medal', jackpot: 'trophy', vip: 'star', motus: 'motus', shop: 'shop', week: 'trophy', quests: 'check', perfect: 'quiz', wheel: 'wheel', streak: 'higher', feat: 'bulb', farm: 'banana', replant: 'banana' };
 
 // Chance de remporter le jackpot sur un spin payant de la slot (proportionnelle à la mise, plafonnée à 1 %)
 export const JACKPOT_FACTOR = 1.5;
@@ -187,6 +189,7 @@ export function createSocial(wallet, backend) {
     if (e.type === 'quest' && e.bonus) post({ kind: 'quests' });
     if (e.type === 'free' && e.meta && e.meta.feed && FEAT_GAMES[e.game]) post({ kind: 'feat', game: e.game, txt: String(e.meta.feed.txt || '').slice(0, 80), tail: String(e.meta.feed.tail || '').slice(0, 40) });
     if (e.type === 'farm' && e.act === 'milestone' && e.n >= 500) post({ kind: 'farm', n: e.n });
+    if (e.type === 'farm' && e.act === 'replant') post({ kind: 'replant', gain: e.gain, seeds: e.seeds });
     if (e.type === 'vipup') post({ kind: 'vip', rank: e.rank, bonus: e.amount });
   });
   const onCustom = (ev) => { const d = ev.detail || {}; if (d.type === 'motus' && d.won) post({ kind: 'motus', tries: d.tries }); if (d.type === 'week') post({ kind: 'week', winner: d.winner, profit: d.profit }); };

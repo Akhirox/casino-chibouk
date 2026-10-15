@@ -1,9 +1,24 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '14';
+export const VERSION = '15';
 
 export const CHANGELOG = [
+  {
+    v: '15', date: '15 octobre 2026', title: 'Graines d\'or et achat de bananes',
+    groups: [
+      ['Ferme à bananes', [
+        'Le marché permet maintenant d\'acheter des bananes : 1 Brundle la banane, soit 10 fois le prix de vente. Pratique pour se débloquer, mais ça ne remplace pas le travail des singes.',
+        'Graines d\'or : après 1 million de bananes récoltées, tu peux replanter ta ferme. Bâtiments, singes et bananes repartent de zéro, mais tu gardes tes parcelles et tes bâtisseurs, et chaque graine donne +5 % de production pour toujours. Plus tu récoltes avant de replanter, plus tu gagnes de graines.',
+        'Après une replantation, tu repars avec des bâtiments de plus en plus grands selon tes graines.',
+        'Niveaux maximum relevés : bananeraie 15 (avec plus de places pour les singes), cabane 12, entrepôt 12, puits 6.',
+        '4 nouveaux succès (Replanteur, Main verte, Dynastie bananière, Bananeraie mythique), et les replantations apparaissent dans « En direct de la jungle ».',
+      ]],
+      ['Correctifs', [
+        'Queens : les cases ne changent plus de taille quand on pose une couronne ou une croix (même correction par précaution sur Tango, Sudoku et la ferme).',
+      ]],
+    ],
+  },
   {
     v: '14', date: '15 octobre 2026', title: 'La ferme à bananes',
     groups: [
