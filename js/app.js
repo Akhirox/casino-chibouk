@@ -30,6 +30,8 @@ import * as Pinpoint from './games/pinpoint.js';
 import * as Sudoku from './games/sudoku.js';
 import * as Snake from './games/snake.js';
 import * as Demineur from './games/demineur.js';
+import * as Farm from './farm.js';
+import * as FarmCore from './farm-core.js';
 import { queensArtSVG, tangoArtSVG, pinpointArtSVG, sudokuArtSVG, snakeArtSVG, demineurArtSVG } from './art.js';
 import * as Shop from './shop.js';
 import { initQuests, today, questText, vipOf, vipProgress, VIP, rakePot, claimRake, initVip, pctFmt, freeMult, xMult } from './progress.js';
@@ -62,6 +64,7 @@ let inboxTimer = null;
 let tips = null;
 let quests = null;
 let vip = null;
+let farmTimer = null;
 let social = null;
 let historyOff = null;
 let weeksTimer = null;
@@ -93,6 +96,7 @@ const ROUTES = {
   demineur: { label: 'Démineur', icon: 'demineur', mount: Demineur.mount, group: 'free' },
   snake: { label: 'Snake', icon: 'snake', mount: Snake.mount, group: 'free' },
   breaker: { label: 'Casse-briques', icon: 'breaker', mount: Breaker.mount, group: 'free' },
+  farm: { label: 'Ferme', icon: 'banana', mount: Farm.mount },
   shop: { label: 'Boutique', icon: 'shop', mount: Shop.mount },
   achievements: { label: 'Succès', icon: 'medal', mount: AchPage.mount },
   ranking: { label: 'Classements', icon: 'trophy', mount: Ranking.mount },
@@ -113,7 +117,7 @@ function navHTML() {
     return `<div class="nav-group" data-g="${g}"><button type="button" class="nav-gbtn ${g === 'free' ? 'nav-free' : ''}" aria-haspopup="true"><span class="ni">${icon(GROUPS[g].icon)}</span><span class="nl">${GROUPS[g].label} <i class="chev">${icon('chev')}</i></span></button>
       <div class="nav-pop ${g}"><div class="nav-pop-title">${GROUPS[g].label === 'Casino' ? 'Jeux de casino' : 'Jeux gratuits'}</div><div class="nav-pop-grid">${items.map(([k, r]) => link(k, r, g === 'free' ? 'nav-free' : '')).join('')}</div></div></div>`;
   };
-  return link('lobby', ROUTES.lobby) + group('casino') + group('free') + ['shop', 'achievements', 'ranking', 'stats'].map((k) => link(k, ROUTES[k])).join('');
+  return link('lobby', ROUTES.lobby) + group('casino') + group('free') + link('farm', ROUTES.farm, 'nav-farm') + ['shop', 'achievements', 'ranking', 'stats'].map((k) => link(k, ROUTES[k])).join('');
 }
 
 /* ============================== DÉMARRAGE ============================== */
@@ -138,6 +142,7 @@ async function boot() {
     if (tips) { tips.destroy(); tips = null; }
     if (quests) { quests.destroy(); quests = null; }
     if (vip) { vip.destroy(); vip = null; }
+    if (farmTimer) { farmTimer.destroy(); farmTimer = null; }
     if (social) { social.destroy(); social = null; }
     if (historyOff) { historyOff(); historyOff = null; }
     clearInterval(weeksTimer);
@@ -292,6 +297,7 @@ function renderShell() {
     sfx.bonus();
   });
   social = createSocial(wallet, backend);
+  farmTimer = Farm.initFarm(wallet);
   vip = initVip(wallet, (v, bonus) => {
     if (bonus > 0) { toast(`<span class="ach-toast">${icon('star')}<span><small>Nouveau rang VIP</small><b>${esc(v.name)}</b><em>+${fmt(bonus)} ${CUR} de bonus</em></span></span>`, 'ach', 6000); sfx.bonus(); coinRain(40); }
   });
@@ -545,6 +551,7 @@ function mountLobby(view, { wallet: w }) {
       <div class="dash-card" id="dash-quests"></div>
       <div class="dash-card" id="dash-vip"></div>
     </section>
+    <a class="fm-lobby" href="#/farm" id="fm-lobby"></a>
     <section class="lobby-sec" data-sec="feed">
     <h2 class="lobby-cat feed-cat"><button type="button" class="lc-toggle" aria-expanded="true">${icon('bolt')}En direct de la jungle<small class="lc-count">gros gains, succès, quêtes, jackpots, boutique…</small><span class="lc-chev">${icon('arrow')}</span></button></h2>
     <div class="lc-body"><div class="feed-box" id="feed-box"></div></div></section>
@@ -631,7 +638,21 @@ function mountLobby(view, { wallet: w }) {
     card.style.left = dx + 'px';
   });
   view.addEventListener('click', (e) => { if (e.target.closest('[data-feedmore]')) { feedAll = !feedAll; const fb = $('#feed-box', view); if (fb && lastSocial) fb.innerHTML = feedHTML(lastSocial); } });
-  return () => { off(); offSocial(); clearTimeout(t); clearInterval(ago); };
+  const farmBox = $('#fm-lobby', view);
+  const farmCard = () => {
+    if (!farmBox) return;
+    if (!Farm.hasFarm(w.p)) { farmBox.innerHTML = `<span class="fm-l-art">${Farm.tileArt('F', 6)}</span><div class="fm-l-txt"><b>Ta ferme à bananes t'attend</b><small>Des singes récoltent des bananes pour toi, même quand tu n'es pas là. Revends-les contre des ${CUR} !</small></div><span class="btn btn-gold">Découvrir</span>`; return; }
+    const fm = w.p.farm, cap = FarmCore.capacity(fm), rate = FarmCore.productionPerHour(fm), full = fm.b >= cap - 0.5;
+    const q = fm.q.length ? [...fm.q].sort((a, b) => a.end - b.end)[0] : null;
+    farmBox.classList.toggle('full', full);
+    farmBox.innerHTML = `<span class="fm-l-art">${Farm.tileArt('F', Math.min(12, Math.max(1, Math.round(FarmCore.levels(fm) / 4))))}</span>
+      <div class="fm-l-txt"><b>Ma ferme à bananes</b><small>${fmt(Math.round(rate))} bananes/h · ${full ? '<span class="neg">entrepôt plein, la récolte est à l\'arrêt !</span>' : `plein dans ${Farm.dur(((cap - fm.b) / Math.max(1e-9, rate)) * FarmCore.HOUR)}`}${q ? ` · chantier fini dans ${Farm.dur(q.end - Date.now())}` : fm.q.length < fm.bu ? ' · bâtisseur disponible' : ''}</small>
+        <div class="fm-bar"><i style="width:${Math.min(100, (fm.b / Math.max(1, cap)) * 100)}%" class="${full ? 'full' : ''}"></i></div></div>
+      <span class="fm-l-stock">${Farm.ban(fm.b)}<small>/ ${fmt(cap)}</small></span>`;
+  };
+  farmCard();
+  const farmIv = setInterval(farmCard, 5000);
+  return () => { off(); offSocial(); clearTimeout(t); clearInterval(ago); clearInterval(farmIv); };
 }
 
 boot();

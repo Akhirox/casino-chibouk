@@ -16,6 +16,7 @@ const mx = (m) => '×' + m.toLocaleString('fr-FR', { maximumFractionDigits: 1 })
 const QUIZ_LABEL = { quiz: 'au calcul mental', capitals: 'au quiz capitales', movies: 'au quiz ciné', flags: 'au quiz drapeaux', higher: 'au Plus ou moins' };
 const QUIZ_ROUTE = { quiz: 'quiz', capitals: 'capitals', movies: 'movies', flags: 'flags', higher: 'higher' };
 // Jeux de réflexion : exploits publiés avec un texte (« a résolu un » + lien vers le jeu + « difficile en 5 min »)
+const BIG_MIN = { plinko: 100 };
 export const FEAT_GAMES = { queens: 'Queens', tango: 'Tango', pinpoint: 'Pinpoint', sudoku: 'Sudoku', demineur: 'Démineur', snake: 'Snake' };
 // Qui est le sujet du message (pour la semaine : le vainqueur, pas celui qui a publié)
 export const feedWho = (e) => (e.kind === 'week' && e.winner ? e.winner : e.pseudo);
@@ -35,6 +36,7 @@ export function feedText(e) {
     case 'perfect': return `a fait un sans-faute ${QUIZ_LABEL[e.game] || ''}${e.mode ? ` (${e.mode})` : ''}`;
     case 'wheel': return `a gagné ${fmt(e.amount)} Brundles à la roue du jour${e.streak > 1 ? ` (série de ${e.streak} jours)` : ''}`;
     case 'streak': return `a gagné ${fmt(e.amount)} Brundles au Plus ou moins avec une série de ${e.n}`;
+    case 'farm': return `a une ferme qui produit plus de ${fmt(e.n)} bananes par heure`;
     case 'feat': return `${e.txt || ''} ${FEAT_GAMES[e.game] || ''}${e.tail ? ' ' + e.tail : ''}`;
     default: return e.text || '';
   }
@@ -67,12 +69,13 @@ export function feedRich(e) {
     case 'fs': t = `a déclenché <b class="gold">${e.spins} tours gratuits</b> à la ${L('#/slots', 'Chibouk Slot')} (${e.scatters} SCATTER)`; break;
     case 'perfect': t = `a fait un <b class="gold">sans-faute</b> ${QUIZ_ROUTE[e.game] ? L('#/' + QUIZ_ROUTE[e.game], esc(QUIZ_LABEL[e.game])) : ''}${e.mode ? ` (${esc(e.mode)})` : ''}`; break;
     case 'wheel': t = `a gagné <b class="gold">${fmt(e.amount)}</b> Brundles à la roue du jour${e.streak > 1 ? ` (série de ${e.streak} jours)` : ''}`; break;
+    case 'farm': t = `a une ${L('#/farm', 'ferme')} qui produit plus de <b class="gold">${fmt(e.n)}</b> bananes par heure`; break;
     case 'feat': t = `${esc(e.txt || '')} ${FEAT_GAMES[e.game] ? L('#/' + e.game, FEAT_GAMES[e.game]) : ''}${e.tail ? ' ' + esc(e.tail) : ''}`; break;
     default: t = esc(feedText(e));
   }
   return `${who} ${t}`;
 }
-export const FEED_ICON = { bigwin: 'bolt', ach: 'medal', achs: 'medal', jackpot: 'trophy', vip: 'star', motus: 'motus', shop: 'shop', week: 'trophy', quests: 'check', perfect: 'quiz', wheel: 'wheel', streak: 'higher', feat: 'bulb' };
+export const FEED_ICON = { bigwin: 'bolt', ach: 'medal', achs: 'medal', jackpot: 'trophy', vip: 'star', motus: 'motus', shop: 'shop', week: 'trophy', quests: 'check', perfect: 'quiz', wheel: 'wheel', streak: 'higher', feat: 'bulb', farm: 'banana' };
 
 // Chance de remporter le jackpot sur un spin payant de la slot (proportionnelle à la mise, plafonnée à 1 %)
 export const JACKPOT_FACTOR = 1.5;
@@ -153,6 +156,7 @@ export function createSocial(wallet, backend) {
     } catch (e) { console.warn('Jackpot : échec', e); }
   }
 
+  const lastBig = {};
   const off = wallet.on((e) => {
     if (!e) return;
     if (e.type === 'bet' && e.game === 'slots') pending += e.amount * CONFIG.JACKPOT_RATE;
@@ -164,7 +168,13 @@ export function createSocial(wallet, backend) {
     if (e.type === 'win' && e.bet > 0) {
       const m = e.amount / e.bet;
       // seuils bas : on est entre potes, on veut voir passer les beaux coups
-      if (m >= 25) post({ kind: 'bigwin', game: e.game, amount: e.amount, mult: Math.round(m * 10) / 10 });
+      // ×25 minimum (×100 au Plinkoko, où les grosses cases tombent souvent quand on enchaîne les billes),
+      // et pas plus d'un message par jeu toutes les 10 min, sauf si le multiplicateur est plus gros que le précédent
+      const min = BIG_MIN[e.game] || 25, last = lastBig[e.game];
+      if (m >= min && (!last || Date.now() - last.at > 600000 || m > last.m)) {
+        lastBig[e.game] = { at: Date.now(), m };
+        post({ kind: 'bigwin', game: e.game, amount: e.amount, mult: Math.round(m * 10) / 10 });
+      }
     }
     if (e.type === 'ach') {
       const a = ACHIEVEMENTS.find((x) => x.id === e.id);
@@ -176,6 +186,7 @@ export function createSocial(wallet, backend) {
     if (e.type === 'daily' && e.amount >= 2000) post({ kind: 'wheel', amount: e.amount, streak: e.streak });
     if (e.type === 'quest' && e.bonus) post({ kind: 'quests' });
     if (e.type === 'free' && e.meta && e.meta.feed && FEAT_GAMES[e.game]) post({ kind: 'feat', game: e.game, txt: String(e.meta.feed.txt || '').slice(0, 80), tail: String(e.meta.feed.tail || '').slice(0, 40) });
+    if (e.type === 'farm' && e.act === 'milestone' && e.n >= 500) post({ kind: 'farm', n: e.n });
     if (e.type === 'vipup') post({ kind: 'vip', rank: e.rank, bonus: e.amount });
   });
   const onCustom = (ev) => { const d = ev.detail || {}; if (d.type === 'motus' && d.won) post({ kind: 'motus', tries: d.tries }); if (d.type === 'week') post({ kind: 'week', winner: d.winner, profit: d.profit }); };

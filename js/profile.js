@@ -6,8 +6,11 @@ import { getPlayers } from './players.js';
 import { ACHIEVEMENTS, TIERS } from './achievements.js';
 import { frameClass, titleHTML } from './shop.js';
 import { vipBadge } from './progress.js';
+import { normalize as normalizeFarm, tick as tickFarm, productionPerHour } from './farm-core.js';
 
 export const BIO_MAX = 160;
+// production horaire d'une ferme (calcul léger, sans charger toute la page de la ferme)
+function farmRate(raw) { try { const f = normalizeFarm(JSON.parse(JSON.stringify(raw))); tickFarm(f); return productionPerHour(f); } catch { return 0; } }
 const AVATAR_MAX_CHARS = 38000; // photo en JPEG base64 (≈ 28 Ko), stockée directement dans Firestore
 
 // Singes prédéfinis : [options du singe, couleur de fond]
@@ -117,6 +120,7 @@ export function cardHTML(p, { me = false } = {}) {
       <div><span>Plus gros gain</span><b>${fmt(s.biggestWin)}</b></div>
       <div><span>Succès</span><b>${nAch}/${ACHIEVEMENTS.length}</b></div>
       <div><span>Jeu préféré</span><b>${fav && fav[1].rounds ? GAME_NAMES[fav[0]] : '—'}</b></div>
+      <div><span>Ferme</span><b>${p.farm && p.farm.v ? `${fmt(Math.round(farmRate(p.farm)))} 🍌/h` : '—'}</b></div>
     </div>
     ${best.length ? `<div class="pf-ach">${best.map((a) => `<span class="tier-badge t-${a.tier}" title="${esc(a.desc)}">${icon('medal')} ${esc(a.name)}</span>`).join('')}</div>` : ''}
   </div>`;
@@ -129,8 +133,9 @@ export async function showPlayerCard(uid, { backend, wallet }) {
   if (!p) { toast('Profil introuvable pour le moment', 'error'); return; }
   const me = uid === wallet.uid;
   const r = await modal({ title: me ? 'Ton profil' : 'Profil', cls: 'pf-modal', html: cardHTML(me ? { ...p, avatar: wallet.p.avatar, bio: wallet.p.bio, shop: wallet.p.shop } : p, { me }),
-    buttons: me ? [{ label: 'Modifier', value: 'edit' }, { label: 'Fermer', value: true, primary: true }] : [{ label: 'Fermer', value: true, primary: true }] });
+    buttons: [...(p.farm && p.farm.v ? [{ label: me ? 'Ma ferme' : 'Visiter sa ferme', value: 'farm' }] : []), ...(me ? [{ label: 'Modifier', value: 'edit' }] : []), { label: 'Fermer', value: true, primary: true }] });
   if (r === 'edit') location.hash = '#/profile';
+  if (r === 'farm') { if (me) location.hash = '#/farm'; else (await import('./farm.js')).visit(p); }
 }
 
 // Clic sur n'importe quel élément [data-player] => fiche du joueur

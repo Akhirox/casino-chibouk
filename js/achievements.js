@@ -12,7 +12,7 @@ export const TIERS = {
 export const CATEGORIES = {
   global: 'Global', slots: 'Chibouk Slot', blackjack: 'Blackjack', roulette: 'Roulette', plinko: 'Plinkoko',
   crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice', hilo: 'Hi-Lo', keno: 'Keno', wheel: 'Roue du Singe', limbo: 'Limbo',
-  free: 'Jeux gratuits', progress: 'Progression',
+  free: 'Jeux gratuits', farm: 'Ferme', progress: 'Progression',
 };
 
 const CASINO_GAMES = ['slots', 'blackjack', 'roulette', 'plinko', 'crash', 'tower', 'mines', 'dice', 'hilo', 'keno', 'wheel', 'limbo'];
@@ -24,6 +24,8 @@ const I = (e) => e.info || {};
 const streak = (c, game, kind) => (c.streaks && c.streaks[game] && c.streaks[game][kind]) || 0;
 
 // test(e, w, c) -> true pour débloquer ; progress(w, c) -> [actuel, objectif] (optionnel)
+// production horaire de la ferme (enregistrée à chaque seconde par la minuterie de la ferme)
+const fr = (w) => (w.p.farm && w.p.farm.rate) || 0;
 export const ACHIEVEMENTS = [
   /* ------------------------------ GLOBAL ------------------------------ */
   { id: 'first-bet', cat: 'global', tier: 'bronze', name: 'Premier pas dans la jungle', desc: 'Jouer ta toute première partie.', test: (e, w) => st(w).rounds >= 1 },
@@ -164,6 +166,14 @@ export const ACHIEVEMENTS = [
   { id: 'mo-7', cat: 'free', tier: 'silver', name: 'Dico vivant', desc: 'Trouver le mot du jour 7 jours d\'affilée.', test: (e, w) => (st(w).motusBestStreak || 0) >= 7, progress: (w) => [st(w).motusStreak || 0, 7] },
   { id: 'hi-10', cat: 'free', tier: 'silver', name: 'Producteur averti', desc: 'Faire une série de 10 au Plus ou moins.', test: (e, w) => (st(w).higherBest || 0) >= 10, progress: (w) => [st(w).higherBest || 0, 10] },
   { id: 'hi-15', cat: 'free', tier: 'gold', name: 'Nabab d\'Hollywood', desc: 'Aller au bout du Plus ou moins (15/15).', test: (e, w) => (st(w).higherPerfect || 0) >= 1 },
+  { id: 'fm-sell', cat: 'farm', tier: 'bronze', name: 'Premier régime', desc: 'Vendre des bananes au marché de ta ferme.', test: (e, w) => ((w.p.farm && w.p.farm.sold) || 0) > 0 },
+  { id: 'fm-100', cat: 'farm', tier: 'bronze', name: 'Petit producteur', desc: 'Produire 100 bananes par heure.', test: (e, w) => fr(w) >= 100, progress: (w) => [fr(w), 100] },
+  { id: 'fm-1k', cat: 'farm', tier: 'silver', name: 'Exploitant agricole', desc: 'Produire 1 000 bananes par heure.', test: (e, w) => fr(w) >= 1000, progress: (w) => [fr(w), 1000] },
+  { id: 'fm-10k', cat: 'farm', tier: 'gold', name: 'Empire de la banane', desc: 'Produire 10 000 bananes par heure.', test: (e, w) => fr(w) >= 10000, progress: (w) => [fr(w), 10000] },
+  { id: 'fm-land', cat: 'farm', tier: 'silver', name: 'Propriétaire terrien', desc: 'Posséder 25 parcelles.', test: (e, w) => ((w.p.farm && w.p.farm.own && w.p.farm.own.length) || 0) >= 25, progress: (w) => [(w.p.farm && w.p.farm.own && w.p.farm.own.length) || 0, 25] },
+  { id: 'fm-full', cat: 'farm', tier: 'legend', name: 'Domaine royal', desc: 'Posséder toute la ferme (49 parcelles).', test: (e, w) => ((w.p.farm && w.p.farm.own && w.p.farm.own.length) || 0) >= 49, progress: (w) => [(w.p.farm && w.p.farm.own && w.p.farm.own.length) || 0, 49] },
+  { id: 'fm-f12', cat: 'farm', tier: 'gold', name: 'Bananeraie légendaire', desc: 'Monter une bananeraie au niveau 12.', test: (e, w) => !!(w.p.farm && Array.isArray(w.p.farm.g) && w.p.farm.g.some((x) => x && x.t === 'F' && x.l >= 12)) },
+  { id: 'fm-1m', cat: 'farm', tier: 'legend', name: 'Magnat de la banane', desc: 'Vendre 1 000 000 de bananes au total.', test: (e, w) => ((w.p.farm && w.p.farm.sold) || 0) >= 1e6, progress: (w) => [(w.p.farm && w.p.farm.sold) || 0, 1e6] },
   { id: 'qn-1', cat: 'free', tier: 'bronze', name: 'Première couronne', desc: 'Résoudre une grille de Queens.', test: (e, w) => (st(w).queensWon || 0) >= 1 },
   { id: 'qn-9', cat: 'free', tier: 'silver', name: 'Reine des neuf', desc: 'Résoudre une grille de Queens en 9 × 9.', test: (e, w) => (st(w).queensWon9 || 0) >= 1 },
   { id: 'qn-fast', cat: 'free', tier: 'gold', name: 'Couronnement éclair', desc: 'Résoudre une grille de Queens en 9 × 9 en moins de 2 minutes.', test: (e, w) => (st(w).queensBest9 || 1e9) < 120 },

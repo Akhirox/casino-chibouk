@@ -9,6 +9,8 @@ import { vipBadge } from './progress.js';
 import { weekId, prevWeekId } from './wallet.js';
 import { weeklyRows, getWeeks, syncWeeks } from './weekly.js';
 import { GAMES, signed } from './stats.js';
+import { hasFarm, snapshot, visit } from './farm.js';
+import { productionPerHour } from './farm-core.js';
 
 export function mount(view, { wallet, backend }) {
   let alive = true, wkTab = 'cur', players = null;
@@ -18,6 +20,10 @@ export function mount(view, { wallet, backend }) {
       <p class="muted wk-note">Bénéfice aux jeux de casino (gagné − misé) du lundi au dimanche. Le premier gagne un trophée permanent, affiché sur son profil.</p>
       <div id="wk"><p class="muted">Chargement…</p></div>
       <h3 class="wk-h">Palmarès</h3><div id="wk-hall" class="wk-hall"></div>
+    </div>
+
+    <div class="panel"><h2><span class="h-ic">${icon('banana')}Les plus belles fermes</span><a class="btn btn-ghost btn-sm" href="#/farm">Ma ferme</a></h2>
+      <div id="farms"><p class="muted">Chargement…</p></div>
     </div>
 
     <div class="panel"><h2><span class="h-ic">${icon('trophy')}Classement des singes (soldes)</span></h2>
@@ -43,6 +49,7 @@ export function mount(view, { wallet, backend }) {
     }
     if (!alive || !box) return;
     renderWeek();
+    renderFarms();
     syncWeeks(backend, wallet).then(() => alive && renderHall());
     const rows = [...players].sort((a, b) => b.balance - a.balance).slice(0, CONFIG.LEADERBOARD_SIZE);
     box.innerHTML = `<div class="tbl-scroll"><table class="tbl"><thead><tr><th>#</th><th>Joueur</th><th class="r">Solde</th><th class="r">Total misé</th><th class="r">Plus gros gain</th><th class="r">Bilan jeux</th><th class="r">Succès</th></tr></thead><tbody>
@@ -57,6 +64,16 @@ export function mount(view, { wallet, backend }) {
         ${top.length ? `<ol>${top.map((x, i) => `<li class="${x.uid === wallet.uid ? 'me' : ''}"><span class="rank r${i + 1}">${i + 1}</span><button type="button" class="bw-name pl-link" data-player="${x.uid}">${avatarHTML(x, 'av-xs')}${esc(x.pseudo)}</button><b>${money(x.v)}</b></li>`).join('')}</ol>`
         : '<p class="muted bw-empty">Personne n\'a encore gagné ici</p>'}</div>`;
     }).join('');
+  }
+
+  function renderFarms() {
+    const box = $('#farms', view);
+    if (!box || !players) return;
+    const rows = players.filter(hasFarm).map((p) => { const s = snapshot(p.farm); return { p, s, rate: productionPerHour(s) }; }).sort((a, b) => b.rate - a.rate).slice(0, 10);
+    box.innerHTML = rows.length ? `<div class="tbl-scroll"><table class="tbl"><thead><tr><th>#</th><th>Fermier</th><th class="r">Production</th><th class="r">Parcelles</th><th class="r">Singes</th><th class="r">Vendues</th><th></th></tr></thead><tbody>
+      ${rows.map((r, i) => `<tr class="${r.p.uid === wallet.uid ? 'me' : ''}"><td><span class="rank r${i + 1}">${i + 1}</span></td><td><button type="button" class="pl-link" data-player="${r.p.uid}">${avatarHTML(r.p, 'av-sm')}${esc(r.p.pseudo)}</button></td><td class="r"><b>${fmt(Math.round(r.rate))}</b> /h</td><td class="r">${r.s.own.length}</td><td class="r">${r.s.w}</td><td class="r">${fmt(r.s.sold || 0)}</td><td><button class="btn btn-ghost btn-sm" data-visit="${r.p.uid}">Visiter</button></td></tr>`).join('')}
+      </tbody></table></div>` : '<p class="muted">Personne n\'a encore de ferme. <a href="#/farm">Sois le premier !</a></p>';
+    $$('[data-visit]', box).forEach((b) => (b.onclick = () => { const r = rows.find((x) => x.p.uid === b.dataset.visit); if (r) visit(r.p); }));
   }
 
   // Classement de la semaine (en cours ou précédente)

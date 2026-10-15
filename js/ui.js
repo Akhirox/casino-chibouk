@@ -29,7 +29,7 @@ export function toast(msg, type = 'info', ms = 3200) {
   setTimeout(() => { t.classList.remove('show'); setTimeout(() => t.remove(), 400); }, ms);
 }
 
-export function modal({ title = '', html = '', buttons = [{ label: 'OK', value: true, primary: true }], dismissable = true, cls = '' }) {
+export function modal({ title = '', html = '', buttons = [{ label: 'OK', value: true, primary: true }], dismissable = true, cls = '', onOpen = null }) {
   return new Promise((resolve) => {
     const m = h(`<div class="modal-backdrop"><div class="modal ${cls}" role="dialog" aria-modal="true">
       ${title ? `<h2 class="modal-title">${title}</h2>` : ''}
@@ -39,12 +39,13 @@ export function modal({ title = '', html = '', buttons = [{ label: 'OK', value: 
     const close = (v) => { m.classList.remove('show'); setTimeout(() => m.remove(), 250); document.removeEventListener('keydown', onKey); resolve(v); };
     const onKey = (e) => { if (e.key === 'Escape' && dismissable) close(null); };
     m.addEventListener('click', (e) => {
-      const b = e.target.closest('[data-i]');
+      const b = e.target.closest('.modal-actions [data-i]');
       if (b) close(buttons[+b.dataset.i].value);
       else if (e.target === m && dismissable) close(null);
     });
     document.addEventListener('keydown', onKey);
     document.body.append(m);
+    if (onOpen) try { onOpen(m); } catch (err) { console.error(err); }
     requestAnimationFrame(() => m.classList.add('show'));
   });
 }

@@ -12,7 +12,7 @@ export function msUntilParisMidnight() {
   return Math.max(0, (86400 - secs) * 1000);
 }
 
-const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'shop', 'day', 'streak', 'week', 'lastWeek', 'rake', 'vipLevel', 'updatedAt', 'pseudo', 'pseudoLower'];
+const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'shop', 'day', 'streak', 'week', 'lastWeek', 'rake', 'vipLevel', 'farm', 'updatedAt', 'pseudo', 'pseudoLower'];
 
 // Semaine ISO (lundi → dimanche, heure de Paris), ex : « 2026-W42 »
 export function weekId(d = new Date()) {
@@ -237,6 +237,16 @@ export class Wallet {
     this.p.stats.shopSpent = (this.p.stats.shopSpent || 0) + amount;
     this.touch({ type: 'shop', amount, item });
     this.flush();
+    return true;
+  }
+
+  // Dépense hors boutique (ferme : terrain, bâtisseurs, chantiers accélérés…) comptée dans stats[kind + 'Spent']
+  debit(kind, amount, evt = {}) {
+    amount = Math.ceil(amount);
+    if (!this.canAfford(amount)) return false;
+    this.p.balance -= amount;
+    this.p.stats[kind + 'Spent'] = (this.p.stats[kind + 'Spent'] || 0) + amount;
+    this.touch({ type: kind + '-spend', amount, ...evt });
     return true;
   }
 

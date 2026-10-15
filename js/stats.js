@@ -2,6 +2,8 @@
 import { CONFIG } from './config.js';
 import { $, $$, fmt, money, esc, toast } from './ui.js';
 import { fmtTime } from './games/free-common.js';
+import { hasFarm } from './farm.js';
+import { productionPerHour } from './farm-core.js';
 import { icon } from './art.js';
 import { getPlayers, playersFresh } from './players.js';
 import { avatarHTML } from './profile.js';
@@ -27,7 +29,7 @@ export const pct = (a, b) => (b ? (a / b * 100).toFixed(1).replace('.', ',') + '
 export const signed = (n) => `<span class="${n >= 0 ? 'pos' : 'neg'}">${n >= 0 ? '+' : ''}${fmt(n)}</span>`;
 
 // Brundles distribués hors jeux (bonus, quiz, succès…), pour les chiffres globaux
-const FREE_KEYS = ['dailyTotal', 'breakerTotal', 'quizTotal', 'capitalsTotal', 'moviesTotal', 'flagsTotal', 'motusTotal', 'higherTotal', 'queensTotal', 'tangoTotal', 'pinpointTotal', 'sudokuTotal', 'demineurTotal', 'snakeTotal', 'questTotal', 'achTotal', 'rakebackTotal', 'vipupTotal', 'vipfreeTotal', 'jackpotTotal'];
+const FREE_KEYS = ['dailyTotal', 'breakerTotal', 'quizTotal', 'capitalsTotal', 'moviesTotal', 'flagsTotal', 'motusTotal', 'higherTotal', 'queensTotal', 'tangoTotal', 'pinpointTotal', 'sudokuTotal', 'demineurTotal', 'snakeTotal', 'farmTotal', 'questTotal', 'achTotal', 'rakebackTotal', 'vipupTotal', 'vipfreeTotal', 'jackpotTotal'];
 
 export function globalNumbers(players) {
   const sum = (f) => players.reduce((a, p) => a + (f(p) || 0), 0);
@@ -41,7 +43,7 @@ export function globalNumbers(players) {
     players: players.length,
     wagered: sum((p) => p.stats.totalWagered), won: sum((p) => p.stats.totalWon), rounds: sum((p) => p.stats.rounds),
     balance: sum((p) => p.balance), free: sum((p) => FREE_KEYS.reduce((a, k) => a + (p.stats[k] || 0), 0)),
-    shop: sum((p) => p.stats.shopSpent), jackpots: sum((p) => p.stats.jackpotTotal), ach: sum((p) => Object.keys((p.ach && p.ach.u) || {}).length),
+    shop: sum((p) => p.stats.shopSpent), farmSpent: sum((p) => p.stats.farmSpent), jackpots: sum((p) => p.stats.jackpotTotal), ach: sum((p) => Object.keys((p.ach && p.ach.u) || {}).length),
     transfers: sum((p) => p.stats.transfersSent), best, games,
   };
 }
@@ -106,6 +108,7 @@ export function mount(view, { wallet, backend }) {
       <div class="stat-card"><span>Sudoku</span><b>${pl(s.sudokuWon, 'grille')}</b><small>${fmt(s.sudokuTotal || 0)} ${CONFIG.CURRENCY} · records : ${LV.map((l, i) => `${l} ${bt(s['sudokuBest' + i])}`).join(', ')}</small></div>
       <div class="stat-card"><span>Démineur</span><b>${fmt(s.demineurWon || 0)} / ${fmt(s.demineurRounds || 0)} gagnées</b><small>${fmt(s.demineurTotal || 0)} ${CONFIG.CURRENCY} · records : ${LV.map((l, i) => `${l} ${bt(s['demineurBest' + i])}`).join(', ')}</small></div>
       <div class="stat-card"><span>Snake</span><b>${pl(s.snakeBananas, 'banane')}</b><small>${pl(s.snakeRounds, 'partie')} · ${fmt(s.snakeTotal || 0)} ${CONFIG.CURRENCY} · records : ${LV.map((l, i) => `${l} ${fmt(s['snakeBest' + i] || 0)}`).join(', ')}</small></div>
+      <div class="stat-card"><span>Ferme à bananes</span><b>${hasFarm(wallet.p) ? `${fmt(Math.round(productionPerHour(wallet.p.farm)))} /h` : 'pas encore'}</b><small>${hasFarm(wallet.p) ? `${fmt(Math.floor(wallet.p.farm.tot || 0))} bananes récoltées · ${fmt(wallet.p.farm.sold || 0)} vendues · +${fmt(s.farmTotal || 0)} ${CONFIG.CURRENCY} · −${fmt(s.farmSpent || 0)} en terrain et bâtisseurs` : '<a href="#/farm">Découvrir la ferme</a>'}</small></div>
       <div class="stat-card"><span>Transferts</span><b>${signed((s.transfersReceived || 0) - (s.transfersSent || 0))}</b><small>Reçus ${fmt(s.transfersReceived || 0)} · envoyés ${fmt(s.transfersSent || 0)}</small></div>
       <div class="stat-card"><span>Tours gratuits déclenchés</span><b>${fmt(s.games.slots.bonuses || 0)}</b><small>Blackjacks : ${fmt(s.games.blackjack.blackjacks || 0)}</small></div>
     </div>
@@ -136,7 +139,7 @@ export function mount(view, { wallet, backend }) {
       <div class="glob"><span>Bilan des joueurs</span><b>${signed(net)}</b><small>${net >= 0 ? 'Le casino est dans le rouge, bravo les singes !' : 'Le casino mène… pour l\'instant.'}</small></div>
       <div class="glob"><span>Brundles en circulation</span><b>${money(g.balance)}</b><small>${fmt(g.players)} joueur${g.players > 1 ? 's' : ''} inscrit${g.players > 1 ? 's' : ''}</small></div>
       <div class="glob"><span>Distribués gratuitement</span><b>${money(g.free)}</b><small>roue, quiz, quêtes, succès, rakeback, jackpots…</small></div>
-      <div class="glob"><span>Dépensés en boutique</span><b>${money(g.shop)}</b><small>Envoyés entre joueurs : ${fmt(g.transfers)}</small></div>
+      <div class="glob"><span>Dépensés en boutique</span><b>${money(g.shop)}</b><small>À la ferme : ${fmt(g.farmSpent)} · envoyés entre joueurs : ${fmt(g.transfers)}</small></div>
       <div class="glob"><span>Plus gros gain de l'histoire</span><b>${g.best ? money(g.best.v) : '—'}</b><small>${g.best ? `par <button type="button" class="pl-link" data-player="${g.best.uid}">${esc(g.best.pseudo)}</button> ${GAME_LABEL[g.best.game] || ''}` : ''}</small></div>
       <div class="glob"><span>Succès débloqués</span><b>${fmt(g.ach)}</b><small>Jackpots versés : ${fmt(g.jackpots)}</small></div>`;
     const maxW = Math.max(1, ...g.games.map((x) => x.wagered));

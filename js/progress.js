@@ -113,6 +113,8 @@ TEMPLATES.push(
   { id: 'sudokuMed', tier: 2, n: 1, text: () => 'Résous un sudoku moyen ou difficile', ev: (e) => (e.type === 'free' && e.game === 'sudoku' && e.extra && (e.extra.Won1 || e.extra.Won2) ? 1 : 0) },
   { id: 'queens9', tier: 2, n: 1, text: () => 'Résous une grille de Queens en 9 × 9', ev: (e) => (e.type === 'free' && e.game === 'queens' && e.extra && e.extra.Won9 ? 1 : 0) },
   { id: 'msMid', tier: 2, n: 1, text: () => 'Gagne au démineur en moyen ou difficile', ev: (e) => (e.type === 'free' && e.game === 'demineur' && e.extra && (e.extra.Won1 || e.extra.Won2) ? 1 : 0) },
+  { id: 'farmBuild', tier: 0, n: 2, text: (n) => `Lance ${n} chantiers à ta ferme à bananes`, ev: (e) => (e.type === 'farm' && (e.act === 'build' || e.act === 'upgrade') ? 1 : 0) },
+  { id: 'farmSell', tier: 1, n: 300, text: (n) => `Vends ${n} bananes au marché de ta ferme`, ev: (e) => (e.type === 'farm' && e.act === 'sell' ? e.bananas || 0 : 0) },
   { id: 'free3', tier: 0, n: 3, text: (n) => `Termine ${n} parties de jeux gratuits (quiz, Sudoku, Snake…)`, ev: (e) => (e.type === 'free' ? 1 : 0) },
 );
 export const QUEST_REWARD = [300, 600, 1000];

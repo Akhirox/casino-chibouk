@@ -19,5 +19,5 @@ export async function getPlayers(backend, wallet, force = false) {
 
 // Remplace ses propres données par l'état local (toujours à jour)
 function withMe(rows, wallet) {
-  return rows.map((r) => (r.uid === wallet.uid ? { ...r, balance: wallet.balance, stats: wallet.stats, pseudo: wallet.pseudo, ach: wallet.p.ach, avatar: wallet.p.avatar || '', bio: wallet.p.bio || '', shop: wallet.p.shop, week: wallet.p.week, lastWeek: wallet.p.lastWeek } : r));
+  return rows.map((r) => (r.uid === wallet.uid ? { ...r, balance: wallet.balance, stats: wallet.stats, pseudo: wallet.pseudo, ach: wallet.p.ach, avatar: wallet.p.avatar || '', bio: wallet.p.bio || '', shop: wallet.p.shop, week: wallet.p.week, lastWeek: wallet.p.lastWeek, farm: wallet.p.farm } : r));
 }

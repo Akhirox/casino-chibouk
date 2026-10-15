@@ -1,4 +1,4 @@
-# Casino Chibouk HEY
+# Casino Chibouk
 
 Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est statique et s'héberge sur **GitHub Pages**. Les comptes et les soldes sont stockés dans **Firebase**, avec le plan gratuit Spark.
 
@@ -10,11 +10,12 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 - **Boutique cosmétique** : cadres d'avatar, titres, dos de cartes, thèmes de la slot, effets de victoire (de 2 000 à 100 millions de Brundles). Ça donne une utilité aux Brundles et freine l'inflation des soldes.
 - **Jackpot commun** alimenté par 1 % des mises de la slot (payé par le casino), qui peut tomber sur n'importe quel spin. Chance par spin = 1,5 % × mise ÷ jackpot, plafonnée à 1 % (ex. : jackpot de 10 000 et mise de 100 → 1 sur 6 667), affichée sur la slot.
 - **En direct de la jungle** : fil d'activité de l'accueil (gains à partir de ×25, tous les succès, jackpots, passages de rang VIP, achats, quêtes, vainqueurs de la semaine).
+- **Ferme à bananes** (jeu de gestion) : bananeraies, cabanes, entrepôts, puits et marché sur un terrain 7 × 7. Production continue même hors ligne (stock limité par les entrepôts), chantiers avec durée, bâtisseurs et parcelles payés en Brundles, vente des bananes au marché. Fermes des autres joueurs visitables. Réglages et formules dans `js/farm-core.js`.
 - **Stats** : onglet « Mes stats » et onglet « Le casino » (total misé et gagné par tout le monde, RTP réel, Brundles distribués, tableau par jeu).
 - **Classements** : classement de la semaine et palmarès, soldes, meilleurs gains par jeu.
 - **Historique** des 50 dernières parties de chaque jeu (onglet du classement à côté du jeu, gardé sur l'appareil).
 - **Aucune mise maximum** : mise libre + bouton MAX (Slot, Plinkoko, Crashibouk, Tower, Mines, Dice), jetons jusqu'à 25k + « Tapis » (blackjack), jetons jusqu'à 25k empilables (roulette).
-- **Succès** : 134 défis (globaux et par jeu) qui rapportent de +100 à +10 000 Brundles, avec une page dédiée et une notification à chaque déblocage. Un clic sur un succès montre qui l'a débloqué, et qui l'a eu en premier (avec la date).
+- **Succès** : 142 défis (globaux et par jeu) qui rapportent de +100 à +10 000 Brundles, avec une page dédiée et une notification à chaque déblocage. Un clic sur un succès montre qui l'a débloqué, et qui l'a eu en premier (avec la date).
 - **Profils** : photo (ou un des 12 singes) et petite bio, visibles en cliquant sur un pseudo dans les classements. La photo est réduite à quelques Ko et stockée dans Firestore (pas besoin de Firebase Storage, donc ça reste gratuit).
 - **Singe conseiller** : petites astuces contextuelles sur chaque page, désactivables depuis le menu du pseudo.
 - **Paris automatiques** sur les 12 jeux de casino : nombre de paris libre ou infini, arrêt sur objectif de gain ou limite de perte.
@@ -191,6 +192,8 @@ js/config.js               réglages
 js/app.js                  connexion, navigation, lobby, bonus quotidien
 js/backend.js              Firebase (Auth + Firestore) / mode démo
 js/wallet.js               solde, stats, sauvegarde groupée
+js/farm-core.js            ferme à bananes : règles, coûts, production (sans affichage)
+js/farm.js                 ferme à bananes : page, dessins, marché, voisins
 js/stats.js                stats personnelles + chiffres de tout le casino
 js/ranking.js              classements (semaine, soldes, meilleurs gains)
 js/vip.js                  fenêtre des rangs VIP et cagnotte de rakeback

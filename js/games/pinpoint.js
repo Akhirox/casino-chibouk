@@ -113,7 +113,7 @@ export function mount(view, { wallet }) {
     const amount = won ? PP_REWARDS[shown - 1] : 0;
     if (!credited) {
       credited = true;
-      wallet.freeReward('pinpoint', amount, won ? { Won: 1, ['Clue' + shown]: 1 } : { Lost: 1 }, won && shown === 1 ? { feed: { txt: 'a trouvé dès le premier indice à', tail: '' } } : null);
+      wallet.freeReward('pinpoint', amount, won ? { Won: 1, ['Clue' + shown]: 1 } : { Lost: 1 }, null);
     }
     render();
     if (won) { sfx.win(shown <= 2); coinRain(shown === 1 ? 30 : 12); } else sfx.lose();

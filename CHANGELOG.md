@@ -2,6 +2,29 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V14 — La ferme à bananes (15 octobre 2026)
+
+### Nouveau : la ferme à bananes
+
+- Ta propre ferme sur un terrain de 7 × 7 : des singes ouvriers récoltent des bananes dans tes bananeraies, même quand tu n'es pas connecté.
+- Cinq bâtiments à construire et améliorer : bananeraie (jusqu'au niveau 12), cabane (loge les singes), entrepôt (stock), puits (bonus aux bananeraies voisines) et marché (meilleur prix de vente).
+- Les chantiers prennent du temps, de quelques secondes à plusieurs heures. Un bâtisseur au départ, deux de plus à engager en Brundles, et chaque chantier peut être terminé tout de suite en payant.
+- Les parcelles autour de ta ferme s'achètent en Brundles. Les bananes servent à tout construire, ou se revendent au marché contre des Brundles.
+- Quand l'entrepôt est plein, la récolte s'arrête : pense à passer vendre ou dépenser !
+- Onglet « Les voisins » pour visiter les fermes des autres et comparer les productions, classement des fermes sur la page Classements, et la ferme de chacun sur sa fiche joueur.
+- Un encart sur l'accueil résume ta ferme, 8 succès à débloquer, 2 nouvelles quêtes du jour, et les grosses fermes apparaissent dans « En direct de la jungle ».
+
+### En direct de la jungle
+
+- Pinpoint n'y apparaît plus.
+- Les gros gains au Plinkoko n'y apparaissent qu'à partir de ×100, et un même jeu ne publie plus qu'un gros gain toutes les 10 minutes (sauf s'il est encore plus gros).
+
+## V13.1 — Correctif d'affichage (14 octobre 2026)
+
+### Correctifs
+
+- Plus de lignes horizontales sur le fond en plein écran sur les grands écrans (2K et plus).
+
 ## V13 — Six nouveaux jeux gratuits (14 octobre 2026)
 
 ### Jeux de réflexion
