@@ -101,6 +101,25 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
+    // Admins : un document par admin, dont l'identifiant est l'uid du compte (créé à la main dans la console)
+    match /admins/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // Journal des mini-jeux : chacun écrit ses propres parties, seuls les admins lisent, personne ne modifie
+    match /logs/{id} {
+      allow read: if request.auth != null
+        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.game is string
+        && request.resource.data.game.size() <= 20
+        && request.resource.data.at is number
+        && request.resource.data.size() <= 20;
+      allow update, delete: if false;
+    }
+
     // Tout le reste est fermé
     match /{document=**} {
       allow read, write: if false;

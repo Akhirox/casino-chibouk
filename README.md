@@ -21,6 +21,8 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 - **Singe conseiller** : petites astuces contextuelles sur chaque page, désactivables depuis le menu du pseudo.
 - **Paris automatiques** sur les 13 jeux de casino (tickets automatiques pour les jeux à gratter) : nombre de paris libre ou infini, arrêt sur objectif de gain, limite de perte ou solde minimum, et mise qui augmente ou baisse d'un pourcentage après chaque perte (retour à la mise de départ après une victoire ; pas sur le blackjack, la roulette et les tickets, dont la mise ne se résume pas à un seul montant).
 - **Mode turbo** sur les jeux de casino à enchaîner (Plinkoko, Dice, Limbo, Keno, Roue, Mines, Tower, Hi-Lo, tickets, roulette, Crash) : animations raccourcies et auto quasi sans pause, mêmes maths. Les écritures locales sont regroupées (`js/lazysave.js`) pour rester fluide.
+- **Fair-play des mini-jeux** (`js/fairplay.js`) : Sudoku, Queens, Tango, Memory, Mots croisés et Démineur surveillent la partie (temps réel sur l'horloge, nombre d'actions, clics « simulés » par un script, rythme robotique). Sudoku résolu sous 40 s / 75 s / 120 s (facile / moyen / difficile) : pas de récompense. Triche évidente (solveur, script, grille remplie sans saisie, Memory sans aucune erreur, temps sous le minimum physique de saisie) : amende de 5 × la récompense et jeu bloqué 1 h, puis 6 h, 24 h et 7 jours en cas de récidive. Tout est calculé dans le navigateur : un tricheur déterminé peut toujours contourner, d'où le journal.
+- **Journal des mini-jeux** (page admin `#/admin`) : une ligne par partie terminée (joueur, jeu, niveau, durée, nombre d'actions, gain, statut OK / trop rapide / triche, raison, amende), filtres par joueur, jeu et statut, résumé par joueur avec ses meilleurs temps. Stocké dans la collection Firestore `logs` (1 écriture par partie), lisible seulement par les admins.
 - **Volume** réglable (bouton haut-parleur, ou menu du pseudo sur téléphone), gardé sur l'appareil.
 - **Nouveautés** : journal des versions sur le site (et dans `CHANGELOG.md`).
 - **Classement à côté de chaque jeu** : top 5 des plus gros parieurs (volume misé), du meilleur multiplicateur et du plus gros gain sur ce jeu.
@@ -85,9 +87,11 @@ python -m http.server 8000
 1. Va sur <https://console.firebase.google.com> et clique sur **Ajouter un projet**. Google Analytics n'est pas nécessaire.
 2. **Authentication** → *Commencer* → *Sign-in method* → active **Adresse e-mail/Mot de passe**.
 3. **Firestore Database** → *Créer une base de données*. Choisis le **mode production** et une région en Europe, par exemple `europe-west1`.
-4. **Firestore Database → Règles** : copie-colle le contenu du fichier `firestore.rules`, puis clique sur **Publier**. À refaire à chaque fois que ce fichier change (c'est le cas en V9 : fil d'activité, jackpot commun et palmarès des semaines).
+4. **Firestore Database → Règles** : copie-colle le contenu du fichier `firestore.rules`, puis clique sur **Publier**. À refaire à chaque fois que ce fichier change (dernière fois en V20 : journal des mini-jeux et admins).
 5. **Paramètres du projet** (roue dentée) → *Vos applications* → icône **Web `</>`**. Enregistre l'app sans activer Firebase Hosting, puis copie le bloc `firebaseConfig` dans **`js/firebase-config.js`**.
 6. **Authentication → Paramètres → Domaines autorisés** → ajoute `tonpseudo.github.io`.
+
+7. **Devenir admin** (pour voir le journal des mini-jeux) : sur le site, ouvre **Mon profil** et copie ton *Identifiant du compte*. Dans **Firestore Database → Données**, crée une collection `admins` et un document dont l'**ID** est cet identifiant (ajoute n'importe quel champ, par exemple `nom : "moi"`). Recharge le site : « Journal des mini-jeux » apparaît dans le menu du pseudo. Seuls les comptes présents dans `admins` peuvent lire le journal.
 
 > Le bloc `firebaseConfig` (apiKey…) **n'est pas secret** : il est forcément visible dans un site web. La sécurité est assurée par les **règles Firestore** : un joueur ne peut modifier que son propre profil.
 
@@ -230,6 +234,9 @@ js/achpage.js              page des succès
 js/profile.js              profils (avatar, bio, fiche joueur)
 js/tips.js                 le singe conseiller (astuces)
 js/changelog.js            journal des versions (page Nouveautés) et numéro de version
+js/fairplay.js             fair-play des mini-jeux (détection des solveurs, amendes, blocages)
+js/gamelog.js              journal des mini-jeux (une ligne par partie, collection logs)
+js/admin.js                page admin du journal (#/admin)
 js/lazysave.js             écritures locales regroupées (sauvegarde de secours, historique, suivi)
 js/updater.js              détection d'une nouvelle version publiée et rechargement propre
 js/progress.js             rangs VIP (rakeback, bonus de passage, multiplicateur gratuit), roue du jour, quêtes

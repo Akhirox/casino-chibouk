@@ -161,7 +161,7 @@ export function mount(view, { wallet, backend }) {
         <div class="fm-stock"><div class="fm-stock-row"><span class="fm-big">${BANANA}<b id="fm-b"></b></span><small>/ <span id="fm-cap"></span></small></div>
           <div class="fm-bar"><i id="fm-bar"></i></div><small id="fm-full" class="muted"></small></div>
         <div class="fm-kpi"><span>Production</span><b id="fm-rate"></b><small id="fm-value" class="muted"></small><small id="fm-seeds" class="fm-seeds"></small><button class="btn btn-gold btn-sm" id="fm-replant" hidden></button></div>
-        <div class="fm-kpi"><span>Singes ouvriers</span><b id="fm-wk"></b><button class="btn btn-ghost btn-sm" id="fm-hire"></button></div>
+        <div class="fm-kpi"><span>Singes ouvriers</span><b id="fm-wk"></b><small id="fm-need" class="fm-need"></small><button class="btn btn-ghost btn-sm" id="fm-hire"></button></div>
         <div class="fm-kpi"><span>Bâtisseurs</span><b id="fm-bu"></b>${fm.bu < 3 ? `<button class="btn btn-ghost btn-sm" id="fm-builder">+1 · ${fmt(F.BUILDERS[fm.bu + 1])} ${CUR}</button>` : '<small class="muted">équipe complète</small>'}</div>
         <button class="btn btn-gold fm-sellbtn" id="fm-sell">${BANANA}Marché</button>
       </section>
@@ -196,6 +196,12 @@ export function mount(view, { wallet, backend }) {
     if (!rb.hidden) rb.innerHTML = `${SEED} Replanter · +${gain}`;
     const hc = F.hireCost(fm.w), H = F.houses(fm);
     el('fm-wk').textContent = `${fm.w} / ${H}`;
+    // singes nécessaires pour remplir toutes les places des bananeraies (construites)
+    const need = F.totalSlots(fm), miss = need - fm.w, needEl = el('fm-need');
+    needEl.className = 'fm-need ' + (miss > 0 ? 'miss' : miss < 0 ? 'extra' : 'ok');
+    needEl.innerHTML = !need ? 'Aucune bananeraie' : miss > 0
+      ? `${need} pour remplir les bananeraies · <b>encore ${miss}</b>${need > H ? ` <span title="Il faut plus de place dans les cabanes">(cabanes : +${need - H} places)</span>` : ''}`
+      : miss < 0 ? `${need} places dans les bananeraies · <b>${-miss} en trop</b>` : `${need} / ${need} : bananeraies pleines`;
     const hb = el('fm-hire');
     hb.innerHTML = fm.w >= H ? 'Cabanes pleines' : `Embaucher · ${ban(hc)}`;
     hb.disabled = fm.w >= H || fm.b < hc;

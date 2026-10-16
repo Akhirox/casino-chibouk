@@ -2,6 +2,22 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V20 — Fair-play des mini-jeux (16 octobre 2026)
+
+### Fair-play
+
+- Sudoku : une grille résolue en moins de 40 s (facile), 75 s (moyen) ou 120 s (difficile) ne rapporte plus rien. Même en connaissant la réponse, il faut déjà 20 à 30 s rien que pour la saisir.
+- Triche évidente (solveur ou script qui remplit la grille, clics simulés, grille remplie sans saisie, temps sous le minimum physique) : amende de 5 fois la récompense et jeu bloqué 1 h. En cas de récidive : 6 h, 24 h, puis 7 jours.
+- Les mêmes contrôles protègent Queens, Tango, Memory (une partie sans aucune erreur sur 8 paires ou plus est impossible sans tricher), les mots croisés et le démineur.
+
+### Pour l'admin
+
+- Journal des mini-jeux : chaque partie terminée est enregistrée (joueur, jeu, niveau, durée, actions, gain, statut, amende). Page réservée aux admins, dans le menu du pseudo. Ton identifiant de compte est affiché dans Mon profil.
+
+### Ferme
+
+- Sous « Singes ouvriers », tu vois combien de singes il faut pour remplir toutes tes bananeraies, combien il en manque (et la place de cabane à prévoir) ou combien sont en trop.
+
 ## V19 — Mode turbo (16 octobre 2026)
 
 ### Mode turbo

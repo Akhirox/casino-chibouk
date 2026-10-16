@@ -2,6 +2,7 @@
 import { $, $$, fmt, modal, coinRain, CUR } from '../ui.js';
 import { icon, monkeySVG } from '../art.js';
 import { sfx } from '../sfx.js';
+import { createGuard, judge, punish, tooFast, refusedHTML, lockBannerHTML, lockedUntil } from '../fairplay.js';
 import { makeTimer, modesHTML, bindModes, savedLevel, saveLevel, endCardHTML, fmtTimeLong } from './free-common.js';
 
 export const MEMORY_LEVELS = [
@@ -19,6 +20,7 @@ const shuffle = (a) => { for (let i = a.length - 1; i > 0; i--) { const j = Math
 export const memoryBonus = (L, moves) => (moves <= Math.ceil((L.cols * L.rows) / 2 * 1.6) ? Math.round(L.reward * 0.5) : 0);
 
 export function mount(view, { wallet }) {
+  let guard = null;
   let alive = true, lv = savedLevel('chibouk_memory_lv', 0), deck = [], open = [], found = 0, moves = 0, lock = false, state = 'intro', timer = null;
   view.innerHTML = `<div class="fg-wrap mm-wrap">
     <div class="game-head"><h1>Mem<span>ory</span></h1><div class="actions"><span class="gc-tag">Gratuit · +${MEMORY_LEVELS[0].reward} à +${Math.round(MEMORY_LEVELS[2].reward * 1.5)} ${CUR}</span></div></div>
@@ -32,12 +34,14 @@ export function mount(view, { wallet }) {
       <h2>Retrouve toutes les paires</h2>
       <p>Retourne deux cartes à la fois. Si elles sont identiques, elles restent face visible. <b>+50 %</b> si tu termines avec peu d'erreurs.</p>
       ${modesHTML(MEMORY_LEVELS, lv, (l, i) => `+${l.reward} ${CUR} · bonus en ${Math.ceil((l.cols * l.rows) / 2 * 1.6)} coups max${bestTxt(i)}`)}
-      <button class="btn btn-gold btn-lg" id="fg-start">Jouer</button></div>`;
+      ${lockBannerHTML(wallet, 'memory')}
+      <button class="btn btn-gold btn-lg" id="fg-start" ${lockedUntil(wallet, 'memory') ? 'disabled' : ''}>Jouer</button></div>`;
     bindModes(stage, (i) => { lv = i; saveLevel('chibouk_memory_lv', i); sfx.click(); intro(); });
     $('#fg-start', stage).onclick = start;
   }
 
   function start() {
+    if (lockedUntil(wallet, 'memory')) { intro(); return; }
     const L = MEMORY_LEVELS[lv], pairs = (L.cols * L.rows) / 2;
     const faces = shuffle([...FACES]).slice(0, pairs);
     deck = shuffle([...faces, ...faces].map((f, i) => ({ id: i, face: f[0], color: f[1], done: false })));
@@ -47,6 +51,7 @@ export function mount(view, { wallet }) {
       <div class="mm-board" style="--cols:${L.cols}">${deck.map((c, i) => `<button type="button" class="mm-card" data-i="${i}" aria-label="carte"><span class="mm-inner"><span class="mm-back">${monkeySVG({})}</span><span class="mm-front" style="--fc:${c.color}">${icon(c.face)}</span></span></button>`).join('')}</div>`;
     timer && timer.destroy();
     timer = makeTimer($('#fg-time', stage));
+    guard && guard.destroy(); guard = createGuard(stage);
     $('#mm-restart', stage).onclick = start;
     stage.querySelector('.mm-board').addEventListener('click', (e) => { const b = e.target.closest('.mm-card'); if (b) flip(+b.dataset.i); });
     info();
@@ -86,9 +91,20 @@ export function mount(view, { wallet }) {
     state = 'done';
     timer.stop();
     const L = MEMORY_LEVELS[lv], sec = Math.round(timer.elapsed), bonus = memoryBonus(L, moves), amount = L.reward + bonus;
+    // contrôle fair-play avant toute récompense
+    let v = judge(guard, { minActions: deck.length, cheatSec: Math.round(deck.length / 2 * 0.6 * 10) / 10 }); guard = null;
+    // aucune erreur sur 8 paires ou plus : 1 chance sur 2 millions sans voir les cartes (elles sont lisibles dans le code de la page)
+    if (v.flag === 'ok' && moves === deck.length / 2 && deck.length >= 16) v = { ...v, flag: 'cheat', reason: `aucune erreur sur ${deck.length / 2} paires (une chance sur plusieurs millions sans tricher)` };
+    if (v.flag !== 'ok') {
+      let pn = null;
+      if (v.flag === 'cheat') { pn = punish(wallet, 'memory', lv, v, amount); sfx.lose(); } else tooFast(wallet, 'memory', lv, v);
+      stage.insertAdjacentHTML('beforeend', refusedHTML(v, pn));
+      $('[data-again]', stage).onclick = v.flag === 'cheat' ? intro : start;
+      return;
+    }
     const s = wallet.stats, key = 'memoryBest' + lv, record = !s[key] || moves < s[key];
     if (record) s[key] = moves;
-    wallet.freeReward('memory', amount, { Won: 1, ['Won' + lv]: 1, Moves: moves }, lv === 2 && record ? { feed: { txt: 'a battu son record au', tail: `difficile : ${moves} coups` } } : null);
+    wallet.freeReward('memory', amount, { Won: 1, ['Won' + lv]: 1, Moves: moves }, { ...(lv === 2 && record ? { feed: { txt: 'a battu son record au', tail: `difficile : ${moves} coups` } } : {}), log: { lv, sec: v.sec, actions: v.actions, fastShare: v.fastShare, moves } });
     sfx.win(true); coinRain(20);
     stage.insertAdjacentHTML('beforeend', endCardHTML({ win: true, title: 'Toutes les paires !', amount,
       text: `${L.name} en <b>${moves} coups</b> et ${fmtTimeLong(sec)}${bonus ? ` (bonus de précision +${fmt(bonus)})` : ''}.${record ? ' Nouveau record !' : ` Record : ${s[key]} coups.`}`,
@@ -101,5 +117,5 @@ export function mount(view, { wallet }) {
   const onKey = (e) => { if (state !== 'play' && e.key === 'Enter' && !e.target.closest('button,input') && !document.querySelector('.modal-backdrop')) start(); };
   document.addEventListener('keydown', onKey);
   intro();
-  return () => { alive = false; timer && timer.destroy(); document.removeEventListener('keydown', onKey); };
+  return () => { alive = false; timer && timer.destroy(); guard && guard.destroy(); document.removeEventListener('keydown', onKey); };
 }

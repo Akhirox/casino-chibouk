@@ -3,6 +3,7 @@ import { generateSudoku, SUDOKU_LEVELS } from './sudoku-gen.js';
 import { $, $$, fmt, modal, coinRain, CUR } from '../ui.js';
 import { monkeySVG } from '../art.js';
 import { sfx } from '../sfx.js';
+import { createGuard, judge, punish, tooFast, refusedHTML, lockBannerHTML, lockedUntil } from '../fairplay.js';
 import { makeTimer, modesHTML, bindModes, savedLevel, saveLevel, endCardHTML, speedBonus, fmtTimeLong } from './free-common.js';
 
 export const SUDOKU_INFO = [
@@ -10,13 +11,20 @@ export const SUDOKU_INFO = [
   { ...SUDOKU_LEVELS[1], desc: '32 chiffres donnés', reward: 160, par: 720 },
   { ...SUDOKU_LEVELS[2], desc: '25 chiffres donnés, bon courage', reward: 300, par: 1200 },
 ];
+// Fair-play (horloge réelle) : en dessous de fastSec, pas de récompense ; en dessous de cheatSec, c'est une triche évidente.
+// Repères : même en connaissant la réponse, saisir une case (la choisir + taper le chiffre) prend au moins ~0,5 s,
+// soit 20 à 28 s rien que pour remplir 41 à 56 cases ; les meilleurs joueurs mettent plusieurs minutes sur une grille difficile.
+export const SUDOKU_FAIR = SUDOKU_LEVELS.map((l, i) => {
+  const empties = 81 - l.clues;
+  return { empties, minActions: empties, cheatSec: Math.round(empties * 0.4), fastSec: [40, 75, 120][i] };
+});
 const peersOf = (i) => { const r = Math.floor(i / 9), c = i % 9, br = r - (r % 3), bc = c - (c % 3), p = new Set();
   for (let k = 0; k < 9; k++) { p.add(r * 9 + k); p.add(k * 9 + c); p.add((br + Math.floor(k / 3)) * 9 + bc + (k % 3)); }
   p.delete(i); return [...p]; };
 const PEERS = [...Array(81).keys()].map(peersOf);
 
 export function mount(view, { wallet }) {
-  let alive = true, lv = savedLevel('chibouk_sudoku_lv', 0), pz = null, g = null, notes = null, sel = -1, noteMode = false, state = 'intro', history = [], timer = null;
+  let alive = true, lv = savedLevel('chibouk_sudoku_lv', 0), pz = null, g = null, notes = null, sel = -1, noteMode = false, state = 'intro', history = [], timer = null, guard = null;
   view.innerHTML = `<div class="fg-wrap sd-wrap">
     <div class="game-head"><h1>Su<span>doku</span></h1><div class="actions"><span class="gc-tag">Gratuit · +${SUDOKU_INFO[0].reward} à +${SUDOKU_INFO[2].reward} ${CUR}</span></div></div>
     <div id="fg-stage"></div></div>`;
@@ -29,12 +37,15 @@ export function mount(view, { wallet }) {
       <h2>Le bon vieux Sudoku</h2>
       <p>Chaque ligne, chaque colonne et chaque carré de 3×3 contient les chiffres de 1 à 9. <b>+50 %</b> si tu bats le temps de référence.</p>
       ${modesHTML(SUDOKU_INFO, lv, (l, i) => `+${l.reward} ${CUR} · bonus sous ${Math.round(l.par / 60)} min${bestTxt(i)}`)}
-      <button class="btn btn-gold btn-lg" id="fg-start">Nouvelle grille</button></div>`;
+      ${lockBannerHTML(wallet, 'sudoku')}
+      <button class="btn btn-gold btn-lg" id="fg-start" ${lockedUntil(wallet, 'sudoku') ? 'disabled' : ''}>Nouvelle grille</button>
+      <p class="muted fair-note">Grille résolue en moins de ${SUDOKU_FAIR[lv].fastSec} s : pas de récompense. Solveurs et scripts sont détectés et sanctionnés.</p></div>`;
     bindModes(stage, (i) => { lv = i; saveLevel('chibouk_sudoku_lv', i); sfx.click(); intro(); });
     $('#fg-start', stage).onclick = start;
   }
 
   function start() {
+    if (lockedUntil(wallet, 'sudoku')) { intro(); return; }
     pz = generateSudoku(lv);
     g = [...pz.puzzle];
     notes = Array.from({ length: 81 }, () => new Set());
@@ -46,6 +57,8 @@ export function mount(view, { wallet }) {
         <div class="sd-acts"><button type="button" class="btn btn-ghost" id="sd-note" title="Touche N">✎ Notes</button><button type="button" class="btn btn-ghost" id="sd-erase">Effacer</button></div></div></div>`;
     timer && timer.destroy();
     timer = makeTimer($('#fg-time', stage)); timer.start();
+    guard && guard.destroy();
+    guard = createGuard(stage);
     $('#sd-board', stage).addEventListener('click', (e) => { const el = e.target.closest('.sd-cell'); if (el && state === 'play') { sel = +el.dataset.i; render(); } });
     $$('.sd-nums button', stage).forEach((b) => (b.onclick = () => input(+b.dataset.d)));
     $('#sd-erase', stage).onclick = () => input(0);
@@ -102,10 +115,20 @@ export function mount(view, { wallet }) {
     timer.stop();
     const L = SUDOKU_INFO[lv], sec = Math.round(timer.elapsed);
     const bonus = speedBonus(L.reward, sec, L.par), amount = L.reward + bonus;
+    // contrôle fair-play avant toute récompense
+    const v = judge(guard, SUDOKU_FAIR[lv]); guard = null;
+    if (v.flag !== 'ok') {
+      sel = -1; render();
+      let p = null;
+      if (v.flag === 'cheat') { p = punish(wallet, 'sudoku', lv, v, amount); sfx.lose(); } else tooFast(wallet, 'sudoku', lv, v);
+      stage.insertAdjacentHTML('beforeend', refusedHTML(v, p));
+      $('[data-again]', stage).onclick = v.flag === 'cheat' ? intro : start;
+      return;
+    }
     const s = wallet.stats, key = 'sudokuBest' + lv, record = !s[key] || sec < s[key];
     if (record) s[key] = sec;
     sel = -1; render();
-    wallet.freeReward('sudoku', amount, { Won: 1, ['Won' + lv]: 1 }, lv === 2 && record ? { feed: { txt: 'a battu son record au', tail: `difficile : ${fmtTimeLong(sec)}` } } : null);
+    wallet.freeReward('sudoku', amount, { Won: 1, ['Won' + lv]: 1 }, { ...(lv === 2 && record ? { feed: { txt: 'a battu son record au', tail: `difficile : ${fmtTimeLong(sec)}` } } : {}), log: { lv, sec: v.sec, actions: v.actions, fastShare: v.fastShare } });
     $('#sd-board', stage).classList.add('solved');
     sfx.win(true); coinRain(lv === 2 ? 45 : 25);
     setTimeout(() => {
@@ -137,5 +160,5 @@ export function mount(view, { wallet }) {
   };
   document.addEventListener('keydown', onKey);
   intro();
-  return () => { alive = false; timer && timer.destroy(); document.removeEventListener('keydown', onKey); };
+  return () => { alive = false; timer && timer.destroy(); guard && guard.destroy(); document.removeEventListener('keydown', onKey); };
 }

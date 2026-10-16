@@ -170,8 +170,10 @@ export function mount(view, { wallet }) {
       <h3>Bio</h3>
       <textarea id="pf-bio" maxlength="${BIO_MAX}" rows="3" placeholder="Ex : Roi du blackjack, allergique aux bananes vertes."></textarea>
       <div class="pf-actions"><small class="muted" id="pf-count"></small><button class="btn btn-gold" id="pf-save">Enregistrer</button></div>
-    </section></div>`;
+    </section>
+    <p class="muted pf-uid">Identifiant du compte : <code id="pf-uid">${wallet.uid}</code> <button type="button" class="btn btn-ghost btn-sm" id="pf-uid-copy">Copier</button></p></div>`;
 
+  $('#pf-uid-copy', view).onclick = () => { try { navigator.clipboard.writeText(wallet.uid); toast('Identifiant copié'); } catch {} };
   const ta = $('#pf-bio', view);
   ta.value = bio;
   const render = () => {

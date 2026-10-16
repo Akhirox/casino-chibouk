@@ -202,6 +202,18 @@ async function createFirebaseBackend() {
     async createWeek(id, data) {
       try { await F.setDoc(F.doc(db, 'weeks', id), data); return true; } catch { return false; } // déjà créé par un autre joueur
     },
+    // Journal des mini-jeux (lecture réservée aux admins : voir firestore.rules et la collection « admins »)
+    async addLog(entry) { await F.addDoc(F.collection(db, 'logs'), entry); },
+    async fetchLogs({ before = 0, n = 300 } = {}) {
+      const parts = [F.collection(db, 'logs')];
+      if (before) parts.push(F.where('at', '<', before));
+      parts.push(F.orderBy('at', 'desc'), F.limit(n));
+      const snap = await F.getDocs(F.query(...parts));
+      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+    },
+    async isAdmin(uid) {
+      try { return (await F.getDoc(F.doc(db, 'admins', uid))).exists(); } catch { return false; }
+    },
   };
 }
 
@@ -212,7 +224,7 @@ function createDemoBackend() {
   const K_USERS = 'chibouk_demo_users';
   const K_SESSION = 'chibouk_demo_session';
   const K_TRANSFERS = 'chibouk_demo_transfers';
-  const K_FEED = 'chibouk_demo_feed', K_JACKPOT = 'chibouk_demo_jackpot', K_WEEKS = 'chibouk_demo_weeks';
+  const K_FEED = 'chibouk_demo_feed', K_JACKPOT = 'chibouk_demo_jackpot', K_WEEKS = 'chibouk_demo_weeks', K_LOGS = 'chibouk_demo_logs';
   const kProfile = (uid) => 'chibouk_demo_profile_' + uid;
   const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
   const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} };
@@ -304,5 +316,8 @@ function createDemoBackend() {
     },
     async listWeeks() { return Object.entries(read(K_WEEKS, {})).map(([id, d]) => ({ id, ...d })); },
     async createWeek(id, data) { const w = read(K_WEEKS, {}); if (w[id]) return false; w[id] = data; write(K_WEEKS, w); return true; },
+    async addLog(entry) { const l = read(K_LOGS, []); l.push({ ...entry, id: 'l_' + Math.random().toString(36).slice(2, 10) }); write(K_LOGS, l.slice(-2000)); },
+    async fetchLogs({ before = 0, n = 300 } = {}) { return read(K_LOGS, []).filter((e) => !before || e.at < before).sort((a, b) => b.at - a.at).slice(0, n); },
+    async isAdmin() { return true; }, // en démo, tout le monde voit le journal
   };
 }

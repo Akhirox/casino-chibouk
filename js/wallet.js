@@ -13,7 +13,7 @@ export function msUntilParisMidnight() {
   return Math.max(0, (86400 - secs) * 1000);
 }
 
-const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'shop', 'day', 'streak', 'week', 'lastWeek', 'rake', 'vipLevel', 'farm', 'vault', 'updatedAt', 'pseudo', 'pseudoLower'];
+const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'shop', 'day', 'streak', 'week', 'lastWeek', 'rake', 'vipLevel', 'farm', 'vault', 'fair', 'updatedAt', 'pseudo', 'pseudoLower'];
 
 // Semaine ISO (lundi → dimanche, heure de Paris), ex : « 2026-W42 »
 export function weekId(d = new Date()) {
@@ -305,6 +305,19 @@ export class Wallet {
     this.touch({ type: 'free', game: kind, amount: Math.max(0, amount), extra, meta });
     this.vipBonus(kind, amount);
     this.flush();
+  }
+
+  // Amende (triche détectée sur un mini-jeu) : prise sur le solde, puis sur le coffre si besoin. Renvoie le montant pris.
+  penalty(game, amount) {
+    amount = Math.max(0, Math.floor(amount));
+    const fromBal = Math.min(amount, Math.floor(this.p.balance)), fromVault = Math.min(amount - fromBal, this.vault);
+    this.p.balance -= fromBal;
+    if (fromVault) this.p.vault = this.vault - fromVault;
+    const taken = fromBal + fromVault;
+    this.p.stats.penaltyTotal = (this.p.stats.penaltyTotal || 0) + taken;
+    this.touch({ type: 'penalty', game, amount: taken });
+    this.flush();
+    return taken;
   }
 
   // Profil public (photo + bio) : écrit tout de suite, une seule fois, hors de la synchro des 30 s

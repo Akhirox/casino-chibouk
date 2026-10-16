@@ -4,6 +4,7 @@ import { generateQueens } from './queens-gen.js';
 import { $, $$, money, fmt, toast, modal, coinRain, CUR } from '../ui.js';
 import { monkeySVG } from '../art.js';
 import { sfx } from '../sfx.js';
+import { createGuard, judge, punish, tooFast, refusedHTML, lockBannerHTML, lockedUntil } from '../fairplay.js';
 import { makeTimer, modesHTML, bindModes, savedLevel, saveLevel, endCardHTML, speedBonus, fmtTimeLong } from './free-common.js';
 
 export const QUEENS_LEVELS = [
@@ -21,6 +22,7 @@ const RULES = `<ul class="muted">
   <li>Chaque grille n'a qu'une seule solution, et se résout par la logique.</li></ul>`;
 
 export function mount(view, { wallet }) {
+  let guard = null;
   let alive = true, lv = savedLevel('chibouk_queens_lv', 1), puzzle = null, cells = [], state = 'intro', history = [];
   view.innerHTML = `<div class="fg-wrap qn-wrap">
     <div class="game-head"><h1>Que<span>ens</span></h1><div class="actions"><span class="gc-tag">Gratuit · +${QUEENS_LEVELS[0].reward} à +${QUEENS_LEVELS[2].reward} ${CUR}</span></div></div>
@@ -34,13 +36,15 @@ export function mount(view, { wallet }) {
       <h2>Une reine par ligne, colonne et couleur</h2>
       <p>Et jamais deux reines côte à côte, même en diagonale. Gain selon la taille, <b>+50 %</b> si tu bats le temps de référence.</p>
       ${modesHTML(QUEENS_LEVELS, lv, (l, i) => `+${l.reward} ${CUR} · bonus sous ${Math.round(l.par / 60)} min${bestTxt(i)}`)}
-      <button class="btn btn-gold btn-lg" id="fg-start">Nouvelle grille</button></div>`;
+      ${lockBannerHTML(wallet, 'queens')}
+      <button class="btn btn-gold btn-lg" id="fg-start" ${lockedUntil(wallet, 'queens') ? 'disabled' : ''}>Nouvelle grille</button></div>`;
     bindModes(stage, (i) => { lv = i; saveLevel('chibouk_queens_lv', i); sfx.click(); intro(); });
     $('#fg-start', stage).onclick = start;
   }
   const bestTxt = (i) => { const b = wallet.stats['queensBest' + QUEENS_LEVELS[i].n]; return b ? ` · record ${fmtTimeLong(b)}` : ''; };
 
   function start() {
+    if (lockedUntil(wallet, 'queens')) { intro(); return; }
     const L = QUEENS_LEVELS[lv];
     puzzle = generateQueens(L.n);
     if (!puzzle) { toast('Génération impossible, réessaie', 'error'); return; }
@@ -56,6 +60,7 @@ export function mount(view, { wallet }) {
       }).join('')).join('')}</div>`;
     timer && timer.destroy();
     timer = makeTimer($('#fg-time', stage));
+    guard && guard.destroy(); guard = createGuard(stage);
     timer.start();
     $('#fg-undo', stage).onclick = undo;
     $('#fg-clear', stage).onclick = () => { if (state !== 'play') return; snapshot(); cells = cells.map((row) => row.map(() => 0)); render(); };
@@ -127,9 +132,18 @@ export function mount(view, { wallet }) {
     timer.stop();
     const L = QUEENS_LEVELS[lv], sec = Math.round(timer.elapsed);
     const bonus = speedBonus(L.reward, sec, L.par), amount = L.reward + bonus;
+    // contrôle fair-play avant toute récompense
+    let v = judge(guard, { minActions: L.n, cheatSec: Math.round(L.n * 0.35 * 10) / 10 }); guard = null;
+    if (v.flag !== 'ok') {
+      let pn = null;
+      if (v.flag === 'cheat') { pn = punish(wallet, 'queens', lv, v, amount); sfx.lose(); } else tooFast(wallet, 'queens', lv, v);
+      stage.insertAdjacentHTML('beforeend', refusedHTML(v, pn));
+      $('[data-again]', stage).onclick = v.flag === 'cheat' ? intro : start;
+      return;
+    }
     const s = wallet.stats, key = 'queensBest' + L.n, record = !s[key] || sec < s[key];
     if (record) s[key] = sec;
-    wallet.freeReward('queens', amount, { Won: 1, ['Won' + L.n]: 1 }, L.n === 9 && record ? { feed: { txt: `a battu son record en 9×9 à`, tail: `: ${fmtTimeLong(sec)}` } } : null);
+    wallet.freeReward('queens', amount, { Won: 1, ['Won' + L.n]: 1 }, { ...(L.n === 9 && record ? { feed: { txt: `a battu son record en 9×9 à`, tail: `: ${fmtTimeLong(sec)}` } } : {}), log: { lv, sec: v.sec, actions: v.actions, fastShare: v.fastShare } });
     $('#qn-board', stage).classList.add('solved');
     sfx.win(true); coinRain(25);
     setTimeout(() => {
@@ -150,5 +164,5 @@ export function mount(view, { wallet }) {
   };
   document.addEventListener('keydown', onKey);
   intro();
-  return () => { alive = false; timer && timer.destroy(); document.removeEventListener('keydown', onKey); };
+  return () => { alive = false; timer && timer.destroy(); guard && guard.destroy(); document.removeEventListener('keydown', onKey); };
 }

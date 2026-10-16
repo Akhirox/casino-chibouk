@@ -4,6 +4,7 @@
 import { $, $$, fmt, modal, coinRain, CUR } from '../ui.js';
 import { bombTileSVG, monkeySVG } from '../art.js';
 import { sfx } from '../sfx.js';
+import { createGuard, judge, punish, tooFast, refusedHTML, lockBannerHTML, lockedUntil } from '../fairplay.js';
 import { makeTimer, modesHTML, bindModes, savedLevel, saveLevel, endCardHTML, fmtTime, fmtTimeLong } from './free-common.js';
 
 export const MS_LEVELS = [
@@ -15,6 +16,7 @@ MS_LEVELS.forEach((l) => (l.desc = `${l.rows} × ${l.cols}, ${l.mines} mines, ${
 const FLAG = '<svg viewBox="0 0 24 24" class="ms-flag" aria-hidden="true"><path d="M6 21V3.5" stroke="#eaf2ec" stroke-width="2" stroke-linecap="round"/><path d="M7 4h11l-3 4 3 4H7z" fill="#ff4d5e"/></svg>';
 
 export function mount(view, { wallet }) {
+  let guard = null;
   let alive = true, lv = savedLevel('chibouk_ms_lv', 0), R = 0, C = 0, M = 0, mine = null, open = null, flag = null, adj = null;
   let state = 'intro', started = false, flagMode = false, timer = null, boom = -1;
   view.innerHTML = `<div class="fg-wrap ms-wrap">
@@ -29,12 +31,14 @@ export function mount(view, { wallet }) {
       <h2>Déminer avant la fin du chrono</h2>
       <p>Découvre toutes les cases sans mine avant la fin du temps. Plus tu finis vite, plus le gain grimpe : <b>jusqu'à ×2</b> si tu finis tout de suite.</p>
       ${modesHTML(MS_LEVELS, lv, (l, i) => `+${l.reward} à +${l.reward * 2} ${CUR}${bestTxt(i)}`)}
-      <button class="btn btn-gold btn-lg" id="fg-start">Nouvelle partie</button></div>`;
+      ${lockBannerHTML(wallet, 'demineur')}
+      <button class="btn btn-gold btn-lg" id="fg-start" ${lockedUntil(wallet, 'demineur') ? 'disabled' : ''}>Nouvelle partie</button></div>`;
     bindModes(stage, (i) => { lv = i; saveLevel('chibouk_ms_lv', i); sfx.click(); intro(); });
     $('#fg-start', stage).onclick = start;
   }
 
   function start() {
+    if (lockedUntil(wallet, 'demineur')) { intro(); return; }
     const L = MS_LEVELS[lv];
     R = L.rows; C = L.cols; M = L.mines;
     // sur un écran étroit, la grande grille passe en vertical
@@ -47,6 +51,7 @@ export function mount(view, { wallet }) {
     sizeBoard();
     timer && timer.destroy();
     timer = makeTimer($('#fg-time', stage), { limit: L.limit, onEnd: () => lose(true) });
+    guard && guard.destroy(); guard = createGuard(stage);
     $('#ms-flagmode', stage).onclick = () => { flagMode = !flagMode; $('#ms-flagmode span', stage).textContent = `Drapeau : ${flagMode ? 'oui' : 'non'}`; $('#ms-flagmode', stage).classList.toggle('on', flagMode); };
     $('#fg-rules', stage).onclick = () => modal({ title: 'Règles du démineur', html: `<ul class="muted">
       <li>Chaque chiffre indique combien de <b>mines</b> touchent la case (les 8 cases autour).</li>
@@ -166,9 +171,18 @@ export function mount(view, { wallet }) {
     for (let i = 0; i < R * C; i++) if (mine[i]) flag[i] = 1;
     const L = MS_LEVELS[lv], sec = Math.round(timer.elapsed), left = Math.max(0, L.limit - sec);
     const bonus = Math.round(L.reward * (left / L.limit)), amount = L.reward + bonus;
+    // contrôle fair-play avant toute récompense
+    let v = judge(guard, {}); guard = null;
+    if (v.flag !== 'ok') {
+      let pn = null;
+      if (v.flag === 'cheat') { pn = punish(wallet, 'demineur', lv, v, amount); sfx.lose(); } else tooFast(wallet, 'demineur', lv, v);
+      stage.insertAdjacentHTML('beforeend', refusedHTML(v, pn));
+      $('[data-again]', stage).onclick = v.flag === 'cheat' ? intro : start;
+      return;
+    }
     const s = wallet.stats, key = 'demineurBest' + lv, record = !s[key] || sec < s[key];
     if (record) s[key] = sec;
-    wallet.freeReward('demineur', amount, { Won: 1, ['Won' + lv]: 1 }, lv >= 1 && record ? { feed: { txt: `a battu son record en grille ${['facile', 'moyenne', 'difficile'][lv]} au`, tail: `: ${fmtTimeLong(sec)}` } } : null);
+    wallet.freeReward('demineur', amount, { Won: 1, ['Won' + lv]: 1 }, { ...(lv >= 1 && record ? { feed: { txt: `a battu son record en grille ${['facile', 'moyenne', 'difficile'][lv]} au`, tail: `: ${fmtTimeLong(sec)}` } } : {}), log: { lv, sec: v.sec, actions: v.actions, fastShare: v.fastShare } });
     render();
     $('#ms-board', stage).classList.add('solved');
     sfx.win(true); coinRain(lv === 2 ? 50 : 25);
@@ -188,5 +202,5 @@ export function mount(view, { wallet }) {
   const onKey = (e) => { if (state !== 'play' && state !== 'intro' && e.key === 'Enter' && !e.target.closest('button,input') && !document.querySelector('.modal-backdrop')) start(); };
   document.addEventListener('keydown', onKey);
   intro();
-  return () => { alive = false; timer && timer.destroy(); window.removeEventListener('resize', onResize); document.removeEventListener('keydown', onKey); };
+  return () => { alive = false; timer && timer.destroy(); guard && guard.destroy(); window.removeEventListener('resize', onResize); document.removeEventListener('keydown', onKey); };
 }

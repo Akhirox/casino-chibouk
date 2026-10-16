@@ -5,6 +5,7 @@ import { generateCrossword } from './crossword-gen.js';
 import { $, $$, esc, fmt, coinRain, CUR } from '../ui.js';
 import { monkeySVG } from '../art.js';
 import { sfx } from '../sfx.js';
+import { createGuard, judge, punish, tooFast, refusedHTML, lockBannerHTML, lockedUntil } from '../fairplay.js';
 import { makeTimer, modesHTML, bindModes, savedLevel, saveLevel, endCardHTML, fmtTimeLong } from './free-common.js';
 
 export const CW_LEVELS = [
@@ -16,6 +17,7 @@ const RECENT_KEY = 'chibouk_cw_recent', RECENT_MAX = 300; // ~25 grilles sans re
 const HINT_COST = 0.1; // chaque lettre révélée retire 10 % du gain
 
 export function mount(view, { wallet }) {
+  let guard = null;
   let alive = true, lv = savedLevel('chibouk_cw_lv', 0), pz = null, fill = {}, given = new Set(), sel = null, dir = 'h', hints = 0, state = 'intro', timer = null, checked = false;
   view.innerHTML = `<div class="fg-wrap cw-wrap">
     <div class="game-head"><h1>Mots <span>croisés</span></h1><div class="actions"><span class="gc-tag">Gratuit · +${CW_LEVELS[0].reward} à +${CW_LEVELS[2].reward} ${CUR}</span></div></div>
@@ -30,12 +32,14 @@ export function mount(view, { wallet }) {
       <h2>Une nouvelle grille à chaque partie</h2>
       <p>Clique sur une case et tape les lettres (sans accents). Re-clique pour changer de sens. « Vérifier » montre les erreurs gratuitement, chaque lettre révélée retire 10 % du gain.</p>
       ${modesHTML(CW_LEVELS, lv, (l, i) => `+${l.reward} ${CUR}${bestTxt(i)}`)}
-      <button class="btn btn-gold btn-lg" id="fg-start">Nouvelle grille</button></div>`;
+      ${lockBannerHTML(wallet, 'crossword')}
+      <button class="btn btn-gold btn-lg" id="fg-start" ${lockedUntil(wallet, 'crossword') ? 'disabled' : ''}>Nouvelle grille</button></div>`;
     bindModes(stage, (i) => { lv = i; saveLevel('chibouk_cw_lv', i); sfx.click(); intro(); });
     $('#fg-start', stage).onclick = start;
   }
 
   function start() {
+    if (lockedUntil(wallet, 'crossword')) { intro(); return; }
     const L = CW_LEVELS[lv];
     // on évite les mots des dernières grilles (mémorisés sur l'appareil) pour ne pas retomber sur les mêmes
     let recent = [];
@@ -57,6 +61,7 @@ export function mount(view, { wallet }) {
         <div class="cw-clues"><h4>Horizontalement</h4><ol>${clueList('h')}</ol><h4>Verticalement</h4><ol>${clueList('v')}</ol></div></div>`;
     timer && timer.destroy();
     timer = makeTimer($('#fg-time', stage)); timer.start();
+    guard && guard.destroy(); guard = createGuard(stage);
     const input = $('#cw-input', stage);
     $('#cw-grid', stage).addEventListener('click', (e) => {
       const el = e.target.closest('.cw-cell:not(.blk)');
@@ -171,9 +176,18 @@ export function mount(view, { wallet }) {
     timer.stop();
     const L = CW_LEVELS[lv], sec = Math.round(timer.elapsed);
     const amount = Math.max(0, Math.round(L.reward * (1 - HINT_COST * hints)));
+    // contrôle fair-play avant toute récompense
+    let v = judge(guard, { minActions: Math.floor(($$('.cw-cell:not(.blk)', stage).length - given.size) * 0.8), cheatSec: Math.round(($$('.cw-cell:not(.blk)', stage).length - given.size) * 0.12 * 10) / 10, noRobot: true }); guard = null;
+    if (v.flag !== 'ok') {
+      let pn = null;
+      if (v.flag === 'cheat') { pn = punish(wallet, 'crossword', lv, v, amount); sfx.lose(); } else tooFast(wallet, 'crossword', lv, v);
+      stage.insertAdjacentHTML('beforeend', refusedHTML(v, pn));
+      $('[data-again]', stage).onclick = v.flag === 'cheat' ? intro : start;
+      return;
+    }
     const s = wallet.stats, k = 'crosswordBest' + lv, record = !hints && (!s[k] || sec < s[k]);
     if (record) s[k] = sec;
-    wallet.freeReward('crossword', amount, { Won: 1, ['Won' + lv]: 1, Hints: hints, ...(hints ? {} : { Clean: 1, ...(lv === 2 ? { CleanHard: 1 } : {}) }) }, lv === 2 && record ? { feed: { txt: 'a battu son record aux', tail: `(difficile) : ${fmtTimeLong(sec)}` } } : null);
+    wallet.freeReward('crossword', amount, { Won: 1, ['Won' + lv]: 1, Hints: hints, ...(hints ? {} : { Clean: 1, ...(lv === 2 ? { CleanHard: 1 } : {}) }) }, { ...(lv === 2 && record ? { feed: { txt: 'a battu son record aux', tail: `(difficile) : ${fmtTimeLong(sec)}` } } : {}), log: { lv, sec: v.sec, actions: v.actions, hints } });
     $('#cw-grid', stage).classList.add('solved');
     sfx.win(true); coinRain(20);
     setTimeout(() => {
@@ -188,5 +202,5 @@ export function mount(view, { wallet }) {
   }
 
   intro();
-  return () => { alive = false; timer && timer.destroy(); };
+  return () => { alive = false; timer && timer.destroy(); guard && guard.destroy(); };
 }

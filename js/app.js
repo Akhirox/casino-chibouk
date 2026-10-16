@@ -50,6 +50,8 @@ import { initAchievements, achSummary, TIERS } from './achievements.js';
 import * as AchPage from './achpage.js';
 import * as News from './changelog.js';
 import { initUpdater } from './updater.js';
+import { initGameLog } from './gamelog.js';
+import * as Admin from './admin.js';
 import * as Stats from './stats.js';
 import * as Ranking from './ranking.js';
 import { createTracker } from './tracker.js';
@@ -74,6 +76,8 @@ let vip = null;
 let farmTimer = null;
 let social = null;
 let historyOff = null;
+let logOff = null;
+let adminP = null; // promesse : ce compte est-il admin ?
 let weeksTimer = null;
 
 const ROUTES = {
@@ -113,6 +117,7 @@ const ROUTES = {
   stats: { label: 'Stats', icon: 'stats', mount: Stats.mount },
   news: { label: 'Nouveautés', icon: 'scroll', mount: News.mount, nav: false },
   profile: { label: 'Mon profil', icon: 'user', mount: Profile.mount, nav: false },
+  admin: { label: 'Journal', icon: 'scroll', mount: Admin.mount, nav: false },
 };
 const GROUPS = { casino: { label: 'Casino', icon: 'chip' }, free: { label: 'Mini-jeux', icon: 'gift' } };
 const SUBS = { puzzle: 'Puzzle', quiz: 'Quiz', arcade: 'Adresse' };
@@ -160,6 +165,8 @@ async function boot() {
     if (farmTimer) { farmTimer.destroy(); farmTimer = null; }
     if (social) { social.destroy(); social = null; }
     if (historyOff) { historyOff(); historyOff = null; }
+    if (logOff) { logOff(); logOff = null; }
+    adminP = null;
     clearInterval(weeksTimer);
     [...document.body.classList].forEach((c) => /^(cb|th)-/.test(c) && document.body.classList.remove(c));
     clearInterval(inboxTimer);
@@ -278,7 +285,7 @@ function renderShell() {
         <div class="vol-wrap"><button class="icon-btn mute-btn" title="Son et volume" aria-haspopup="true">${icon(sfx.muted ? 'mute' : 'sound')}</button>
           <div class="vol-pop" role="dialog" aria-label="Volume"><div class="vol-head"><span>Volume</span><b class="vol-pct"></b></div>${volSliderHTML()}<button type="button" class="btn btn-ghost btn-sm wide vol-mute"></button></div></div>
         <div class="user-menu"><button class="user-btn"><span class="ub-av">${Profile.avatarHTML(wallet.p, 'av-xs')}</span><span class="ub-name">${esc(wallet.pseudo)}</span> ▾</button>
-          <div class="user-drop"><a href="#/profile">Mon profil</a><a href="#/shop">Boutique</a><a href="#/stats">Mes stats</a><a href="#/ranking">Classements</a><a href="#/achievements">Mes succès</a><a href="#/news">Nouveautés</a><div class="ud-vol"><span>${icon('sound')}</span>${volSliderHTML()}</div><button class="vault-menu">Coffre-fort</button><button class="send-menu">Envoyer des ${CUR}</button><button class="tip-menu">Un conseil du singe</button><button class="tip-toggle"></button><button class="logout">Se déconnecter</button></div></div>
+          <div class="user-drop"><a href="#/profile">Mon profil</a><a href="#/shop">Boutique</a><a href="#/stats">Mes stats</a><a href="#/ranking">Classements</a><a href="#/achievements">Mes succès</a><a href="#/news">Nouveautés</a><a href="#/admin" class="admin-menu" hidden>Journal des mini-jeux</a><div class="ud-vol"><span>${icon('sound')}</span>${volSliderHTML()}</div><button class="vault-menu">Coffre-fort</button><button class="send-menu">Envoyer des ${CUR}</button><button class="tip-menu">Un conseil du singe</button><button class="tip-toggle"></button><button class="logout">Se déconnecter</button></div></div>
       </div>
     </header>
     <main id="view"></main>
@@ -314,6 +321,9 @@ function renderShell() {
   setTimeout(() => { if (wallet) News.maybeShowNews(); }, 1200);
   Shop.applyCosmetics(wallet);
   historyOff = initHistory(wallet);
+  logOff = initGameLog(wallet, backend);
+  adminP = backend.isAdmin ? backend.isAdmin(wallet.uid) : Promise.resolve(false);
+  adminP.then((ok) => { const a = $('.admin-menu', shell); if (a) a.hidden = !ok; });
   today(wallet);
   quests = initQuests(wallet, (q, bonus) => {
     if (bonus) { toast(`<span class="ach-toast">${icon('check')}<span><small>Quêtes du jour</small><b>Les 3 quêtes sont terminées !</b><em>+${fmt(Math.round(CONFIG.QUEST_BONUS * freeMult(wallet)))} ${CUR} de bonus</em></span></span>`, 'ach', 5000); coinRain(30); }
@@ -489,7 +499,7 @@ function route() {
     $('.nav-gbtn .nl', g).innerHTML = `${on ? ROUTES[cur].label : GROUPS[g.dataset.g].label} <i class="chev">${icon('chev')}</i>`;
   });
   window.scrollTo(0, 0);
-  const ctx = { wallet, backend, social, navigate: (k) => (location.hash = '#/' + k) };
+  const ctx = { wallet, backend, social, navigate: (k) => (location.hash = '#/' + k), isAdmin: () => adminP || Promise.resolve(false) };
   const boardTitle = BOARD_GAMES[key];
   if (boardTitle) {
     // jeu + classement du jeu à côté

@@ -5,6 +5,7 @@ import { generateTango, N } from './tango-gen.js';
 import { $, $$, fmt, modal, coinRain, CUR } from '../ui.js';
 import { monkeySVG } from '../art.js';
 import { sfx } from '../sfx.js';
+import { createGuard, judge, punish, tooFast, refusedHTML, lockBannerHTML, lockedUntil } from '../fairplay.js';
 import { makeTimer, modesHTML, bindModes, savedLevel, saveLevel, endCardHTML, speedBonus, fmtTimeLong } from './free-common.js';
 
 export const TANGO_LEVELS = [
@@ -22,6 +23,7 @@ const RULES = `<ul class="muted">
   <li>Clic : soleil → lune → vide. Les cases grisées sont données au départ. Une seule solution par grille.</li></ul>`;
 
 export function mount(view, { wallet }) {
+  let guard = null;
   let alive = true, lv = savedLevel('chibouk_tango_lv', 1), pz = null, g = null, state = 'intro', history = [], timer = null;
   view.innerHTML = `<div class="fg-wrap tg-wrap">
     <div class="game-head"><h1>Tan<span>go</span></h1><div class="actions"><span class="gc-tag">Gratuit · +${TANGO_LEVELS[0].reward} à +${TANGO_LEVELS[2].reward} ${CUR}</span></div></div>
@@ -35,12 +37,14 @@ export function mount(view, { wallet }) {
       <h2>Soleils et lunes, à parts égales</h2>
       <p>3 de chaque par ligne et par colonne, jamais 3 pareils d'affilée, et respecte les signes <b>=</b> et <b>×</b>. <b>+50 %</b> si tu bats le temps de référence.</p>
       ${modesHTML(TANGO_LEVELS, lv, (l, i) => `+${l.reward} ${CUR} · bonus sous ${fmtTimeLong(l.par)}${bestTxt(i)}`)}
-      <button class="btn btn-gold btn-lg" id="fg-start">Nouvelle grille</button></div>`;
+      ${lockBannerHTML(wallet, 'tango')}
+      <button class="btn btn-gold btn-lg" id="fg-start" ${lockedUntil(wallet, 'tango') ? 'disabled' : ''}>Nouvelle grille</button></div>`;
     bindModes(stage, (i) => { lv = i; saveLevel('chibouk_tango_lv', i); sfx.click(); intro(); });
     $('#fg-start', stage).onclick = start;
   }
 
   function start() {
+    if (lockedUntil(wallet, 'tango')) { intro(); return; }
     pz = generateTango(lv);
     g = pz.givens.map((row) => [...row]);
     history = [];
@@ -56,6 +60,7 @@ export function mount(view, { wallet }) {
       }).join('')}</div>`;
     timer && timer.destroy();
     timer = makeTimer($('#fg-time', stage)); timer.start();
+    guard && guard.destroy(); guard = createGuard(stage);
     $('#fg-undo', stage).onclick = undo;
     $('#fg-clear', stage).onclick = () => { if (state !== 'play') return; snapshot(); g = pz.givens.map((row) => [...row]); render(); };
     $('#fg-rules', stage).onclick = () => modal({ title: 'Règles du Tango', html: RULES, buttons: [{ label: 'Compris', value: true, primary: true }] });
@@ -126,9 +131,18 @@ export function mount(view, { wallet }) {
     timer.stop();
     const L = TANGO_LEVELS[lv], sec = Math.round(timer.elapsed);
     const bonus = speedBonus(L.reward, sec, L.par), amount = L.reward + bonus;
+    // contrôle fair-play avant toute récompense
+    let v = judge(guard, { minActions: pz.givens.flat().filter((x) => x === -1).length, cheatSec: Math.round(pz.givens.flat().filter((x) => x === -1).length * 0.2 * 10) / 10 }); guard = null;
+    if (v.flag !== 'ok') {
+      let pn = null;
+      if (v.flag === 'cheat') { pn = punish(wallet, 'tango', lv, v, amount); sfx.lose(); } else tooFast(wallet, 'tango', lv, v);
+      stage.insertAdjacentHTML('beforeend', refusedHTML(v, pn));
+      $('[data-again]', stage).onclick = v.flag === 'cheat' ? intro : start;
+      return;
+    }
     const s = wallet.stats, key = 'tangoBest' + lv, record = !s[key] || sec < s[key];
     if (record) s[key] = sec;
-    wallet.freeReward('tango', amount, { Won: 1, ['Won' + lv]: 1 }, lv === 2 && record ? { feed: { txt: 'a battu son record au', tail: `difficile : ${fmtTimeLong(sec)}` } } : null);
+    wallet.freeReward('tango', amount, { Won: 1, ['Won' + lv]: 1 }, { ...(lv === 2 && record ? { feed: { txt: 'a battu son record au', tail: `difficile : ${fmtTimeLong(sec)}` } } : {}), log: { lv, sec: v.sec, actions: v.actions, fastShare: v.fastShare } });
     $('#tg-board', stage).classList.add('solved');
     sfx.win(true); coinRain(20);
     setTimeout(() => {
@@ -149,5 +163,5 @@ export function mount(view, { wallet }) {
   };
   document.addEventListener('keydown', onKey);
   intro();
-  return () => { alive = false; timer && timer.destroy(); document.removeEventListener('keydown', onKey); };
+  return () => { alive = false; timer && timer.destroy(); guard && guard.destroy(); document.removeEventListener('keydown', onKey); };
 }
