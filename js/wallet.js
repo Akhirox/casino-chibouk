@@ -12,7 +12,7 @@ export function msUntilParisMidnight() {
   return Math.max(0, (86400 - secs) * 1000);
 }
 
-const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'shop', 'day', 'streak', 'week', 'lastWeek', 'rake', 'vipLevel', 'farm', 'updatedAt', 'pseudo', 'pseudoLower'];
+const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'shop', 'day', 'streak', 'week', 'lastWeek', 'rake', 'vipLevel', 'farm', 'vault', 'updatedAt', 'pseudo', 'pseudoLower'];
 
 // Semaine ISO (lundi → dimanche, heure de Paris), ex : « 2026-W42 »
 export function weekId(d = new Date()) {
@@ -236,6 +236,26 @@ export class Wallet {
     this.p.balance -= amount;
     this.p.stats.shopSpent = (this.p.stats.shopSpent || 0) + amount;
     this.touch({ type: 'shop', amount, item });
+    this.flush();
+    return true;
+  }
+
+  // Coffre-fort : des Brundles mis à l'abri, qu'on ne peut pas miser par erreur. Dépôt et retrait libres.
+  get vault() { return Math.max(0, Math.floor(this.p.vault || 0)); }
+  get fortune() { return this.p.balance + this.vault; }
+  vaultDeposit(n) {
+    n = Math.floor(n);
+    if (!(n > 0) || n > this.p.balance) return false;
+    this.p.balance -= n; this.p.vault = this.vault + n;
+    this.touch({ type: 'vault', amount: n });
+    this.flush();
+    return true;
+  }
+  vaultWithdraw(n) {
+    n = Math.floor(n);
+    if (!(n > 0) || n > this.vault) return false;
+    this.p.vault = this.vault - n; this.p.balance += n;
+    this.touch({ type: 'vault', amount: -n });
     this.flush();
     return true;
   }

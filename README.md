@@ -10,15 +10,16 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 - **Boutique cosmétique** : cadres d'avatar, titres, dos de cartes, thèmes de la slot, effets de victoire (de 2 000 à 100 millions de Brundles). Ça donne une utilité aux Brundles et freine l'inflation des soldes.
 - **Jackpot commun** alimenté par 1 % des mises de la slot (payé par le casino), qui peut tomber sur n'importe quel spin. Chance par spin = 1,5 % × mise ÷ jackpot, plafonnée à 1 % (ex. : jackpot de 10 000 et mise de 100 → 1 sur 6 667), affichée sur la slot.
 - **En direct de la jungle** : fil d'activité de l'accueil (gains à partir de ×25, tous les succès, jackpots, passages de rang VIP, achats, quêtes, vainqueurs de la semaine).
+- **Coffre-fort** (bouton en haut, ou menu du pseudo) : met des Brundles à l'abri des mises. Dépôt et retrait libres, sans frais ni délai. Le contenu du coffre compte dans la fortune (classement et succès de solde).
 - **Ferme à bananes** (jeu de gestion) : bananeraies, cabanes, entrepôts, puits et marché sur un terrain 7 × 7. Production continue même hors ligne (stock limité par les entrepôts), chantiers avec durée, bâtisseurs et parcelles payés en Brundles, vente des bananes au marché (et achat à 1 Brundle la banane). Graines d'or : replanter sa ferme après 1 million de bananes récoltées donne +5 % de production par graine, pour toujours. Fermes des autres joueurs visitables. Réglages et formules dans `js/farm-core.js`.
 - **Stats** : onglet « Mes stats » et onglet « Le casino » (total misé et gagné par tout le monde, RTP réel, Brundles distribués, tableau par jeu).
-- **Classements** : classement de la semaine et palmarès, soldes, meilleurs gains par jeu.
+- **Classements** : classement de la semaine et palmarès, fortunes (solde + coffre), meilleurs gains par jeu.
 - **Historique** des 50 dernières parties de chaque jeu (onglet du classement à côté du jeu, gardé sur l'appareil).
 - **Aucune mise maximum** : mise libre + bouton MAX (Slot, Plinkoko, Crashibouk, Tower, Mines, Dice), jetons jusqu'à 25k + « Tapis » (blackjack), jetons jusqu'à 25k empilables (roulette).
-- **Succès** : 146 défis (globaux et par jeu) qui rapportent de +100 à +10 000 Brundles, avec une page dédiée et une notification à chaque déblocage. Un clic sur un succès montre qui l'a débloqué, et qui l'a eu en premier (avec la date).
+- **Succès** : 157 défis (globaux et par jeu) qui rapportent de +100 à +10 000 Brundles, avec une page dédiée et une notification à chaque déblocage. Un clic sur un succès montre qui l'a débloqué, et qui l'a eu en premier (avec la date).
 - **Profils** : photo (ou un des 12 singes) et petite bio, visibles en cliquant sur un pseudo dans les classements. La photo est réduite à quelques Ko et stockée dans Firestore (pas besoin de Firebase Storage, donc ça reste gratuit).
 - **Singe conseiller** : petites astuces contextuelles sur chaque page, désactivables depuis le menu du pseudo.
-- **Paris automatiques** sur les 12 jeux de casino : nombre de paris libre ou infini, arrêt sur objectif de gain ou limite de perte.
+- **Paris automatiques** sur les 13 jeux de casino (tickets automatiques pour les jeux à gratter) : nombre de paris libre ou infini, arrêt sur objectif de gain ou limite de perte.
 - **Nouveautés** : journal des versions sur le site (et dans `CHANGELOG.md`).
 - **Classement à côté de chaque jeu** : top 5 des plus gros parieurs (volume misé), du meilleur multiplicateur et du plus gros gain sur ce jeu.
 - **Stats** par jeu (misé, gagné, bilan, RTP réel, plus gros gain…), un **classement** des soldes et un **classement des meilleures wins par jeu** (top 3).
@@ -34,7 +35,7 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 | **Blackjack du Singe** | 6 jeux, blackjack payé 3:2, croupier reste sur 17, doubler, séparer **n'importe quelles cartes** (4 mains), cartes 3D. Mises annexes **Perfect Pairs** (6:1 / 15:1 / 25:1, RTP 99,7 %) et **21+3** (couleur 5:1, suite 11:1, brelan 30:1, quinte flush 45:1, brelan couleur 100:1, RTP 99,5 %). | ≈ 99,5 % |
 | **Roulette Banane** | Roulette européenne à un zéro, roue et bille animées. | 97,3 % |
 | **Plinkoko** | 8, 12 ou 16 rangées, risque faible / moyen / élevé, jusqu'à ×1000, billes multiples. | 99 % |
-| **Crashibouk** | Le multiplicateur grimpe, encaisse avant l'explosion. Encaissement auto possible. | 99 % |
+| **Crashibouk** | Le multiplicateur grimpe, encaisse avant l'explosion. Encaissement auto possible. Une fois la mise encaissée, la manche passe en avance rapide pour pouvoir rejouer tout de suite. | 99 % |
 | **Tower** | 9 étages, 5 difficultés (de 1 bombe sur 4 cases à 3 bombes sur 4). Chaque étage monte le multi, encaisse quand tu veux. Auto avec parcours tracé sur le plateau. | 99 % |
 | **Mines** | Grille 5×5, 1 à 24 mines. Chaque banane trouvée augmente le multi, encaisse avant de tomber sur une mine. | 99 % |
 | **Dice** | Tirage de 0,00 à 100,00. Choisis « en dessous » ou « au-dessus » et ta chance (0,01 % à 98 %) : multi = 99 ÷ chance. | 99 % |
@@ -42,6 +43,7 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 | **Keno** | 1 à 10 numéros sur 40, 10 tirés, 3 niveaux de risque, jusqu'à ×10 000. Tables calculées exactement (`tools/keno-rtp.mjs`). | 99 % |
 | **Roue du Singe** | 30 cases équiprobables, 3 niveaux de risque (jusqu'à ×29,7). | 99 % |
 | **Limbo** | Cible de ×1,01 à ×1 000 000 : on gagne mise × cible si le tirage l'atteint (chance = 99 ÷ cible). | 99 % |
+| **Jeux à gratter** | 3 tickets : Banane Express (10, jusqu'à ×500), Singe d'Or (100, jusqu'à ×1 000), Trésor de la Jungle (1 000, jusqu'à ×10 000). 3 montants identiques = gagné. Grattage à la souris ou au doigt, case par case, « Tout gratter » ou tickets automatiques. Le gain est tiré à l'achat. Tables dans `js/games/scratch-math.js`. | 98 % |
 | **Calcul mental** | Gratuit : 10 calculs, 3 modes. Facile (10 s, +10 par bonne réponse, +50 sans-faute), Moyen (12 s, +15, +75), Difficile (15 s, +25, +125 : multiplications à deux chiffres, carrés, pourcentages). | — |
 | **Quiz capitales** | Gratuit : 10 questions dans les deux sens (pays → capitale, capitale → pays), 127 pays. Mode facile (4 choix, 10 s, +10 par bonne réponse, +50 sans-faute) ou expert (réponse à écrire, 15 s, +20 par bonne réponse, +100 sans-faute). | — |
 | **Quiz ciné** | Gratuit : 10 questions à 4 choix sur 800 films (réalisateur, acteurs, année de sortie), 15 s chacune. Même barème. Données : `data/movies.json`, extrait de la base TMDB (The Movies Dataset). | — |
@@ -54,6 +56,8 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 | **Sudoku** | Gratuit : 3 niveaux (40 / 32 / 25 chiffres donnés), solution unique, notes. +80 / +160 / +300, +50 % si rapide. | — |
 | **Démineur** | Gratuit, contre la montre : 9×9 (10 mines, 3 min), 16×16 (40 mines, 8 min), 16×30 (99 mines, 15 min). +40 / +120 / +300, jusqu'au double selon le temps restant. | — |
 | **Snake** | Gratuit : 3 niveaux (bords traversables, murs, puis accélération). +1 / +2 / +4 par banane. | — |
+| **Memory** | Gratuit : retrouver les paires. 4×4, 6×4, 6×6. +30 / +60 / +100, +50 % si peu de coups. | — |
+| **Mots croisés** | Gratuit : grille générée à chaque partie à partir de 280 mots et définitions. 7, 10 ou 14 mots (première lettre donnée en facile). +40 / +70 / +110, chaque lettre révélée coûte 10 % du gain. | — |
 | **Casse-briques** | Gratuit, sans mise, accessible à tout moment : +100 Brundles par niveau terminé (6 niveaux en boucle, de plus en plus durs). | — |
 
 Si tu quittes la page au milieu d'une partie de Tower ou de Mines, elle est encaissée automatiquement au palier atteint (ou la mise est remboursée si aucune case n'a été choisie). Pareil pour le Crash (encaissement au multiplicateur du moment) et le Blackjack (la main est terminée en restant).
@@ -242,6 +246,10 @@ js/games/pinpoint.js       Pinpoint (+ pinpoint-data.js : 235 catégories)
 js/games/sudoku.js         Sudoku (+ sudoku-gen.js)
 js/games/demineur.js       Démineur
 js/games/snake.js          Snake
+js/games/memory.js         Memory
+js/games/crossword.js      Mots croisés (+ crossword-gen.js : génération, crossword-data.js : mots)
+js/games/scratch.js        Jeux à gratter (+ scratch-math.js : tickets et tables à 98 %)
+js/vault.js                coffre-fort
 data/                      films, drapeaux, dictionnaire
 firestore.rules            règles de sécurité à publier
 tools/simulate-rtp.mjs     RTP de la slot (calcul exact + simulation)

@@ -22,14 +22,15 @@ export const GAMES = [
   { k: 'keno', name: 'Keno' },
   { k: 'wheel', name: 'Roue du Singe' },
   { k: 'limbo', name: 'Limbo' },
+  { k: 'scratch', name: 'Jeux à gratter' },
 ];
-export const GAME_LABEL = { slots: 'à la machine à sous', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au Plinkoko', crash: 'au Crashibouk', tower: 'à la Tower', mines: 'aux Mines', dice: 'au Dice', hilo: 'au Hi-Lo', keno: 'au Keno', wheel: 'à la Roue du Singe', limbo: 'au Limbo' };
+export const GAME_LABEL = { slots: 'à la machine à sous', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au Plinkoko', crash: 'au Crashibouk', tower: 'à la Tower', mines: 'aux Mines', dice: 'au Dice', hilo: 'au Hi-Lo', keno: 'au Keno', wheel: 'à la Roue du Singe', limbo: 'au Limbo', scratch: 'aux jeux à gratter' };
 export const gname = (g) => `<span class="gname">${icon(g.k)}${g.name}</span>`;
 export const pct = (a, b) => (b ? (a / b * 100).toFixed(1).replace('.', ',') + ' %' : '—');
 export const signed = (n) => `<span class="${n >= 0 ? 'pos' : 'neg'}">${n >= 0 ? '+' : ''}${fmt(n)}</span>`;
 
 // Brundles distribués hors jeux (bonus, quiz, succès…), pour les chiffres globaux
-const FREE_KEYS = ['dailyTotal', 'breakerTotal', 'quizTotal', 'capitalsTotal', 'moviesTotal', 'flagsTotal', 'motusTotal', 'higherTotal', 'queensTotal', 'tangoTotal', 'pinpointTotal', 'sudokuTotal', 'demineurTotal', 'snakeTotal', 'farmTotal', 'questTotal', 'achTotal', 'rakebackTotal', 'vipupTotal', 'vipfreeTotal', 'jackpotTotal'];
+const FREE_KEYS = ['dailyTotal', 'breakerTotal', 'quizTotal', 'capitalsTotal', 'moviesTotal', 'flagsTotal', 'motusTotal', 'higherTotal', 'queensTotal', 'tangoTotal', 'pinpointTotal', 'sudokuTotal', 'demineurTotal', 'snakeTotal', 'memoryTotal', 'crosswordTotal', 'farmTotal', 'questTotal', 'achTotal', 'rakebackTotal', 'vipupTotal', 'vipfreeTotal', 'jackpotTotal'];
 
 export function globalNumbers(players) {
   const sum = (f) => players.reduce((a, p) => a + (f(p) || 0), 0);
@@ -42,7 +43,7 @@ export function globalNumbers(players) {
   return {
     players: players.length,
     wagered: sum((p) => p.stats.totalWagered), won: sum((p) => p.stats.totalWon), rounds: sum((p) => p.stats.rounds),
-    balance: sum((p) => p.balance), free: sum((p) => FREE_KEYS.reduce((a, k) => a + (p.stats[k] || 0), 0)),
+    balance: sum((p) => p.balance + Math.max(0, p.vault || 0)), free: sum((p) => FREE_KEYS.reduce((a, k) => a + (p.stats[k] || 0), 0)),
     shop: sum((p) => p.stats.shopSpent), farmSpent: sum((p) => p.stats.farmSpent), jackpots: sum((p) => p.stats.jackpotTotal), ach: sum((p) => Object.keys((p.ach && p.ach.u) || {}).length),
     transfers: sum((p) => p.stats.transfersSent), best, games,
   };
@@ -87,7 +88,7 @@ export function mount(view, { wallet, backend }) {
     const maxW = Math.max(1, ...GAMES.map((g) => Math.max(s.games[g.k].wagered, s.games[g.k].won)));
     return `
     <div class="stats-grid">
-      <div class="stat-card hl"><span>Solde actuel</span><b>${money(wallet.balance)}</b><small>Record : ${fmt(s.peakBalance)}</small></div>
+      <div class="stat-card hl"><span>Solde actuel</span><b>${money(wallet.balance)}</b><small>${wallet.vault ? `+ ${fmt(wallet.vault)} au coffre · ` : ''}Record : ${fmt(s.peakBalance)}</small></div>
       <div class="stat-card"><span>Total misé (wager)</span><b>${money(s.totalWagered)}</b><small>${fmt(s.rounds)} parties jouées</small></div>
       <div class="stat-card"><span>Total gagné</span><b>${money(s.totalWon)}</b><small>Redistribution : ${pct(s.totalWon, s.totalWagered)}</small></div>
       <div class="stat-card"><span>Bilan des jeux</span><b>${signed(net)}</b><small>gagné − misé</small></div>
@@ -108,6 +109,8 @@ export function mount(view, { wallet, backend }) {
       <div class="stat-card"><span>Sudoku</span><b>${pl(s.sudokuWon, 'grille')}</b><small>${fmt(s.sudokuTotal || 0)} ${CONFIG.CURRENCY} · records : ${LV.map((l, i) => `${l} ${bt(s['sudokuBest' + i])}`).join(', ')}</small></div>
       <div class="stat-card"><span>Démineur</span><b>${fmt(s.demineurWon || 0)} / ${fmt(s.demineurRounds || 0)} gagnées</b><small>${fmt(s.demineurTotal || 0)} ${CONFIG.CURRENCY} · records : ${LV.map((l, i) => `${l} ${bt(s['demineurBest' + i])}`).join(', ')}</small></div>
       <div class="stat-card"><span>Snake</span><b>${pl(s.snakeBananas, 'banane')}</b><small>${pl(s.snakeRounds, 'partie')} · ${fmt(s.snakeTotal || 0)} ${CONFIG.CURRENCY} · records : ${LV.map((l, i) => `${l} ${fmt(s['snakeBest' + i] || 0)}`).join(', ')}</small></div>
+      <div class="stat-card"><span>Memory</span><b>${pl(s.memoryWon, 'partie')} gagnée${(s.memoryWon || 0) > 1 ? 's' : ''}</b><small>${fmt(s.memoryTotal || 0)} ${CONFIG.CURRENCY} · records : ${LV.map((l, i) => `${l} ${s['memoryBest' + i] ? s['memoryBest' + i] + ' coups' : '—'}`).join(', ')}</small></div>
+      <div class="stat-card"><span>Mots croisés</span><b>${pl(s.crosswordWon, 'grille')}</b><small>${fmt(s.crosswordTotal || 0)} ${CONFIG.CURRENCY} · ${fmt(s.crosswordClean || 0)} sans aide · records : ${LV.map((l, i) => `${l} ${bt(s['crosswordBest' + i])}`).join(', ')}</small></div>
       <div class="stat-card"><span>Ferme à bananes</span><b>${hasFarm(wallet.p) ? `${fmt(Math.round(productionPerHour(wallet.p.farm)))} /h` : 'pas encore'}</b><small>${hasFarm(wallet.p) ? `${fmt(Math.floor(wallet.p.farm.tot || 0))} bananes récoltées · ${fmt(wallet.p.farm.sold || 0)} vendues · +${fmt(s.farmTotal || 0)} ${CONFIG.CURRENCY} · −${fmt(s.farmSpent || 0)} dépensés à la ferme${wallet.p.farm.seeds ? ` · ${wallet.p.farm.seeds} graines d'or` : ''}` : '<a href="#/farm">Découvrir la ferme</a>'}</small></div>
       <div class="stat-card"><span>Transferts</span><b>${signed((s.transfersReceived || 0) - (s.transfersSent || 0))}</b><small>Reçus ${fmt(s.transfersReceived || 0)} · envoyés ${fmt(s.transfersSent || 0)}</small></div>
       <div class="stat-card"><span>Tours gratuits déclenchés</span><b>${fmt(s.games.slots.bonuses || 0)}</b><small>Blackjacks : ${fmt(s.games.blackjack.blackjacks || 0)}</small></div>

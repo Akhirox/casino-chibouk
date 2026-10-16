@@ -31,12 +31,17 @@ import * as Sudoku from './games/sudoku.js';
 import * as Snake from './games/snake.js';
 import * as Demineur from './games/demineur.js';
 import * as Farm from './farm.js';
+import * as Scratch from './games/scratch.js';
+import * as Memory from './games/memory.js';
+import * as Crossword from './games/crossword.js';
+import { scratchArtSVG, memoryArtSVG, crosswordArtSVG } from './art.js';
 import * as FarmCore from './farm-core.js';
 import { queensArtSVG, tangoArtSVG, pinpointArtSVG, sudokuArtSVG, snakeArtSVG, demineurArtSVG } from './art.js';
 import * as Shop from './shop.js';
 import { initQuests, today, questText, vipOf, vipProgress, VIP, rakePot, claimRake, initVip, pctFmt, freeMult, xMult } from './progress.js';
 import { createSocial, feedRich, feedText, groupFeed, groupRich, FEED_ICON, jackpotChance, chanceText } from './social.js';
 import { openVipModal } from './vip.js';
+import { openVault } from './vault.js';
 import { syncWeeks } from './weekly.js';
 import { initHistory } from './history.js';
 import { openDailyWheel } from './dailywheel.js';
@@ -83,6 +88,7 @@ const ROUTES = {
   keno: { label: 'Keno', icon: 'keno', mount: Keno.mount, group: 'casino' },
   wheel: { label: 'Roue du Singe', icon: 'wheel', mount: WheelGame.mount, group: 'casino' },
   limbo: { label: 'Limbo', icon: 'limbo', mount: Limbo.mount, group: 'casino' },
+  scratch: { label: 'Jeux à gratter', icon: 'scratch', mount: Scratch.mount, group: 'casino' },
   quiz: { label: 'Calcul mental', icon: 'quiz', mount: Quiz.mount, group: 'free' },
   capitals: { label: 'Capitales', icon: 'globe', mount: Capitals.mount, group: 'free' },
   flags: { label: 'Drapeaux', icon: 'flag', mount: Flags.mount, group: 'free' },
@@ -95,6 +101,8 @@ const ROUTES = {
   sudoku: { label: 'Sudoku', icon: 'sudoku', mount: Sudoku.mount, group: 'free' },
   demineur: { label: 'Démineur', icon: 'demineur', mount: Demineur.mount, group: 'free' },
   snake: { label: 'Snake', icon: 'snake', mount: Snake.mount, group: 'free' },
+  memory: { label: 'Memory', icon: 'memory', mount: Memory.mount, group: 'free' },
+  crossword: { label: 'Mots croisés', icon: 'crossword', mount: Crossword.mount, group: 'free' },
   breaker: { label: 'Casse-briques', icon: 'breaker', mount: Breaker.mount, group: 'free' },
   farm: { label: 'Ferme', icon: 'banana', mount: Farm.mount },
   shop: { label: 'Boutique', icon: 'shop', mount: Shop.mount },
@@ -107,7 +115,7 @@ const ROUTES = {
 const GROUPS = { casino: { label: 'Casino', icon: 'chip' }, free: { label: 'Gratuit', icon: 'gift' } };
 
 // Jeux qui affichent leur classement à côté (clé de stats -> nom affiché)
-const BOARD_GAMES = { slots: 'Chibouk Slot', blackjack: 'Blackjack', roulette: 'Roulette', plinko: 'Plinkoko', crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice', hilo: 'Hi-Lo', keno: 'Keno', wheel: 'Roue du Singe', limbo: 'Limbo' };
+const BOARD_GAMES = { slots: 'Chibouk Slot', blackjack: 'Blackjack', roulette: 'Roulette', plinko: 'Plinkoko', crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice', hilo: 'Hi-Lo', keno: 'Keno', wheel: 'Roue du Singe', limbo: 'Limbo', scratch: 'Jeux à gratter' };
 
 // Menu : Accueil · Casino ▾ · Gratuit ▾ · Boutique · Succès · Stats
 function navHTML() {
@@ -251,11 +259,12 @@ function renderShell() {
         <button class="daily-btn" title="Bonus quotidien"></button>
         <div class="balance-pill" title="Ton solde">${coinSVG('coin')}<span class="bal-amount">${fmt(wallet.balance)}</span></div>
         <span class="sync-dot saved" title="Sauvegardé"></span>
+        <button class="icon-btn vault-btn" title="Coffre-fort">${icon('vault')}</button>
         <button class="icon-btn send-btn" title="Envoyer des ${CUR}">${icon('send')}</button>
         <button class="icon-btn tracker-btn" title="Suivi de balance">${icon('chart')}</button>
         <button class="icon-btn mute-btn" title="Son">${icon(sfx.muted ? 'mute' : 'sound')}</button>
         <div class="user-menu"><button class="user-btn"><span class="ub-av">${Profile.avatarHTML(wallet.p, 'av-xs')}</span><span class="ub-name">${esc(wallet.pseudo)}</span> ▾</button>
-          <div class="user-drop"><a href="#/profile">Mon profil</a><a href="#/shop">Boutique</a><a href="#/stats">Mes stats</a><a href="#/ranking">Classements</a><a href="#/achievements">Mes succès</a><a href="#/news">Nouveautés</a><button class="send-menu">Envoyer des ${CUR}</button><button class="tip-menu">Un conseil du singe</button><button class="tip-toggle"></button><button class="logout">Se déconnecter</button></div></div>
+          <div class="user-drop"><a href="#/profile">Mon profil</a><a href="#/shop">Boutique</a><a href="#/stats">Mes stats</a><a href="#/ranking">Classements</a><a href="#/achievements">Mes succès</a><a href="#/news">Nouveautés</a><button class="vault-menu">Coffre-fort</button><button class="send-menu">Envoyer des ${CUR}</button><button class="tip-menu">Un conseil du singe</button><button class="tip-toggle"></button><button class="logout">Se déconnecter</button></div></div>
       </div>
     </header>
     <main id="view"></main>
@@ -275,6 +284,7 @@ function renderShell() {
       shown = nb;
     }
     balEl.textContent = fmt(nb);
+    const vb = $('.vault-btn', shell); if (vb) { vb.title = `Coffre-fort : ${fmt(wallet.vault)} ${CUR}`; vb.classList.toggle('has', wallet.vault > 0); }
     updateDaily();
   });
   const dot = $('.sync-dot', shell);
@@ -310,6 +320,8 @@ function renderShell() {
   tipToggle.onclick = (e) => { e.stopPropagation(); tips.setOff(!tips.off); tipLabel(); toast(tips.off ? 'Le singe se tait. Tu peux toujours lui demander un conseil depuis ce menu.' : 'Le singe reprend du service !'); };
   $('.tip-menu', shell).onclick = () => tips.showNow();
   $('.send-btn', shell).onclick = openTransfer;
+  $('.vault-btn', shell).onclick = () => openVault(wallet);
+  $('.vault-menu', shell).onclick = () => openVault(wallet);
   $('.send-menu', shell).onclick = openTransfer;
   startInbox();
   $('.mute-btn', shell).onclick = (e) => { const m = sfx.toggle(); e.currentTarget.innerHTML = icon(m ? 'mute' : 'sound'); };
@@ -545,13 +557,14 @@ function mountLobby(view, { wallet: w }) {
     card('keno', 'Keno', 'Choisis jusqu\'à 10 numéros sur 40, 10 sont tirés. Jusqu\'à ×10 000 en risque élevé.', 'RTP 99 %', kenoArtSVG()),
     card('wheel', 'Roue du Singe', '30 cases, 3 niveaux de risque : petits gains fréquents ou une case à ×29,7.', 'RTP 99 %', wheelArtSVG()),
     card('limbo', 'Limbo', 'Fixe ta cible : si le multiplicateur tiré l\'atteint, tu gagnes mise × cible.', 'RTP 99 %', limboArtSVG()),
+    card('scratch', 'Jeux à gratter', 'Trois tickets de 10 à 1 000 Brundles : gratte les cases, 3 montants identiques et c\'est gagné. Jusqu\'à 10 millions !', 'RTP 98 %', scratchArtSVG()),
   ];
   view.innerHTML = `
     <section class="hero">
       <div class="hero-text">
         <h1><a href="#/profile" class="hero-av" title="Mon profil">${Profile.avatarHTML(w.p, 'av-md')}</a>Salut <span class="gold">${esc(w.pseudo)}</span> !</h1>
         <p>Bienvenue au <b>Casino Chibouk</b></p>
-        <div class="hero-bal">Ton solde : ${money(w.balance)}</div>
+        <div class="hero-bal">Ton solde : ${money(w.balance)}${w.vault ? `<small class="hero-vault">${icon('vault')} ${fmt(w.vault)} au coffre</small>` : ''}</div>
       </div>
       ${hangingMonkeySVG()}
     </section>
@@ -579,6 +592,8 @@ function mountLobby(view, { wallet: w }) {
       ${card('sudoku', 'Sudoku', 'Le grand classique en 3 niveaux, avec notes et bonus de vitesse.', `+${Sudoku.SUDOKU_INFO[0].reward} à +${Math.round(Sudoku.SUDOKU_INFO[2].reward * 1.5)} ${CUR}`, sudokuArtSVG())}
       ${card('demineur', 'Démineur', 'Déminer avant la fin du chrono : 9×9, 16×16 ou 16×30. Plus tu es rapide, plus ça rapporte.', `+${Demineur.MS_LEVELS[0].reward} à +${Demineur.MS_LEVELS[2].reward * 2} ${CUR}`, demineurArtSVG())}
       ${card('snake', 'Snake', 'Le serpent de la jungle a faim : mange un max de bananes sans te mordre la queue.', `+1 à +4 ${CUR} par banane`, snakeArtSVG())}
+      ${card('crossword', 'Mots croisés', 'Une nouvelle grille à chaque partie, 3 tailles. Vérification gratuite, lettres à révéler si tu bloques.', `+${Crossword.CW_LEVELS[0].reward} à +${Crossword.CW_LEVELS[2].reward} ${CUR}`, crosswordArtSVG())}
+      ${card('memory', 'Memory', 'Retrouve toutes les paires de cartes, de 8 à 18 paires. Bonus si tu fais peu d\'erreurs.', `+${Memory.MEMORY_LEVELS[0].reward} à +${Math.round(Memory.MEMORY_LEVELS[2].reward * 1.5)} ${CUR}`, memoryArtSVG())}
       ${card('quiz', 'Calcul mental', `${CONFIG.QUIZ_QUESTIONS} calculs, ${CONFIG.QUIZ_SECONDS} s chacun : +${CONFIG.QUIZ_PER_CORRECT} ${CUR} par bonne réponse, bonus pour un sans-faute.`, 'Gratuit', quizArtSVG())}
       ${card('capitals', 'Quiz capitales', `${CONFIG.QUIZ_QUESTIONS} questions dans les deux sens, mode facile ou expert (gains doublés).`, 'Gratuit', capitalsArtSVG())}
       ${card('flags', 'Quiz drapeaux', `${CONFIG.QUIZ_QUESTIONS} drapeaux à reconnaître parmi ${Flags.FLAGS.length} pays, mode facile ou expert.`, 'Gratuit', flagsArtSVG())}
@@ -631,7 +646,7 @@ function mountLobby(view, { wallet: w }) {
   }) : () => {};
   let t = null;
   const off = w.on(() => {
-    const hb = $('.hero-bal', view); if (hb) hb.innerHTML = `Ton solde : ${money(w.balance)}`;
+    const hb = $('.hero-bal', view); if (hb) hb.innerHTML = `Ton solde : ${money(w.balance)}${w.vault ? `<small class="hero-vault">${icon('vault')} ${fmt(w.vault)} au coffre</small>` : ''}`;
     if (!t) t = setTimeout(() => { t = null; dash(); }, 400);
   });
   const ago = setInterval(() => { const fb = $('#feed-box', view); if (fb && lastSocial) fb.innerHTML = feedHTML(lastSocial); }, 60000);

@@ -17,6 +17,7 @@ export function emptyStats() {
       slots: { ...g(), bonuses: 0 },
       blackjack: { ...g(), blackjacks: 0, pushes: 0 },
       roulette: { ...g() },
+      scratch: { ...g() },
       plinko: { ...g() },
       crash: { ...g() },
       tower: { ...g() },

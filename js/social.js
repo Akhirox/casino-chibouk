@@ -9,7 +9,7 @@ import { esc, fmt, money, toast, modal, coinRain } from './ui.js';
 import { goldMonkeySVG } from './art.js';
 import { sfx } from './sfx.js';
 
-const GAME_NAMES = { slots: 'la Chibouk Slot', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au Plinkoko', crash: 'au Crashibouk', tower: 'à la Tower', mines: 'aux Mines', dice: 'au Dice', hilo: 'au Hi-Lo', keno: 'au Keno', wheel: 'à la Roue du Singe', limbo: 'au Limbo' };
+const GAME_NAMES = { slots: 'la Chibouk Slot', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au Plinkoko', crash: 'au Crashibouk', tower: 'à la Tower', mines: 'aux Mines', dice: 'au Dice', hilo: 'au Hi-Lo', keno: 'au Keno', wheel: 'à la Roue du Singe', limbo: 'au Limbo', scratch: 'aux jeux à gratter' };
 const AT = (g) => (g === 'slots' ? 'à la Chibouk Slot' : GAME_NAMES[g] || '');
 const mx = (m) => '×' + m.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
 
@@ -17,7 +17,7 @@ const QUIZ_LABEL = { quiz: 'au calcul mental', capitals: 'au quiz capitales', mo
 const QUIZ_ROUTE = { quiz: 'quiz', capitals: 'capitals', movies: 'movies', flags: 'flags', higher: 'higher' };
 // Jeux de réflexion : exploits publiés avec un texte (« a résolu un » + lien vers le jeu + « difficile en 5 min »)
 const BIG_MIN = { plinko: 100 };
-export const FEAT_GAMES = { queens: 'Queens', tango: 'Tango', pinpoint: 'Pinpoint', sudoku: 'Sudoku', demineur: 'Démineur', snake: 'Snake' };
+export const FEAT_GAMES = { queens: 'Queens', tango: 'Tango', pinpoint: 'Pinpoint', sudoku: 'Sudoku', demineur: 'Démineur', snake: 'Snake', memory: 'Memory', crossword: 'mots croisés' };
 // Qui est le sujet du message (pour la semaine : le vainqueur, pas celui qui a publié)
 export const feedWho = (e) => (e.kind === 'week' && e.winner ? e.winner : e.pseudo);
 // Texte d'un message du fil (le pseudo est ajouté à l'affichage)
@@ -43,7 +43,7 @@ export function feedText(e) {
   }
 }
 // Version enrichie (liens vers le jeu, survol des succès, fiche du joueur)
-const GAME_ROUTE = { slots: 'slots', blackjack: 'blackjack', roulette: 'roulette', plinko: 'plinko', crash: 'crash', tower: 'tower', mines: 'mines', dice: 'dice', hilo: 'hilo', keno: 'keno', wheel: 'wheel', limbo: 'limbo' };
+const GAME_ROUTE = { slots: 'slots', blackjack: 'blackjack', roulette: 'roulette', plinko: 'plinko', crash: 'crash', tower: 'tower', mines: 'mines', dice: 'dice', hilo: 'hilo', keno: 'keno', wheel: 'wheel', limbo: 'limbo', scratch: 'scratch' };
 function achLink(id, name) {
   const a = ACHIEVEMENTS.find((x) => x.id === id) || ACHIEVEMENTS.find((x) => x.name === name);
   const tk = a ? a.tier : 'gold';

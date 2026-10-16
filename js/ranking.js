@@ -26,7 +26,7 @@ export function mount(view, { wallet, backend }) {
       <div id="farms"><p class="muted">Chargement…</p></div>
     </div>
 
-    <div class="panel"><h2><span class="h-ic">${icon('trophy')}Classement des singes (soldes)</span></h2>
+    <div class="panel"><h2><span class="h-ic">${icon('trophy')}Classement des singes (fortune)</span></h2>
       <div id="lb"><p class="muted">Chargement…</p></div>
     </div>
 
@@ -51,10 +51,11 @@ export function mount(view, { wallet, backend }) {
     renderWeek();
     renderFarms();
     syncWeeks(backend, wallet).then(() => alive && renderHall());
-    const rows = [...players].sort((a, b) => b.balance - a.balance).slice(0, CONFIG.LEADERBOARD_SIZE);
-    box.innerHTML = `<div class="tbl-scroll"><table class="tbl"><thead><tr><th>#</th><th>Joueur</th><th class="r">Solde</th><th class="r">Total misé</th><th class="r">Plus gros gain</th><th class="r">Bilan jeux</th><th class="r">Succès</th></tr></thead><tbody>
+    const fort = (r) => r.balance + Math.max(0, r.vault || 0);
+    const rows = [...players].sort((a, b) => fort(b) - fort(a)).slice(0, CONFIG.LEADERBOARD_SIZE);
+    box.innerHTML = `<div class="tbl-scroll"><table class="tbl"><thead><tr><th>#</th><th>Joueur</th><th class="r">Fortune</th><th class="r">Total misé</th><th class="r">Plus gros gain</th><th class="r">Bilan jeux</th><th class="r">Succès</th></tr></thead><tbody>
       ${rows.map((r, i) => `<tr class="${r.uid === wallet.uid ? 'me' : ''}"><td><span class="rank r${i + 1}">${i + 1}</span></td><td><button type="button" class="pl-link" data-player="${r.uid}">${avatarHTML(r.uid === wallet.uid ? { ...r, avatar: wallet.p.avatar } : r, 'av-sm')}${esc(r.pseudo)}${r.uid === wallet.uid ? ' (toi)' : ''}</button> ${vipBadge(r)}${titleHTML(r)}</td>
-      <td class="r"><b>${fmt(r.balance)}</b></td><td class="r">${fmt(r.stats.totalWagered)}</td><td class="r">${fmt(r.stats.biggestWin)}</td><td class="r">${signed(r.stats.totalWon - r.stats.totalWagered)}</td><td class="r">${r.uid === wallet.uid ? Object.keys((wallet.p.ach && wallet.p.ach.u) || {}).length : Object.keys((r.ach && r.ach.u) || {}).length}</td></tr>`).join('')}
+      <td class="r"><b>${fmt(fort(r))}</b>${r.vault ? `<small class="muted lb-vault" title="dont au coffre">${fmt(r.vault)} au coffre</small>` : ''}</td><td class="r">${fmt(r.stats.totalWagered)}</td><td class="r">${fmt(r.stats.biggestWin)}</td><td class="r">${signed(r.stats.totalWon - r.stats.totalWagered)}</td><td class="r">${r.uid === wallet.uid ? Object.keys((wallet.p.ach && wallet.p.ach.u) || {}).length : Object.keys((r.ach && r.ach.u) || {}).length}</td></tr>`).join('')}
       </tbody></table></div>`;
     // Top 3 des plus gros gains, jeu par jeu
     bw.innerHTML = GAMES.map((g) => {

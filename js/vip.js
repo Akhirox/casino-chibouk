@@ -22,7 +22,7 @@ export async function openVipModal(wallet) {
     <ul class="muted vip-notes">
       <li><b>Bonus de passage</b> : versé une seule fois, dès que tu atteins le rang.</li>
       <li><b>Rakeback</b> : un pourcentage de chaque mise aux jeux de casino, gagnée ou perdue, s'ajoute à ta cagnotte. Récupérable à tout moment ici ou sur l'accueil.</li>
-      <li><b>Gains gratuits</b> : multiplicateur sur la roue du jour (cumulé avec ta série de jours consécutifs), les quêtes, les quiz, le calcul mental, le mot du jour, le Plus ou moins, le casse-briques, Queens, Tango, Pinpoint, Sudoku, Démineur et Snake. Plus tu montes, plus chaque journée rapporte.</li>
+      <li><b>Gains gratuits</b> : multiplicateur sur la roue du jour (cumulé avec ta série de jours consécutifs), les quêtes, les quiz, le calcul mental, le mot du jour, le Plus ou moins, le casse-briques, Queens, Tango, Pinpoint, Sudoku, Démineur, Snake, Memory et les mots croisés. Plus tu montes, plus chaque journée rapporte.</li>
       <li>Le rang dépend du total misé depuis la création du compte : il ne redescend jamais.</li>
     </ul>`, buttons: [...(pot >= 1 ? [{ label: `Récupérer ${fmt(pot)} ${CUR}`, value: 'claim' }] : []), { label: 'Fermer', value: true, primary: true }] });
   if (res === 'claim') {

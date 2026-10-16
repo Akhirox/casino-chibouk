@@ -1,9 +1,27 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '15.2';
+export const VERSION = '16';
 
 export const CHANGELOG = [
+  {
+    v: '16', date: '16 octobre 2026', title: 'Coffre-fort, jeux à gratter, Memory et mots croisés',
+    groups: [
+      ['Coffre-fort', [
+        'Nouveau bouton coffre dans la barre du haut (et dans le menu du pseudo) : mets des Brundles à l\'abri pour ne pas les perdre au casino. Dépôt et retrait libres, sans frais, à tout moment.',
+        'Le contenu du coffre compte dans ta fortune : classement et succès de solde se basent sur solde + coffre.',
+      ]],
+      ['Nouveaux jeux', [
+        'Jeux à gratter (casino) : 3 tickets, Banane Express à 10, Singe d\'Or à 100 et Trésor de la Jungle à 1 000, jusqu\'à ×10 000. 3 montants identiques = gagné. Gratte à la souris ou au doigt, clique sur une case pour l\'ouvrir d\'un coup, « Tout gratter », ou lance les tickets automatiques. RTP 98 %.',
+        'Memory (gratuit) : retrouve les paires en 4×4, 6×4 ou 6×6. +30 à +100, et +50 % si tu fais peu d\'erreurs.',
+        'Mots croisés (gratuit) : une nouvelle grille à chaque partie, 7, 10 ou 14 mots. +40 à +110, chaque lettre révélée coûte 10 % du gain.',
+        '11 nouveaux succès (catégorie Jeux à gratter, Memory, mots croisés) et 3 nouvelles quêtes.',
+      ]],
+      ['Crashibouk', [
+        'Une fois ta mise encaissée, la fusée passe en avance rapide jusqu\'à l\'explosion : plus besoin d\'attendre pour relancer.',
+      ]],
+    ],
+  },
   {
     v: '15.2', date: '15 octobre 2026', title: 'Fil d\'activité plus lisible, Plinkoko en arrière-plan',
     groups: [

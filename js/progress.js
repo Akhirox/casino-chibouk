@@ -82,8 +82,8 @@ export function spinDaily(wallet) {
 }
 
 /* ------------------------------ Quêtes du jour ------------------------------ */
-const CASINO = { slots: 'à la Chibouk Slot', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au Plinkoko', crash: 'au Crashibouk', tower: 'à la Tower', mines: 'aux Mines', dice: 'au Dice', hilo: 'au Hi-Lo', keno: 'au Keno', wheel: 'à la Roue', limbo: 'au Limbo' };
-const ROUNDS = { slots: 40, blackjack: 12, roulette: 15, plinko: 40, crash: 15, tower: 10, mines: 10, dice: 40, hilo: 10, keno: 20, wheel: 30, limbo: 30 };
+const CASINO = { slots: 'à la Chibouk Slot', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au Plinkoko', crash: 'au Crashibouk', tower: 'à la Tower', mines: 'aux Mines', dice: 'au Dice', hilo: 'au Hi-Lo', keno: 'au Keno', wheel: 'à la Roue', limbo: 'au Limbo', scratch: 'aux jeux à gratter' };
+const ROUNDS = { slots: 40, blackjack: 12, roulette: 15, plinko: 40, crash: 15, tower: 10, mines: 10, dice: 40, hilo: 10, keno: 20, wheel: 30, limbo: 30, scratch: 15 };
 const QUIZ = { quiz: 'au calcul mental', capitals: 'au quiz capitales', movies: 'au quiz ciné', flags: 'au quiz drapeaux' };
 
 // Modèles : tier 0 = facile, 1 = moyen, 2 = difficile. n = objectif, ev(e, q) = progression apportée par l'événement
@@ -115,6 +115,9 @@ TEMPLATES.push(
   { id: 'msMid', tier: 2, n: 1, text: () => 'Gagne au démineur en moyen ou difficile', ev: (e) => (e.type === 'free' && e.game === 'demineur' && e.extra && (e.extra.Won1 || e.extra.Won2) ? 1 : 0) },
   { id: 'farmBuild', tier: 0, n: 2, text: (n) => `Lance ${n} chantiers à ta ferme à bananes`, ev: (e) => (e.type === 'farm' && (e.act === 'build' || e.act === 'upgrade') ? 1 : 0) },
   { id: 'farmSell', tier: 1, n: 300, text: (n) => `Vends ${n} bananes au marché de ta ferme`, ev: (e) => (e.type === 'farm' && e.act === 'sell' ? e.bananas || 0 : 0) },
+  { id: 'memory1', tier: 0, n: 1, text: () => 'Gagne une partie de Memory', ev: (e) => (e.type === 'free' && e.game === 'memory' && e.extra && e.extra.Won ? 1 : 0) },
+  { id: 'cw1', tier: 1, n: 1, text: () => 'Termine une grille de mots croisés', ev: (e) => (e.type === 'free' && e.game === 'crossword' && e.extra && e.extra.Won ? 1 : 0) },
+  { id: 'cwClean', tier: 2, n: 1, text: () => 'Termine une grille de mots croisés moyenne ou difficile sans révéler de lettre', ev: (e) => (e.type === 'free' && e.game === 'crossword' && e.extra && e.extra.Clean && (e.extra.Won1 || e.extra.Won2) ? 1 : 0) },
   { id: 'free3', tier: 0, n: 3, text: (n) => `Termine ${n} parties de jeux gratuits (quiz, Sudoku, Snake…)`, ev: (e) => (e.type === 'free' ? 1 : 0) },
 );
 export const QUEST_REWARD = [300, 600, 1000];

@@ -117,10 +117,10 @@ export function mount(view, { wallet }) {
     if (state === 'flying') return false;
     const amount = bet.value;
     if (!wallet.bet('crash', amount)) { toast(`Solde insuffisant pour miser ${fmt(amount)} ${CUR}`, 'error'); return false; }
-    round = { bet: amount, crash: crashPoint(), start: performance.now(), cashed: false, cashMult: 0, payout: 0, auto: autoOn ? autoTarget : 0, m: 1 };
+    round = { bet: amount, crash: crashPoint(), start: performance.now(), cashed: false, cashMult: 0, payout: 0, auto: autoOn ? autoTarget : 0, m: 1, vt: 0, last: performance.now(), cashedAt: 0 };
     particles = [];
     state = 'flying';
-    view.querySelector('.crash-stage').classList.remove('crashed', 'cashed');
+    view.querySelector('.crash-stage').classList.remove('crashed', 'cashed', 'ff');
     rocket.classList.remove('boom');
     subEl.textContent = round.auto ? `Encaissement auto à ${fmtM(round.auto)}` : 'Encaisse avant l\'explosion !';
     sfx.spinStart();
@@ -132,6 +132,7 @@ export function mount(view, { wallet }) {
     if (state !== 'flying' || round.cashed) return;
     const m = at || round.m;
     round.cashed = true;
+    round.cashedAt = performance.now();
     round.cashMult = m;
     round.payout = Math.floor(round.bet * m);
     wallet.win('crash', round.payout, round.bet);
@@ -175,7 +176,7 @@ export function mount(view, { wallet }) {
     g.clearRect(0, 0, W, H);
     let t = 0, m = 1;
     if (round) {
-      t = state === 'flying' ? (now - round.start) / 1000 : timeFor(round.m);
+      t = state === 'flying' ? round.vt : timeFor(round.m);
       m = state === 'flying' ? multAt(t) : round.m;
     }
     // échelle adaptative
@@ -252,7 +253,13 @@ export function mount(view, { wallet }) {
     const dt = Math.min(0.05, lastT ? (now - lastT) / 1000 : 0.016);
     lastT = now;
     if (state === 'flying') {
-      const t = (now - round.start) / 1000;
+      // temps de la courbe : vitesse normale tant qu'on est en jeu, puis de plus en plus vite une fois encaissé
+      // (on n'a plus rien à gagner, inutile d'attendre l'explosion pour rejouer)
+      const real = Math.max(0, (now - round.last) / 1000);
+      round.last = now;
+      const speed = round.cashed ? Math.min(25, 4 * Math.pow(1.8, (now - round.cashedAt) / 1000)) : 1;
+      round.vt += real * speed;
+      const t = round.vt;
       let m = multAt(t);
       if (round.auto && !round.cashed && round.auto <= round.crash && m >= round.auto) { round.m = round.auto; cashOut(round.auto); }
       if (m >= round.crash) { round.m = round.crash; explode(); }
@@ -261,6 +268,7 @@ export function mount(view, { wallet }) {
         multEl.textContent = fmtM(round.m);
         if (!round.cashed) $('#cr-pot', view).innerHTML = money(Math.floor(round.bet * round.m));
         if (!round.cashed) mainBtn.textContent = `Encaisser ${fmt(Math.floor(round.bet * round.m))}`;
+        else if (speed > 1.5) view.querySelector('.crash-stage').classList.add('ff');
         tickAcc += dt; if (tickAcc > Math.max(0.08, 0.4 / round.m)) { tickAcc = 0; sfx.tick(); }
       }
     }

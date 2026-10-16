@@ -11,11 +11,11 @@ export const TIERS = {
 
 export const CATEGORIES = {
   global: 'Global', slots: 'Chibouk Slot', blackjack: 'Blackjack', roulette: 'Roulette', plinko: 'Plinkoko',
-  crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice', hilo: 'Hi-Lo', keno: 'Keno', wheel: 'Roue du Singe', limbo: 'Limbo',
+  crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice', hilo: 'Hi-Lo', keno: 'Keno', wheel: 'Roue du Singe', limbo: 'Limbo', scratch: 'Jeux à gratter',
   free: 'Jeux gratuits', farm: 'Ferme', progress: 'Progression',
 };
 
-const CASINO_GAMES = ['slots', 'blackjack', 'roulette', 'plinko', 'crash', 'tower', 'mines', 'dice', 'hilo', 'keno', 'wheel', 'limbo'];
+const CASINO_GAMES = ['slots', 'blackjack', 'roulette', 'plinko', 'crash', 'tower', 'mines', 'dice', 'hilo', 'keno', 'wheel', 'limbo', 'scratch'];
 const st = (w) => w.p.stats;
 const g = (w, k) => st(w).games[k] || {};
 const parisHour = () => +new Intl.DateTimeFormat('en-GB', { timeZone: CONFIG.TIMEZONE, hour: '2-digit', hourCycle: 'h23' }).format(new Date());
@@ -29,10 +29,10 @@ const fr = (w) => (w.p.farm && w.p.farm.rate) || 0;
 export const ACHIEVEMENTS = [
   /* ------------------------------ GLOBAL ------------------------------ */
   { id: 'first-bet', cat: 'global', tier: 'bronze', name: 'Premier pas dans la jungle', desc: 'Jouer ta toute première partie.', test: (e, w) => st(w).rounds >= 1 },
-  { id: 'bal-10k', cat: 'global', tier: 'bronze', name: 'Petit singe', desc: 'Atteindre 10 000 Brundles.', test: (e, w) => w.balance >= 1e4, progress: (w) => [w.balance, 1e4] },
-  { id: 'bal-100k', cat: 'global', tier: 'silver', name: 'Gorille d\'argent', desc: 'Atteindre 100 000 Brundles.', test: (e, w) => w.balance >= 1e5, progress: (w) => [w.balance, 1e5] },
-  { id: 'bal-1m', cat: 'global', tier: 'gold', name: 'Roi de la jungle', desc: 'Atteindre 1 000 000 de Brundles.', test: (e, w) => w.balance >= 1e6, progress: (w) => [w.balance, 1e6] },
-  { id: 'bal-10m', cat: 'global', tier: 'legend', name: 'Banane cosmique', desc: 'Atteindre 10 000 000 de Brundles.', test: (e, w) => w.balance >= 1e7, progress: (w) => [w.balance, 1e7] },
+  { id: 'bal-10k', cat: 'global', tier: 'bronze', name: 'Petit singe', desc: 'Atteindre 10 000 Brundles.', test: (e, w) => w.fortune >= 1e4, progress: (w) => [w.fortune, 1e4] },
+  { id: 'bal-100k', cat: 'global', tier: 'silver', name: 'Gorille d\'argent', desc: 'Atteindre 100 000 Brundles.', test: (e, w) => w.fortune >= 1e5, progress: (w) => [w.fortune, 1e5] },
+  { id: 'bal-1m', cat: 'global', tier: 'gold', name: 'Roi de la jungle', desc: 'Atteindre 1 000 000 de Brundles.', test: (e, w) => w.fortune >= 1e6, progress: (w) => [w.fortune, 1e6] },
+  { id: 'bal-10m', cat: 'global', tier: 'legend', name: 'Banane cosmique', desc: 'Atteindre 10 000 000 de Brundles.', test: (e, w) => w.fortune >= 1e7, progress: (w) => [w.fortune, 1e7] },
   { id: 'broke', cat: 'global', tier: 'bronze', name: 'Plus une banane', desc: 'Tomber à 0 Brundle.', test: (e, w) => e.type === 'bet' && w.balance < 1 },
   { id: 'phoenix', cat: 'global', tier: 'silver', name: 'Phénix de la canopée', desc: 'Remonter à 10 000 Brundles après être tombé sous 100.', test: (e, w, c) => c.wasLow && w.balance >= 1e4 },
   { id: 'all-in', cat: 'global', tier: 'silver', name: 'Tapis !', desc: 'Miser tout ton solde (au moins 1 000) en une seule fois.', test: (e, w) => e.type === 'bet' && e.amount >= 1000 && w.balance < 1 },
@@ -142,6 +142,11 @@ export const ACHIEVEMENTS = [
   { id: 'lb-100', cat: 'limbo', tier: 'silver', name: 'Plus bas que terre', desc: 'Gagner au Limbo avec une cible d\'au moins ×100.', test: (e) => isRound(e, 'limbo') && I(e).win && I(e).target >= 100 },
   { id: 'lb-1000', cat: 'limbo', tier: 'gold', name: 'Limbo céleste', desc: 'Gagner au Limbo avec une cible d\'au moins ×1 000.', test: (e) => isRound(e, 'limbo') && I(e).win && I(e).target >= 1000 },
   { id: 'lb-200', cat: 'limbo', tier: 'silver', name: 'Danseur de limbo', desc: 'Jouer 200 parties de Limbo.', test: (e, w) => g(w, 'limbo').rounds >= 200, progress: (w) => [g(w, 'limbo').rounds || 0, 200] },
+  { id: 'sc-1', cat: 'scratch', tier: 'bronze', name: 'Coup de grattoir', desc: 'Gagner avec un ticket à gratter.', test: (e) => isRound(e, 'scratch') && e.payout > 0 },
+  { id: 'sc-100', cat: 'scratch', tier: 'silver', name: 'Ongles usés', desc: 'Gratter 100 tickets.', test: (e, w) => g(w, 'scratch').rounds >= 100, progress: (w) => [g(w, 'scratch').rounds || 0, 100] },
+  { id: 'sc-x100', cat: 'scratch', tier: 'gold', name: 'Ticket en or', desc: 'Gagner au moins ×100 le prix d\'un ticket à gratter.', test: (e) => isRound(e, 'scratch') && I(e).mult >= 100 },
+  { id: 'sc-x1000', cat: 'scratch', tier: 'legend', name: 'Jackpot de la jungle', desc: 'Gagner au moins ×1 000 le prix d\'un ticket à gratter.', test: (e) => isRound(e, 'scratch') && I(e).mult >= 1000 },
+  { id: 'sc-tresor', cat: 'scratch', tier: 'silver', name: 'Chasseur de trésor', desc: 'Gagner avec un ticket Trésor de la Jungle.', test: (e) => isRound(e, 'scratch') && e.payout > 0 && I(e).ticket === 'tresor' },
   /* ------------------------------ PROGRESSION ------------------------------ */
   { id: 'vip-macaque', cat: 'progress', tier: 'bronze', name: 'Carte de membre', desc: 'Atteindre le rang VIP Macaque (50 000 misés).', test: (e, w) => vipOf(st(w).totalWagered).index >= vipIndex('macaque'), progress: (w) => [st(w).totalWagered, 5e4] },
   { id: 'vip-chimp', cat: 'progress', tier: 'silver', name: 'Salon VIP', desc: 'Atteindre le rang VIP Chimpanzé (5 000 000 misés).', test: (e, w) => vipOf(st(w).totalWagered).index >= vipIndex('chimpanze'), progress: (w) => [st(w).totalWagered, 5e6] },
@@ -198,6 +203,12 @@ export const ACHIEVEMENTS = [
   { id: 'sn-hard', cat: 'free', tier: 'gold', name: 'Anaconda', desc: 'Manger 30 bananes en une partie de Snake en difficile.', test: (e, w) => (st(w).snakeBest2 || 0) >= 30, progress: (w) => [st(w).snakeBest2 || 0, 30] },
   { id: 'bk-1', cat: 'free', tier: 'bronze', name: 'Casseur', desc: 'Terminer un niveau de casse-briques.', test: (e, w) => st(w).breakerLevels >= 1 },
   { id: 'bk-10', cat: 'free', tier: 'silver', name: 'Démolisseur', desc: 'Terminer 10 niveaux de casse-briques.', test: (e, w) => st(w).breakerLevels >= 10, progress: (w) => [st(w).breakerLevels, 10] },
+  { id: 'mm-1', cat: 'free', tier: 'bronze', name: 'Bonne mémoire', desc: 'Terminer une partie de Memory.', test: (e, w) => (st(w).memoryWon || 0) >= 1 },
+  { id: 'mm-hard', cat: 'free', tier: 'silver', name: 'Mémoire d\'éléphant', desc: 'Terminer une partie de Memory en difficile.', test: (e, w) => (st(w).memoryWon2 || 0) >= 1 },
+  { id: 'mm-perfect', cat: 'free', tier: 'gold', name: 'Photographique', desc: 'Terminer le Memory difficile en 30 coups ou moins.', test: (e, w) => (st(w).memoryBest2 || 1e9) <= 30 },
+  { id: 'cw-1', cat: 'free', tier: 'bronze', name: 'Cruciverbiste', desc: 'Remplir une grille de mots croisés.', test: (e, w) => (st(w).crosswordWon || 0) >= 1 },
+  { id: 'cw-hard', cat: 'free', tier: 'silver', name: 'Dictionnaire vivant', desc: 'Remplir une grille de mots croisés difficile.', test: (e, w) => (st(w).crosswordWon2 || 0) >= 1 },
+  { id: 'cw-clean', cat: 'free', tier: 'gold', name: 'Sans filet', desc: 'Remplir une grille de mots croisés difficile sans aucun indice.', test: (e, w) => (st(w).crosswordCleanHard || 0) >= 1 },
 ];
 
 /* ------------------------------ moteur ------------------------------ */

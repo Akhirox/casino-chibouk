@@ -157,6 +157,10 @@ const ICONS = {
   chev: `<path d="m6 9 6 6 6-6" stroke-width="2"/>`,
   fire: `<path d="M12 21c-4 0-7-2.8-7-6.6 0-3.4 2.6-5.4 3.7-8.4.5 2 1.6 3 2.6 3.5C11.6 6 13 4 15 3c-.3 3 1.5 4.6 2.8 6.6A7 7 0 0 1 19 14.4C19 18.2 16 21 12 21z" ${D}/>`,
   globe: `<circle cx="12" cy="12" r="8.5" ${D}/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5M12 3.5C9.4 5.9 8.2 8.7 8.2 12s1.2 6.1 3.8 8.5" stroke-width="1.5"/>`,
+  scratch: `<rect x="3" y="5" width="18" height="14" rx="2" ${D}/><path d="M7 9h4M7 12.5h3M13.5 13l3.5-4M14 16l4-4.5" stroke-width="1.6"/><circle cx="17" cy="8" r="1" fill="currentColor"/>`,
+  memory: `<rect x="3" y="4" width="8" height="11" rx="1.6" ${D}/><rect x="13" y="9" width="8" height="11" rx="1.6" ${D}/><path d="M7 8.2l1.2 2.3-1.2 2.3-1.2-2.3z" fill="currentColor" stroke="none"/><path d="M17 13.2l1.2 2.3-1.2 2.3-1.2-2.3z" fill="currentColor" stroke="none"/>`,
+  crossword: `<rect x="3.5" y="3.5" width="17" height="17" rx="1.6" ${D}/><path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17" stroke-width="1.2"/><rect x="14.8" y="3.5" width="5.7" height="5.7" fill="currentColor" stroke="none"/><rect x="3.5" y="14.8" width="5.7" height="5.7" fill="currentColor" stroke="none"/>`,
+  vault: `<rect x="3.5" y="4" width="17" height="15" rx="2.2" ${D}/><circle cx="12" cy="11.5" r="3.6"/><path d="M12 8.2v1.4M12 13.4v1.4M8.7 11.5h1.4M13.9 11.5h1.4" stroke-width="1.4"/><path d="M6 19v1.5M18 19v1.5" stroke-width="2"/>`,
   banana: `<path d="M4 13.5c3.6 4.8 10.8 5.2 14.9.4 1-1.2 1.7-2.8 1.9-4.3-.9 1.7-2.5 2.9-4.3 3.5C12.3 14.6 8 13.6 4 13.5z" ${D}/><path d="M19.6 9.4l1.2-2.3" stroke-width="2"/>`,
   queens: `<path d="M3.5 18h17l-1.5-9.5-4.3 3.8L12 5l-2.7 7.3L5 8.5z" ${D}/><path d="M3.5 21h17" />`,
   tango: `<circle cx="8" cy="9" r="3.6" ${D}/><path d="M8 2.6v1.2M8 14.2v1.2M1.6 9h1.2M13.2 9h1.2M3.5 4.5l.9.9M11.6 12.6l.9.9M3.5 13.5l.9-.9M11.6 5.4l.9-.9" stroke-width="1.4"/><path d="M19.5 12.5a5 5 0 1 0 1.5 7.2 4 4 0 0 1-1.5-7.2z" ${D}/>`,
@@ -357,4 +361,22 @@ export function demineurArtSVG() {
     else if (col[v]) h += `<text x="${x + 7.5}" y="${y + 11.5}" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="800" font-size="10" fill="${col[v]}">${v}</text>`;
   }));
   return `<svg viewBox="0 0 200 145" class="art-demineur" aria-hidden="true">${h}<text x="100" y="114" text-anchor="middle" font-family="Bungee, sans-serif" font-size="13" fill="#f5c542">2:47</text><text x="100" y="134" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="800" font-size="11" fill="#cfe0d5">contre la montre</text></svg>`;
+}
+
+export function scratchArtSVG() {
+  const vals = ['50', '10', '50', '2', '50', '?', '5', '?', '?'];
+  return `<svg viewBox="0 0 200 145" class="art-scratch" aria-hidden="true"><g transform="rotate(-6 100 70)"><rect x="40" y="14" width="120" height="112" rx="10" fill="#ffd23f" stroke="#c99a00" stroke-width="2"/>
+    <text x="100" y="32" text-anchor="middle" font-family="Bungee, sans-serif" font-size="11" fill="#6b4a00">BANANE EXPRESS</text>
+    ${vals.map((v, i) => { const x = 52 + (i % 3) * 33, y = 40 + Math.floor(i / 3) * 27; return v === '?' ? `<rect x="${x}" y="${y}" width="30" height="23" rx="5" fill="url(#scg)"/><path d="M${x + 6} ${y + 16} q6 -10 12 -2 t10 -6" stroke="#fff8" stroke-width="2" fill="none"/>` : `<rect x="${x}" y="${y}" width="30" height="23" rx="5" fill="#fff8e0"/><text x="${x + 15}" y="${y + 16}" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="800" font-size="11" fill="${v === '50' ? '#c0001a' : '#3a2a00'}">${v}</text>`; }).join('')}
+    <defs><linearGradient id="scg" x1="0" x2="1" y1="0" y2="1"><stop offset="0" stop-color="#cfd6db"/><stop offset=".5" stop-color="#fff"/><stop offset="1" stop-color="#9aa5ad"/></linearGradient></defs></g></svg>`;
+}
+export function memoryArtSVG() {
+  const card = (x, y, rot, up, fill) => `<g transform="translate(${x} ${y}) rotate(${rot})"><rect x="-20" y="-27" width="40" height="54" rx="6" fill="${up ? '#fff8e0' : '#1d6b45'}" stroke="${up ? '#c99a00' : '#3ddc84'}" stroke-width="2"/>${up ? `<circle r="11" fill="${fill}"/>` : '<path d="M-10 -14h20M-10 0h20M-10 14h20" stroke="#3ddc8455" stroke-width="3"/>'}</g>`;
+  return `<svg viewBox="0 0 200 145" class="art-memory" aria-hidden="true">${card(52, 62, -10, true, '#ffd23f')}${card(100, 58, 0, false)}${card(148, 62, 10, true, '#ffd23f')}${card(76, 100, 6, false)}${card(124, 100, -6, true, '#2fb1ff')}</svg>`;
+}
+export function crosswordArtSVG() {
+  const g = ['BANANE', '.....', 'SINGE'];
+  const cells = [[0, 0, 'B'], [0, 1, 'A'], [0, 2, 'N'], [0, 3, 'A'], [0, 4, 'N'], [0, 5, 'E'], [1, 1, ''], [2, 1, 'S'], [3, 1, ''], [4, 1, ''], [1, 4, ''], [2, 4, 'G'], [3, 4, 'E'], [2, 2, 'I'], [2, 3, 'N'], [2, 0, '']];
+  return `<svg viewBox="0 0 200 145" class="art-crossword" aria-hidden="true">${cells.map(([r, c, ch]) => `<rect x="${46 + c * 18}" y="${22 + r * 18}" width="17" height="17" rx="2" fill="#f4f1e6" stroke="#0005"/>${ch ? `<text x="${54.5 + c * 18}" y="${35 + r * 18}" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="800" font-size="12" fill="#1a2820">${ch}</text>` : ''}`).join('')}
+    <text x="100" y="134" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="800" font-size="11" fill="#cfe0d5">une grille par partie</text></svg>`;
 }
