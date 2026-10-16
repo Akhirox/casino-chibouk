@@ -1,9 +1,22 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '21';
+export const VERSION = '21.1';
 
 export const CHANGELOG = [
+  {
+    v: '21.1', date: '17 octobre 2026', title: 'Fair-play des quiz',
+    groups: [
+      ['Fair-play', [
+        'Quiz drapeaux : le drapeau ne trahit plus la réponse dans le code de la page (le nom du fichier contenait le code du pays).',
+        'Quiz drapeaux, capitales, ciné, calcul mental, Plus ou moins et Pinpoint : les temps de réponse sont contrôlés. Des réponses plus rapides que le temps de lire la question, ou des clics simulés par un script : amende et blocage du jeu. Un peu trop rapide : pas de récompense.',
+        'Quitter un quiz en cours ne rapporte les bonnes réponses qu\'à partir de 3 questions répondues (répondre à une question puis quitter, en boucle, ne marche plus).',
+      ]],
+      ['Pour l\'admin', [
+        'Journal : temps de réponse médian de chaque partie, et nouvelle colonne « Rafale / min » qui signale un joueur ayant terminé 5 parties ou plus d\'un même jeu en une minute.',
+      ]],
+    ],
+  },
   {
     v: '21', date: '17 octobre 2026', title: 'Anti-triche sur les soldes',
     groups: [

@@ -5,6 +5,7 @@ import { randInt } from './slots-math.js';
 import { monkeySVG } from '../art.js';
 import { $, $$, fmt, money, coinRain, toast, esc, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
+import { createGuard, judgeReactions, punish, tooFast, refusedHTML, lockBannerHTML, lockedUntil } from '../fairplay.js';
 
 export const shuffle = (arr) => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = randInt(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
 export const pick = (arr) => arr[randInt(arr.length)];
@@ -64,6 +65,7 @@ export function mountMCQ(view, { wallet }, opt) {
   const PER = () => mode.perCorrect || CONFIG.QUIZ_PER_CORRECT;
   const BONUS = () => mode.perfectBonus || CONFIG.QUIZ_PERFECT_BONUS;
   let deadline = 0, raf = null, nextTimer = null, credited = false;
+  let guard = null, rts = [], shownAt = 0; // fair-play : temps de réponse de chaque question
 
   view.innerHTML = `
   <div class="qz-wrap mcq ${opt.kind}">
@@ -91,7 +93,8 @@ export function mountMCQ(view, { wallet }, opt) {
       <p>${opt.introText}<br>
       <b>+${PER()} ${CUR}</b> par bonne réponse, <b>+${BONUS()} ${CUR}</b> de bonus pour un sans-faute (jusqu'à ${fmt(N * PER() + BONUS())}).</p>
       ${modes}
-      <button class="btn btn-gold btn-lg" id="qz-start">Commencer</button></div>`;
+      ${lockBannerHTML(wallet, opt.kind)}
+      <button class="btn btn-gold btn-lg" id="qz-start" ${lockedUntil(wallet, opt.kind) ? 'disabled' : ''}>Commencer</button></div>`;
     $('#qz-start', view).onclick = start;
     $$('.mcq-mode', view).forEach((b) => (b.onclick = () => {
       mode = opt.modes.find((m) => m.key === b.dataset.m);
@@ -103,6 +106,7 @@ export function mountMCQ(view, { wallet }, opt) {
 
   async function start() {
     if (state === 'loading') return;
+    if (lockedUntil(wallet, opt.kind)) { intro(); return; }
     sfx.click();
     if (!data) {
       state = 'loading';
@@ -117,6 +121,7 @@ export function mountMCQ(view, { wallet }, opt) {
     }
     questions = opt.build(data, N, mode.key);
     qi = 0; correct = 0; results = []; credited = false;
+    guard && guard.destroy(); guard = createGuard(view); rts = [];
     ask();
   }
 
@@ -126,7 +131,7 @@ export function mountMCQ(view, { wallet }, opt) {
     body.innerHTML = `
       <div class="qz-q mcq-q"><span class="qz-num">Question ${qi + 1}/${N}</span>
         <div class="mcq-label">${esc(q.label)}</div>
-        ${q.img ? `<div class="mcq-img"><img src="${esc(q.img)}" alt="Drapeau à deviner"></div>` : `<div class="mcq-big">${esc(q.big)}</div>`}${q.sub ? `<div class="mcq-sub">${esc(q.sub)}</div>` : ''}
+        ${q.img || q.imgP ? `<div class="mcq-img"><img ${q.img ? `src="${esc(q.img)}"` : ''} alt="Drapeau à deviner"></div>` : `<div class="mcq-big">${esc(q.big)}</div>`}${q.sub ? `<div class="mcq-sub">${esc(q.sub)}</div>` : ''}
         <div class="qz-verdict" id="qz-verdict"></div></div>
       <div class="qz-timer"><div class="qz-bar" id="qz-bar"></div><span id="qz-sec">${SECS()}</span></div>
       ${q.type === 'text' ? `<form class="qz-form mcq-text" id="mcq-form" autocomplete="off">
@@ -142,6 +147,8 @@ export function mountMCQ(view, { wallet }, opt) {
       setTimeout(() => alive && inp.focus(), 30);
     }
     renderDots();
+    shownAt = performance.now();
+    if (q.imgP) { const im = $('.mcq-img img', view); q.imgP.then((u) => { if (alive && im.isConnected) { im.onload = () => { shownAt = performance.now(); }; im.src = u; } }); }
     deadline = performance.now() + SECS() * 1000;
     cancelAnimationFrame(raf);
     const tick = (now) => {
@@ -171,6 +178,7 @@ export function mountMCQ(view, { wallet }, opt) {
     const timeout = i === null;
     const text = q.type === 'text';
     const ok = !timeout && (text ? matches(i, q.accept, q.reject) : i === q.answer);
+    if (!timeout) rts.push(performance.now() - shownAt);
     const right = text ? q.accept[0] : q.choices[q.answer];
     results.push(ok);
     if (ok) correct++;
@@ -192,22 +200,36 @@ export function mountMCQ(view, { wallet }, opt) {
     nextTimer = setTimeout(next, (ok ? 1100 : 2000) + (q.reveal ? 1400 : 0));
   }
 
+  // Contrôle fair-play puis récompense. Renvoie { amount } ou { refused: verdict, p: sanction }
+  function settle(amount, extra, partial = false) {
+    const v = judgeReactions(guard, rts); guard = null;
+    if (v.flag === 'cheat') return { refused: v, p: punish(wallet, opt.kind, mode.key || null, v, Math.max(amount, PER() * 5)) };
+    if (v.flag === 'fast') { tooFast(wallet, opt.kind, mode.key || null, v); return { refused: v }; }
+    wallet.freeReward(opt.kind, amount, extra, { log: { lv: mode.key || null, sec: v.sec, actions: v.actions, fastShare: v.fastShare, ms: v.medianMs, partial } });
+    return { amount };
+  }
   function reward() {
-    if (credited) return 0;
+    if (credited) return { amount: 0 };
     credited = true;
     const perfect = correct === N;
     const amount = correct * PER() + (perfect ? BONUS() : 0);
     const extra = { Correct: correct, Perfect: perfect ? 1 : 0 };
     if (mode.stat) { extra[mode.stat + 'Correct'] = correct; extra[mode.stat + 'Perfect'] = perfect ? 1 : 0; }
-    wallet.freeReward(opt.kind, amount, extra);
-    return amount;
+    return settle(amount, extra);
   }
 
   function finish() {
     state = 'done';
-    const amount = reward();
-    const perfect = correct === N;
+    const res = reward();
     renderDots();
+    if (res.refused) {
+      body.innerHTML = refusedHTML(res.refused, res.p);
+      $('[data-again]', body).onclick = res.refused.flag === 'cheat' ? intro : start;
+      if (res.refused.flag === 'cheat') sfx.lose();
+      return;
+    }
+    const amount = res.amount;
+    const perfect = correct === N;
     body.innerHTML = `<div class="qz-card">${monkeySVG(perfect ? { crown: true, fur: '#c98a00', face: '#ffe6a6', ear: '#ffd36b' } : { wink: correct >= N / 2 })}
       <h2>${correct}/${N} bonnes réponses${perfect ? ' : sans-faute !' : ''}</h2>
       <p>${amount > 0 ? `+${money(amount)} ajoutés à ton solde${perfect ? ` (dont ${BONUS()} de bonus)` : ''}.` : 'Pas de Brundles cette fois, retente ta chance !'}</p>
@@ -234,12 +256,13 @@ export function mountMCQ(view, { wallet }, opt) {
     cancelAnimationFrame(raf);
     clearTimeout(nextTimer);
     document.removeEventListener('keydown', onKey);
-    // partie interrompue : on crédite les bonnes réponses déjà données (sans le bonus)
-    if ((state === 'ask' || state === 'feedback') && correct > 0 && !credited) {
+    // partie interrompue : on crédite les bonnes réponses déjà données (sans le bonus), à partir de 3 questions répondues
+    // (sinon, répondre à une question puis quitter, en boucle, rapportait sans jamais finir une partie)
+    if ((state === 'ask' || state === 'feedback') && correct > 0 && !credited && results.length >= 3) {
       credited = true;
       const extra = { Correct: correct };
       if (mode.stat) extra[mode.stat + 'Correct'] = correct;
-      wallet.freeReward(opt.kind, correct * PER(), extra);
-    }
+      settle(correct * PER(), extra, true);
+    } else if (guard) guard.destroy();
   };
 }

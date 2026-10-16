@@ -5,6 +5,7 @@ import { $, esc, fmt, coinRain, CUR } from '../ui.js';
 import { monkeySVG } from '../art.js';
 import { sfx } from '../sfx.js';
 import { endCardHTML } from './free-common.js';
+import { createGuard, judge, punish, tooFast, refusedHTML, lockBannerHTML, lockedUntil } from '../fairplay.js';
 
 export const PP_REWARDS = [40, 28, 20, 12, 6]; // réduits de 60 % (V15.1)
 const STOP = new Set(['le', 'la', 'les', 'l', 'de', 'des', 'du', 'd', 'un', 'une', 'et', 'en', 'a', 'au', 'aux', 'qui', 'que', 'ce', 'ces', 'sont', 'c', 'est', 'on', 'y']);
@@ -50,7 +51,7 @@ function pickPuzzle() {
 }
 
 export function mount(view, { wallet }) {
-  let alive = true, state = 'intro', cur = null, shown = 1, guesses = [], credited = false;
+  let alive = true, state = 'intro', cur = null, shown = 1, guesses = [], credited = false, guard = null;
   view.innerHTML = `<div class="fg-wrap pp-wrap">
     <div class="game-head"><h1>Pin<span>point</span></h1><div class="actions"><span class="gc-tag">Gratuit · +${PP_REWARDS[4]} à +${PP_REWARDS[0]} ${CUR}</span></div></div>
     <div id="fg-stage"></div></div>`;
@@ -63,11 +64,13 @@ export function mount(view, { wallet }) {
       <p>Un indice est dévoilé, devine la <b>catégorie</b> qui relie les mots. Raté ? Un nouvel indice apparaît (5 au maximum).<br>
       Gain selon le nombre d'indices : ${PP_REWARDS.map((r, i) => `<b>${i + 1}</b> → +${r}`).join(' · ')} ${CUR}.</p>
       <p class="muted pp-count">${PINPOINT.length} catégories à découvrir. Pas besoin de la formulation exacte : « planètes » suffit pour « Planètes du système solaire ».</p>
-      <button class="btn btn-gold btn-lg" id="fg-start">Jouer</button></div>`;
+      ${lockBannerHTML(wallet, 'pinpoint')}
+      <button class="btn btn-gold btn-lg" id="fg-start" ${lockedUntil(wallet, 'pinpoint') ? 'disabled' : ''}>Jouer</button></div>`;
     $('#fg-start', stage).onclick = start;
   }
 
   function start() {
+    if (lockedUntil(wallet, 'pinpoint')) { intro(); return; }
     const pick = pickPuzzle();
     cur = pick.p; shown = 1; guesses = []; credited = false; state = 'play';
     stage.innerHTML = `<div class="pp-board">
@@ -79,6 +82,7 @@ export function mount(view, { wallet }) {
     $('#pp-form', stage).onsubmit = (e) => { e.preventDefault(); guess($('#pp-in', stage).value); };
     $('#pp-skip', stage).onclick = () => guess('');
     render();
+    guard && guard.destroy(); guard = createGuard(stage);
     $('#pp-in', stage).focus();
     sfx.click();
   }
@@ -111,9 +115,21 @@ export function mount(view, { wallet }) {
   function finish(won) {
     state = 'done';
     const amount = won ? PP_REWARDS[shown - 1] : 0;
+    // fair-play : lire l'indice et taper la catégorie prend au moins quelques secondes
+    const v = judge(guard, won ? { minActions: 3, cheatSec: 1.2, fastSec: 2.5 } : {}); guard = null;
+    if (won && v.flag !== 'ok') {
+      credited = true;
+      let pn = null;
+      if (v.flag === 'cheat') pn = punish(wallet, 'pinpoint', null, v, amount); else tooFast(wallet, 'pinpoint', null, v);
+      render();
+      $('#pp-form', stage).remove();
+      stage.insertAdjacentHTML('beforeend', refusedHTML(v, pn));
+      $('[data-again]', stage).onclick = v.flag === 'cheat' ? intro : start;
+      return;
+    }
     if (!credited) {
       credited = true;
-      wallet.freeReward('pinpoint', amount, won ? { Won: 1, ['Clue' + shown]: 1 } : { Lost: 1 }, null);
+      wallet.freeReward('pinpoint', amount, won ? { Won: 1, ['Clue' + shown]: 1 } : { Lost: 1 }, { log: { sec: v.sec, actions: v.actions } });
     }
     render();
     if (won) { sfx.win(shown <= 2); coinRain(shown === 1 ? 30 : 12); } else sfx.lose();
@@ -127,5 +143,5 @@ export function mount(view, { wallet }) {
   const onKey = (e) => { if (state === 'intro' && e.key === 'Enter' && !e.target.closest('button,input')) start(); };
   document.addEventListener('keydown', onKey);
   intro();
-  return () => { alive = false; document.removeEventListener('keydown', onKey); };
+  return () => { alive = false; guard && guard.destroy(); document.removeEventListener('keydown', onKey); };
 }

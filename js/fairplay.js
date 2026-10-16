@@ -35,14 +35,14 @@ export function createGuard(stage) {
   const onAct = (e) => {
     if (e.type === 'keydown' && (e.repeat || ['Shift', 'Control', 'Alt', 'Meta', 'Tab'].includes(e.key))) return;
     if (!e.isTrusted) { untrusted++; return; }
-    if (e.type === 'click') return; // un vrai clic est déjà compté par son pointerdown
+    if (e.type === 'click' || e.type === 'submit') return; // déjà compté par son pointerdown / sa touche Entrée
     if (e.type === 'input') { trusted++; return; }
     trusted++;
     const now = performance.now();
     if (last) { gaps++; if (now - last < 60) fast++; }
     last = now;
   };
-  const types = ['pointerdown', 'click', 'keydown', 'input'];
+  const types = ['pointerdown', 'click', 'submit', 'keydown', 'input'];
   types.forEach((t) => stage.addEventListener(t, onAct, true));
   // les jeux au clavier écoutent le document : on compte aussi ces touches (une seule fois)
   const onDocKey = (e) => { if (!stage.contains(e.target)) onAct(e); };
@@ -76,12 +76,12 @@ export function punish(wallet, game, lv, v, reward) {
   const mins = LOCKS[Math.min(n - 1, LOCKS.length - 1)];
   f.lock[game] = Date.now() + mins * 60000;
   const fine = wallet.penalty(game, Math.round(reward * FINE_MULT));
-  wallet.emit({ type: 'fairplay', game, lv, flag: 'cheat', reason: v.reason, sec: v.sec, actions: v.actions, untrusted: v.untrusted, fastShare: v.fastShare, fine, strikes: n, lockMin: mins, amount: 0 });
+  wallet.emit({ type: 'fairplay', game, lv, flag: 'cheat', reason: v.reason, sec: v.sec, actions: v.actions, untrusted: v.untrusted, fastShare: v.fastShare, medianMs: v.medianMs, fine, strikes: n, lockMin: mins, amount: 0 });
   return { fine, mins, strikes: n };
 }
 // Partie trop rapide (sans preuve de triche) : pas de récompense, simple entrée au journal
 export function tooFast(wallet, game, lv, v) {
-  wallet.emit({ type: 'fairplay', game, lv, flag: 'fast', reason: v.reason, sec: v.sec, actions: v.actions, untrusted: v.untrusted, fastShare: v.fastShare, amount: 0 });
+  wallet.emit({ type: 'fairplay', game, lv, flag: 'fast', reason: v.reason, sec: v.sec, actions: v.actions, untrusted: v.untrusted, fastShare: v.fastShare, medianMs: v.medianMs, amount: 0 });
 }
 
 const dureeTxt = (m) => (m >= 1440 ? `${Math.round(m / 1440)} jour${m >= 2880 ? 's' : ''}` : `${Math.round(m / 60)} h`);
@@ -93,4 +93,19 @@ export function refusedHTML(v, p, extraBtn = '') {
   }
   return endCardHTML({ win: false, title: 'Trop rapide pour être vrai', extraBtn,
     text: `${v.reason[0].toUpperCase() + v.reason.slice(1)}.<br>Aucune récompense pour cette partie, et elle est signalée dans le journal.` });
+}
+
+// Quiz : verdict à partir des temps de réponse (ms entre l'affichage de la question et la réponse).
+// Lire la question, reconnaître la réponse et cliquer prend bien plus de 0,5 s à un humain, même très entraîné.
+export function judgeReactions(guard, rts, { minAnswers = 4, cheatMs = 350, fastMs = 550 } = {}) {
+  const r = guard ? guard.result() : { sec: 0, actions: 0, untrusted: 0, fastShare: 0 };
+  guard && guard.destroy();
+  const sorted = [...rts].sort((a, b) => a - b), med = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
+  const instant = rts.filter((t) => t < 250).length;
+  let flag = 'ok', reason = '';
+  if (r.untrusted >= 3) { flag = 'cheat'; reason = `${r.untrusted} actions simulées par un script`; }
+  else if (rts.length >= minAnswers && med < cheatMs) { flag = 'cheat'; reason = `réponses données en ${Math.round(med)} ms en moyenne, plus vite que le temps de lire la question`; }
+  else if (instant >= 3) { flag = 'cheat'; reason = `${instant} réponses en moins de 250 ms`; }
+  else if (rts.length >= minAnswers && med < fastMs) { flag = 'fast'; reason = `réponses données en ${Math.round(med)} ms en moyenne, c'est trop rapide`; }
+  return { flag, reason, sec: Math.round(r.sec * 10) / 10, actions: r.actions, untrusted: r.untrusted, fastShare: Math.round(r.fastShare * 100) / 100, medianMs: Math.round(med) };
 }

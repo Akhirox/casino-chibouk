@@ -6,6 +6,7 @@ import { pickDistinct } from './mcq.js';
 import { monkeySVG } from '../art.js';
 import { $, esc, money, fmt, coinRain, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
+import { createGuard, judgeReactions, punish, tooFast, refusedHTML, lockBannerHTML, lockedUntil } from '../fairplay.js';
 
 export const MAX_STREAK = 15;
 const PER = CONFIG.QUIZ_PER_CORRECT, BONUS = CONFIG.QUIZ_PERFECT_BONUS;
@@ -39,17 +40,21 @@ export function mount(view, { wallet }) {
       <h2>Quel film a coûté le plus cher ?</h2>
       <p>Le budget du film de gauche est affiché. Devine si celui de droite a eu un budget <b>plus gros</b> ou <b>plus petit</b>.<br>
       Enchaîne jusqu'à ${MAX_STREAK} bonnes réponses : <b>+${PER} ${CUR}</b> chacune, <b>+${BONUS} ${CUR}</b> si tu vas au bout. Une erreur et la série s'arrête.</p>
-      <button class="btn btn-gold btn-lg" id="hi-start">Commencer</button></div>`;
+      ${lockBannerHTML(wallet, 'higher')}
+      <button class="btn btn-gold btn-lg" id="hi-start" ${lockedUntil(wallet, 'higher') ? 'disabled' : ''}>Commencer</button></div>`;
     $('#hi-start', stage).onclick = start;
   }
 
+  let guard = null, rts = [], shownAt = 0;
   async function start() {
+    if (lockedUntil(wallet, 'higher')) { intro(); return; }
     if (!pool) {
       stage.innerHTML = `<div class="qz-card">${monkeySVG({ cls: 'bounce' })}<p>Chargement des films…</p></div>`;
       try { pool = (await loadMovies()).filter((m) => m.b >= 1000000); } catch (e) { console.error(e); if (alive) intro(); return; }
       if (!alive) return;
     }
     streak = 0; used = new Set(); credited = false;
+    guard && guard.destroy(); guard = createGuard(stage); rts = [];
     left = nextMovie(pool, null, used); used.add(left);
     right = nextMovie(pool, left, used); used.add(right);
     sfx.click();
@@ -61,11 +66,13 @@ export function mount(view, { wallet }) {
     stage.innerHTML = `<div class="hi-score">Série : <b>${streak}</b> / ${MAX_STREAK}</div>
       <div class="hi-duel">${cardHTML(left, 'l', true)}<div class="hi-vs">VS</div>${cardHTML(right, 'r', false)}</div>`;
     stage.querySelectorAll('[data-a]').forEach((b) => (b.onclick = () => answer(b.dataset.a)));
+    shownAt = performance.now();
   }
 
   function answer(a) {
     if (state !== 'ask') return;
     state = 'feedback';
+    rts.push(performance.now() - shownAt);
     const ok = a === 'up' ? right.b >= left.b : right.b <= left.b;
     const r = stage.querySelector('.hi-card.r .hi-info');
     r.innerHTML = `<b>${esc(right.t)}</b><small>${right.y} · ${esc(right.d[0])}</small><div class="hi-budget count">${budgetFmt(right.b)}</div><small>de budget</small>`;
@@ -81,19 +88,24 @@ export function mount(view, { wallet }) {
   }
 
   function reward() {
-    if (credited) return 0;
+    if (credited) return { amount: 0 };
     credited = true;
     const perfect = streak >= MAX_STREAK;
     const amount = streak * PER + (perfect ? BONUS : 0);
+    const v = judgeReactions(guard, rts); guard = null;
+    if (v.flag === 'cheat') return { refused: v, p: punish(wallet, 'higher', null, v, Math.max(amount, PER * 5)) };
+    if (v.flag === 'fast') { tooFast(wallet, 'higher', null, v); return { refused: v }; }
     const s = wallet.stats;
     s.higherBest = Math.max(s.higherBest || 0, streak);
-    wallet.freeReward('higher', amount, { Correct: streak, Perfect: perfect ? 1 : 0 });
-    return amount;
+    wallet.freeReward('higher', amount, { Correct: streak, Perfect: perfect ? 1 : 0 }, { log: { sec: v.sec, actions: v.actions, ms: v.medianMs } });
+    return { amount };
   }
 
   function finish() {
     state = 'done';
-    const amount = reward();
+    const res = reward();
+    if (res.refused) { stage.innerHTML = refusedHTML(res.refused, res.p); $('[data-again]', stage).onclick = res.refused.flag === 'cheat' ? intro : start; return; }
+    const amount = res.amount;
     const perfect = streak >= MAX_STREAK;
     stage.innerHTML = `<div class="qz-card">${monkeySVG(perfect ? { crown: true, fur: '#c98a00', face: '#ffe6a6', ear: '#ffd36b' } : { wink: streak >= 5 })}
       <h2>${perfect ? `${MAX_STREAK}/${MAX_STREAK}, sans-faute !` : `Série de ${streak}`}</h2>
@@ -112,6 +124,6 @@ export function mount(view, { wallet }) {
   intro();
   return () => {
     alive = false; document.removeEventListener('keydown', onKey);
-    if ((state === 'ask' || state === 'feedback') && streak > 0 && !credited) reward();
+    if ((state === 'ask' || state === 'feedback') && streak >= 3 && !credited) reward(); else if (guard) guard.destroy();
   };
 }

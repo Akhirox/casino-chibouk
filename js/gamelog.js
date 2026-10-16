@@ -18,12 +18,12 @@ export function initGameLog(wallet, backend) {
       const log = (e.meta && e.meta.log) || {};
       const extra = e.extra || {};
       send({ ...base(), game: e.game, flag: 'ok', amount: Math.round(e.amount || 0),
-        lv: log.lv ?? lvFromExtra(extra), sec: num(log.sec), actions: num(log.actions), fastShare: num(log.fastShare),
+        lv: log.lv ?? lvFromExtra(extra), sec: num(log.sec), actions: num(log.actions), fastShare: num(log.fastShare), ms: num(log.ms),
         info: JSON.stringify({ ...extra, ...(log.moves != null ? { moves: log.moves } : {}), ...(log.hints != null ? { hints: log.hints } : {}) }).slice(0, 300) });
     } else if (e.type === 'breaker') {
       send({ ...base(), game: 'breaker', flag: 'ok', amount: Math.round(e.amount || 0) });
     } else if (e.type === 'fairplay') {
-      send({ ...base(), game: e.game, flag: e.flag, amount: 0, lv: e.lv ?? null, sec: num(e.sec), actions: num(e.actions), fastShare: num(e.fastShare),
+      send({ ...base(), game: e.game, flag: e.flag, amount: 0, lv: e.lv ?? null, sec: num(e.sec), actions: num(e.actions), fastShare: num(e.fastShare), ms: num(e.medianMs),
         untrusted: e.untrusted || null, reason: String(e.reason || '').slice(0, 200), fine: e.fine || null, strikes: e.strikes || null, lockMin: e.lockMin || null });
     }
   });

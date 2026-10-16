@@ -11,6 +11,14 @@ export const FLAGS = [
 ];
 const ALL = FLAGS.map((f) => f[0]);
 export const flagUrl = (code) => `data/flags/${code}.svg`;
+// Dans la page, le drapeau est affiché depuis une copie en mémoire (adresse « blob: ») : le code du pays
+// n'apparaît plus dans la page (avant, data/flags/fr.svg donnait la réponse à qui lisait le code de la page).
+const blobs = new Map();
+const flagBlob = (code) => {
+  if (!blobs.has(code)) blobs.set(code, fetch(flagUrl(code)).then((r) => r.blob()).then((b) => URL.createObjectURL(b)).catch(() => flagUrl(code)));
+  return blobs.get(code);
+};
+const inPage = typeof window !== 'undefined' && typeof fetch === 'function' && typeof URL !== 'undefined' && !!URL.createObjectURL;
 
 export function buildFlags(list = FLAGS, n = 10, mode = 'easy') {
   const used = new Set();
@@ -21,19 +29,17 @@ export function buildFlags(list = FLAGS, n = 10, mode = 'easy') {
     if (!pool.length) pool = list.filter((c) => !used.has(c[0]));
     const [country, code, region] = pickDistinct(pool, 1)[0];
     used.add(country);
-    const img = flagUrl(code);
+    const img = inPage ? '' : flagUrl(code), imgP = inPage ? flagBlob(code) : null;
     if (mode === 'expert') {
-      qs.push({ type: 'text', label: 'À quel pays appartient ce drapeau ?', img, placeholder: 'Écris le pays…', accept: [country, ...(ALIASES[country] || [])], reject: ALL.filter((x) => x !== country) });
+      qs.push({ type: 'text', label: 'À quel pays appartient ce drapeau ?', img, imgP, placeholder: 'Écris le pays…', accept: [country, ...(ALIASES[country] || [])], reject: ALL.filter((x) => x !== country) });
       continue;
     }
     // leurres de la même région : les drapeaux se ressemblent plus, c'est plus drôle
     const near = list.filter((c) => c[0] !== country && c[2] === region);
     const far = list.filter((c) => c[0] !== country && c[2] !== region);
     const others = [...pickDistinct(near, 3), ...pickDistinct(far, 3)].slice(0, 3);
-    qs.push({ ...makeQ({ label: 'À quel pays appartient ce drapeau ?', big: '', right: country, wrong: others.map((c) => c[0]) }), img });
+    qs.push({ ...makeQ({ label: 'À quel pays appartient ce drapeau ?', big: '', right: country, wrong: others.map((c) => c[0]) }), img, imgP });
   }
-  // préchargement des images pour éviter l'attente entre deux questions
-  if (typeof Image !== 'undefined') qs.forEach((q) => { const im = new Image(); im.src = q.img; });
   return qs;
 }
 
