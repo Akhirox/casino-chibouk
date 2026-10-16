@@ -1,21 +1,24 @@
-// Page admin « Journal des mini-jeux » (#/admin) : qui a joué à quoi, en combien de temps, et les parties refusées pour triche.
+// Page admin (#/admin) : onglet « Joueurs » (soldes inexplicables, correction, suspension) et journal des mini-jeux.
 // Visible seulement par les comptes listés dans la collection Firestore « admins » (voir README).
-import { $, $$, fmt, esc, CUR } from './ui.js';
+import { $, $$, fmt, esc, toast, modal, CUR } from './ui.js';
+import { CONFIG } from './config.js';
 
 const NAMES = { quiz: 'Calcul mental', capitals: 'Capitales', flags: 'Drapeaux', movies: 'Quiz ciné', higher: 'Plus ou moins', motus: 'Mot du jour',
-  queens: 'Queens', tango: 'Tango', pinpoint: 'Pinpoint', sudoku: 'Sudoku', demineur: 'Démineur', snake: 'Snake', memory: 'Memory', crossword: 'Mots croisés', breaker: 'Casse-briques' };
+  queens: 'Queens', tango: 'Tango', pinpoint: 'Pinpoint', sudoku: 'Sudoku', demineur: 'Démineur', snake: 'Snake', memory: 'Memory', crossword: 'Mots croisés', breaker: 'Casse-briques', _save: 'Sauvegarde locale', _admin: 'Action admin' };
 const LV = ['facile', 'moyen', 'difficile'];
 const FLAG = { ok: ['OK', 'ok'], fast: ['Trop rapide', 'fast'], cheat: ['Triche', 'cheat'] };
 const when = (t) => new Date(t).toLocaleString('fr-FR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit', second: '2-digit' });
 const dur = (s) => (s == null ? '—' : s < 60 ? `${String(s).replace('.', ',')} s` : `${Math.floor(s / 60)} min ${String(Math.round(s % 60)).padStart(2, '0')}`);
 
 export function mount(view, { wallet, backend, isAdmin }) {
-  let alive = true, logs = [], done = false, loading = false;
+  let alive = true, logs = [], done = false, loading = false, tab = 'players', players = null;
   const f = { who: '', game: '', flag: '', since: 1 };
   view.innerHTML = `<div class="adm-wrap">
-    <div class="game-head"><h1>Journal des <span>mini-jeux</span></h1><div class="actions"><button class="btn btn-ghost btn-sm" id="adm-reload">Actualiser</button></div></div>
+    <div class="game-head"><h1>Espace <span>admin</span></h1><div class="actions"><span class="seg adm-tabs"><button data-t="players" class="on">Joueurs</button><button data-t="logs">Journal des mini-jeux</button></span><button class="btn btn-ghost btn-sm" id="adm-reload">Actualiser</button></div></div>
     <div id="adm-body"><p class="muted">Chargement…</p></div></div>`;
   const body = $('#adm-body', view);
+  $$('.adm-tabs button', view).forEach((b) => (b.onclick = () => { tab = b.dataset.t; $$('.adm-tabs button', view).forEach((x) => x.classList.toggle('on', x === b)); show(); }));
+  const show = () => (tab === 'players' ? loadPlayers() : logs.length ? render() : load(true));
 
   isAdmin().then((ok) => {
     if (!alive) return;
@@ -23,9 +26,78 @@ export function mount(view, { wallet, backend, isAdmin }) {
       body.innerHTML = `<div class="adm-deny"><h2>Accès réservé</h2><p class="muted">Cette page est réservée aux admins du casino. Pour devenir admin : console Firebase → Firestore → collection <code>admins</code> → document dont l'identifiant est ton identifiant de compte (<code>${esc(wallet.uid)}</code>, visible aussi dans Mon profil). Voir le README.</p></div>`;
       return;
     }
-    load(true);
+    show();
   });
-  $('#adm-reload', view).onclick = () => load(true);
+  $('#adm-reload', view).onclick = () => (tab === 'players' ? loadPlayers(true) : load(true));
+
+  /* ---------------- Joueurs : solde explicable, correction, suspension ---------------- */
+  // Tout Brundle gagné passe par une statistique : gains des jeux (totalWon) et compteurs « …Total » (roue, quêtes,
+  // succès, mini-jeux, ferme, rakeback, VIP, jackpot…), plus les transferts reçus. Fortune maximale explicable =
+  // départ + tout ce qui est entré − tout ce qui a été misé. Au-dessus, le solde a été modifié à la main.
+  function audit(p) {
+    const st = p.stats || {};
+    const inflow = (st.totalWon || 0) + Object.entries(st).reduce((a, [k, v]) => a + (/Total$/.test(k) && k !== 'penaltyTotal' && typeof v === 'number' ? v : 0), 0) + (st.transfersReceived || 0);
+    const outflow = Object.entries(st).reduce((a, [k, v]) => a + (/Spent$/.test(k) && typeof v === 'number' ? v : 0), 0) + (st.transfersSent || 0) + (st.penaltyTotal || 0);
+    const max = CONFIG.START_BALANCE + inflow - (st.totalWagered || 0);
+    const fortune = (p.balance || 0) + Math.max(0, p.vault || 0);
+    const expected = max - outflow;
+    const gap = fortune - max;
+    const sus = gap > Math.max(20000, Math.abs(max) * 0.1);
+    return { inflow, max, expected, fortune, gap, sus };
+  }
+  async function loadPlayers(force) {
+    if (!players || force) {
+      body.innerHTML = '<p class="muted">Chargement des joueurs…</p>';
+      try { players = await backend.listPlayers(500); } catch (e) { body.innerHTML = `<p class="muted">${esc(e.message || e)}</p>`; return; }
+    }
+    if (!alive || tab !== 'players') return;
+    const rows = players.map((p) => ({ p, a: audit(p) })).sort((x, y) => (y.p.banned ? 0 : y.a.sus) - (x.p.banned ? 0 : x.a.sus) || y.a.gap - x.a.gap);
+    const nSus = rows.filter((r) => r.a.sus && !r.p.banned).length;
+    body.innerHTML = `
+      <div class="adm-kpis"><div><span>Joueurs</span><b>${rows.length}</b></div><div class="${nSus ? 'bad' : ''}"><span>Soldes inexplicables</span><b>${nSus}</b></div><div><span>Suspendus</span><b>${rows.filter((r) => r.p.banned).length}</b></div></div>
+      <p class="muted adm-help">« Max explicable » = 1 000 de départ + tout ce que le joueur a gagné (jeux, bonus, mini-jeux, ferme, transferts reçus) − tout ce qu'il a misé. Une fortune au-dessus ne peut venir que d'une modification à la main.</p>
+      <div class="tbl-scroll"><table class="tbl adm-tbl"><thead><tr><th>Joueur</th><th class="r">Solde</th><th class="r">Coffre</th><th class="r">Misé</th><th class="r">Gagné aux jeux</th><th class="r">Max explicable</th><th class="r">Écart</th><th>Statut</th><th></th></tr></thead><tbody>
+      ${rows.map(({ p, a }) => `<tr class="${p.banned ? 'banned' : a.sus ? 'cheat' : ''}"><td><b>${esc(p.pseudo)}</b>${p.adminNote ? `<small class="adm-note">${esc(p.adminNote)}</small>` : ''}</td><td class="r">${fmt(p.balance || 0)}</td><td class="r">${fmt(p.vault || 0)}</td>
+        <td class="r">${fmt((p.stats && p.stats.totalWagered) || 0)}</td><td class="r">${fmt((p.stats && p.stats.totalWon) || 0)}</td><td class="r">${fmt(Math.max(0, Math.round(a.max)))}</td>
+        <td class="r ${a.gap > 0 ? 'neg' : ''}">${a.gap > 0 ? '+' + fmt(Math.round(a.gap)) : '—'}</td>
+        <td>${p.banned ? '<span class="adm-flag cheat">Suspendu</span>' : a.sus ? '<span class="adm-flag cheat">Solde inexplicable</span>' : '<span class="adm-flag ok">OK</span>'}</td>
+        <td class="adm-acts"><button class="btn btn-ghost btn-sm" data-fix="${esc(p.uid)}">Corriger</button><button class="btn btn-ghost btn-sm" data-ban="${esc(p.uid)}">${p.banned ? 'Réactiver' : 'Suspendre'}</button></td></tr>`).join('')}
+      </tbody></table></div>`;
+    $$('[data-fix]', body).forEach((b) => (b.onclick = () => fix(rows.find((r) => r.p.uid === b.dataset.fix))));
+    $$('[data-ban]', body).forEach((b) => (b.onclick = () => ban(rows.find((r) => r.p.uid === b.dataset.ban).p)));
+  }
+  async function fix({ p, a }) {
+    let box = null;
+    const suggest = Math.max(0, Math.round(Math.min(p.balance || 0, a.expected - Math.max(0, p.vault || 0))));
+    const res = await modal({ title: `Corriger le compte de ${esc(p.pseudo)}`, html: `
+      <p class="muted">Solde actuel : <b>${fmt(p.balance || 0)}</b> · coffre : <b>${fmt(p.vault || 0)}</b> · max explicable : <b>${fmt(Math.max(0, Math.round(a.max)))}</b></p>
+      <label class="adm-field">Nouveau solde<input id="adm-bal" class="bet-input" type="number" min="0" step="1" value="${suggest}"></label>
+      <label class="adm-field">Nouveau coffre<input id="adm-vault" class="bet-input" type="number" min="0" step="1" value="${Math.max(0, p.vault || 0)}"></label>
+      <label class="adm-field">Note (visible ici seulement)<input id="adm-note" class="bet-input" type="text" maxlength="120" value="${esc(p.adminNote || '')}" placeholder="ex : solde modifié à la main, remis à zéro"></label>
+      <p class="muted">Le joueur est rechargé automatiquement à sa prochaine sauvegarde, avec les nouvelles valeurs.</p>`,
+      buttons: [{ label: 'Annuler', value: false }, { label: 'Enregistrer', value: 'ok', primary: true }],
+      onOpen: (m) => { box = m; m.querySelector('#adm-bal').focus(); } });
+    if (res !== 'ok' || !box) return;
+    const val = (id) => box.querySelector(id).value;
+    await apply(p, { balance: Math.max(0, Math.floor(+val('#adm-bal') || 0)), vault: Math.max(0, Math.floor(+val('#adm-vault') || 0)), adminNote: String(val('#adm-note') || '').slice(0, 120) }, `Compte de ${p.pseudo} corrigé`);
+  }
+  async function ban(p) {
+    if (p.banned) { await apply(p, { banned: false, banReason: '' }, `${p.pseudo} est réactivé`); return; }
+    let box = null;
+    const res = await modal({ title: `Suspendre ${esc(p.pseudo)} ?`, html: `<p class="muted">Le joueur ne pourra plus jouer ni sauvegarder. Tu pourras le réactiver ici.</p>
+      <label class="adm-field">Raison (affichée au joueur)<input id="adm-reason" class="bet-input" type="text" maxlength="120" placeholder="ex : solde modifié à la main"></label>`,
+      buttons: [{ label: 'Annuler', value: false }, { label: 'Suspendre', value: 'ok', primary: true }], onOpen: (m) => { box = m; } });
+    if (res !== 'ok' || !box) return;
+    await apply(p, { banned: true, banReason: String(box.querySelector('#adm-reason').value || '').slice(0, 120) }, `${p.pseudo} est suspendu`);
+  }
+  async function apply(p, data, msg) {
+    try {
+      await backend.adminUpdateUser(p.uid, data, p.adminRev || 0);
+      backend.addLog({ uid: wallet.uid, pseudo: wallet.pseudo, game: '_admin', flag: 'ok', amount: 0, at: Date.now(), reason: `${msg} : ${JSON.stringify(data).slice(0, 150)}`, info: p.uid }).catch(() => {});
+      toast(msg, 'win');
+      await loadPlayers(true);
+    } catch (e) { toast('Modification refusée : ' + (e.code || e.message || e) + '. Règles Firestore publiées ?', 'error'); }
+  }
 
   async function load(reset) {
     if (loading) return;

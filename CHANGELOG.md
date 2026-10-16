@@ -2,6 +2,19 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V21 — Anti-triche sur les soldes (17 octobre 2026)
+
+### Sécurité
+
+- La sauvegarde de secours gardée dans le navigateur est maintenant signée : une copie modifiée à la main (solde gonflé…) est ignorée au chargement et signalée aux admins.
+- Un compte suspendu par un admin ne peut plus rien enregistrer. Il voit un écran « Compte suspendu » et disparaît des classements.
+- Si un admin corrige un compte pendant que le joueur est connecté, la sauvegarde suivante du joueur est refusée et sa page se recharge avec les bonnes valeurs.
+
+### Pour l'admin
+
+- Nouvel onglet Joueurs dans l'espace admin : solde, coffre, misé, gagné, et la fortune maximale qu'on peut expliquer par le jeu. Les soldes au-dessus sont signalés.
+- Boutons Corriger (solde, coffre, note) et Suspendre / Réactiver. Chaque action est notée dans le journal.
+
 ## V20 — Fair-play des mini-jeux (16 octobre 2026)
 
 ### Fair-play

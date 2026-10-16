@@ -2192,3 +2192,10 @@ td.vol .bar-track { height: 8px; }
 .adm-best { font-size: .76rem !important; color: var(--muted); }
 .adm-deny { padding: 30px; border-radius: 16px; background: var(--panel); border: 1px solid var(--line); text-align: center; }
 .adm-end { text-align: center; margin: 14px 0; }
+.adm-tabs { margin-right: 8px; }
+.adm-help { font-size: .8rem; margin: 12px 0; }
+.adm-tbl tr.banned td { opacity: .55; }
+.adm-acts { white-space: nowrap; }
+.adm-acts .btn { margin-left: 4px; }
+.adm-note { display: block; font-size: .72rem; color: var(--muted); }
+.adm-field { display: grid; gap: 4px; margin: 10px 0; font-size: .8rem; font-weight: 700; color: var(--muted); }

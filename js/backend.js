@@ -211,6 +211,10 @@ async function createFirebaseBackend() {
       const snap = await F.getDocs(F.query(...parts));
       return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     },
+    // Correction d'un compte par un admin (règles : admins seulement, champs limités, adminRev + 1)
+    async adminUpdateUser(uid, data, rev) {
+      await F.updateDoc(F.doc(db, 'users', uid), { ...data, adminRev: (rev || 0) + 1, adminAt: Date.now() });
+    },
     async isAdmin(uid) {
       try { return (await F.getDoc(F.doc(db, 'admins', uid))).exists(); } catch { return false; }
     },
@@ -266,7 +270,13 @@ function createDemoBackend() {
     },
     async saveProfile(uid, data) {
       const p = read(kProfile(uid), {});
+      // mêmes refus que les règles Firestore : compte suspendu, ou modifié par un admin depuis le chargement
+      if (p.banned || (data.adminRev ?? p.adminRev ?? 0) !== (p.adminRev || 0)) { const e = new Error('permission-denied'); e.code = 'permission-denied'; throw e; }
       write(kProfile(uid), { ...p, ...data });
+    },
+    async adminUpdateUser(uid, data, rev) {
+      const p = read(kProfile(uid), null); if (!p) throw new Error('joueur introuvable');
+      write(kProfile(uid), { ...p, ...data, adminRev: (rev || 0) + 1, adminAt: Date.now() });
     },
     async leaderboard(n) {
       const users = Object.values(read(K_USERS, {}));

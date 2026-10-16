@@ -179,7 +179,23 @@ async function boot() {
     try {
       const w = await Wallet.open(backend, { ...user, pseudo: hint });
       if (token !== authToken) { w.stop(); return; }
+      if (w.p.banned) { w.disabled = true; w.stop(); renderBanned(w.p); return; }
       wallet = w;
+      // sauvegarde refusée par Firebase : compte suspendu ou corrigé par un admin → on recharge le profil
+      w.onRejected = async () => {
+        if (w.rejecting) return; w.rejecting = true;
+        try {
+          const fresh = await backend.loadProfile(w.uid, w.pseudo);
+          if (fresh.banned || (fresh.adminRev || 0) !== (w.p.adminRev || 0)) {
+            w.disabled = true;
+            try { localStorage.removeItem(w.backupKey); } catch {}
+            await modal({ title: fresh.banned ? 'Compte suspendu' : 'Compte mis à jour par un admin', html: `<p>${fresh.banned ? 'Ton compte a été suspendu par un admin du casino.' : 'Un admin a corrigé ton compte. La page va se recharger avec les bonnes valeurs.'}</p>`, buttons: [{ label: 'OK', value: true, primary: true }], dismissable: false });
+            location.reload();
+          }
+        } catch (e) { console.warn(e); } finally { w.rejecting = false; }
+      };
+      if (w.tampered) backend.addLog({ uid: w.uid, pseudo: w.pseudo, game: '_save', flag: 'cheat', amount: 0, at: Date.now(), v: News.VERSION,
+        reason: `sauvegarde locale modifiée à la main, ignorée (solde dedans : ${w.tampered.balance ?? '?'}, solde réel : ${w.tampered.base ?? '?'})` }).catch(() => {});
       renderShell();
       route();
       // nouvelle version publiée pendant qu'on joue : bandeau, puis rechargement au prochain changement de page
@@ -266,6 +282,11 @@ function renderAuth() {
   };
 }
 
+function renderBanned(p) {
+  app.innerHTML = `<div class="fatal">${monkeySVG({})}<h2>Compte suspendu</h2><p>Le compte <b>${esc(p.pseudo)}</b> a été suspendu par un admin du casino.</p>${p.banReason ? `<p class="muted">Raison : ${esc(p.banReason)}</p>` : ''}<button class="btn btn-ghost" id="out">Se déconnecter</button></div>`;
+  $('#out').onclick = () => backend.signOut();
+}
+
 /* ================================ COQUE ================================ */
 const volSliderHTML = () => `<input type="range" class="vol-range" min="0" max="100" step="1" aria-label="Volume du son">`;
 function renderShell() {
@@ -285,7 +306,7 @@ function renderShell() {
         <div class="vol-wrap"><button class="icon-btn mute-btn" title="Son et volume" aria-haspopup="true">${icon(sfx.muted ? 'mute' : 'sound')}</button>
           <div class="vol-pop" role="dialog" aria-label="Volume"><div class="vol-head"><span>Volume</span><b class="vol-pct"></b></div>${volSliderHTML()}<button type="button" class="btn btn-ghost btn-sm wide vol-mute"></button></div></div>
         <div class="user-menu"><button class="user-btn"><span class="ub-av">${Profile.avatarHTML(wallet.p, 'av-xs')}</span><span class="ub-name">${esc(wallet.pseudo)}</span> ▾</button>
-          <div class="user-drop"><a href="#/profile">Mon profil</a><a href="#/shop">Boutique</a><a href="#/stats">Mes stats</a><a href="#/ranking">Classements</a><a href="#/achievements">Mes succès</a><a href="#/news">Nouveautés</a><a href="#/admin" class="admin-menu" hidden>Journal des mini-jeux</a><div class="ud-vol"><span>${icon('sound')}</span>${volSliderHTML()}</div><button class="vault-menu">Coffre-fort</button><button class="send-menu">Envoyer des ${CUR}</button><button class="tip-menu">Un conseil du singe</button><button class="tip-toggle"></button><button class="logout">Se déconnecter</button></div></div>
+          <div class="user-drop"><a href="#/profile">Mon profil</a><a href="#/shop">Boutique</a><a href="#/stats">Mes stats</a><a href="#/ranking">Classements</a><a href="#/achievements">Mes succès</a><a href="#/news">Nouveautés</a><a href="#/admin" class="admin-menu" hidden>Espace admin</a><div class="ud-vol"><span>${icon('sound')}</span>${volSliderHTML()}</div><button class="vault-menu">Coffre-fort</button><button class="send-menu">Envoyer des ${CUR}</button><button class="tip-menu">Un conseil du singe</button><button class="tip-toggle"></button><button class="logout">Se déconnecter</button></div></div>
       </div>
     </header>
     <main id="view"></main>

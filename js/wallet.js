@@ -3,6 +3,14 @@
 import { CONFIG } from './config.js';
 import { lazySave } from './lazysave.js';
 
+// Sauvegarde locale de secours signée : une copie modifiée à la main (solde gonflé dans le localStorage…) est ignorée
+const BK_SALT = 'chibouk/bk/v2/9f3a';
+async function bkSign(uid, json) {
+  try {
+    const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(BK_SALT + '|' + uid + '|' + json));
+    return [...new Uint8Array(buf)].map((b) => b.toString(16).padStart(2, '0')).join('');
+  } catch { return ''; }
+}
 export function parisDate(d = new Date()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: CONFIG.TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
 }
@@ -13,7 +21,7 @@ export function msUntilParisMidnight() {
   return Math.max(0, (86400 - secs) * 1000);
 }
 
-const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'shop', 'day', 'streak', 'week', 'lastWeek', 'rake', 'vipLevel', 'farm', 'vault', 'fair', 'updatedAt', 'pseudo', 'pseudoLower'];
+const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'shop', 'day', 'streak', 'week', 'lastWeek', 'rake', 'vipLevel', 'farm', 'vault', 'fair', 'adminRev', 'updatedAt', 'pseudo', 'pseudoLower'];
 
 // Semaine ISO (lundi → dimanche, heure de Paris), ex : « 2026-W42 »
 export function weekId(d = new Date()) {
@@ -49,10 +57,23 @@ export class Wallet {
     const w = new Wallet(backend, user.uid, profile);
     try {
       const bk = JSON.parse(localStorage.getItem(w.backupKey) || 'null');
-      if (bk && bk.dirty && bk.profile && (bk.profile.updatedAt || 0) > (profile.updatedAt || 0)) {
-        w.p = { ...profile, ...bk.profile };
+      // on ne reprend une sauvegarde locale non envoyée que si elle est intacte (signature), récente (moins de 24 h),
+      // plus récente que la base, et faite avant toute intervention d'un admin sur le compte
+      let saved = null;
+      try { saved = bk && bk.json ? JSON.parse(bk.json) : null; } catch {}
+      const signed = !!(saved && bk.sig && bk.sig === (await bkSign(user.uid, bk.json)));
+      const ok = bk && bk.dirty && signed
+        && (saved.updatedAt || 0) > (profile.updatedAt || 0) && Date.now() - (saved.updatedAt || 0) < 86400000
+        && (saved.adminRev || 0) === (profile.adminRev || 0) && !profile.banned;
+      if (ok) {
+        w.p = { ...profile, ...saved, adminRev: profile.adminRev || 0, banned: profile.banned || false };
         w.dirty = true;
         await w.flush();
+      } else if (bk && bk.dirty) {
+        try { localStorage.removeItem(w.backupKey); } catch {}
+        // sauvegarde modifiée à la main : signature fausse, ou ancien format avec un solde bien plus haut que celui de la base
+        const old = bk.profile || saved;
+        if (bk.json ? !signed : old && (old.balance || 0) > (profile.balance || 0) + 1e6) w.tampered = { balance: old ? old.balance : null, base: profile.balance };
       }
     } catch {}
     w.start();
@@ -120,7 +141,11 @@ export class Wallet {
     if (this.p.balance > (this.p.stats.peakBalance || 0)) this.p.stats.peakBalance = this.p.balance;
     this.dirty = true;
     // sauvegarde locale de secours, regroupée (le mode turbo enchaîne des dizaines de parties par seconde)
-    if (!this._bk) this._bk = lazySave(() => { if (this.dirty) localStorage.setItem(this.backupKey, JSON.stringify({ dirty: true, profile: this.pick() })); }, 400);
+    if (!this._bk) this._bk = lazySave(() => {
+      if (!this.dirty) return;
+      const json = JSON.stringify(this.pick());
+      bkSign(this.uid, json).then((sig) => { if (this.dirty) { try { localStorage.setItem(this.backupKey, JSON.stringify({ dirty: true, json, sig })); } catch {} } });
+    }, 400);
     this._bk.save();
     this.emit(evt);
     this.emitSync('pending');
@@ -332,6 +357,7 @@ export class Wallet {
   pick() {
     const o = {};
     for (const k of SYNC_FIELDS) o[k] = this.p[k] === undefined ? null : this.p[k];
+    o.adminRev = this.p.adminRev || 0; // jamais null : les règles comparent ce compteur à celui de la base
     return JSON.parse(JSON.stringify(o));
   }
 
@@ -355,13 +381,15 @@ export class Wallet {
         await this.backend.saveProfile(this.uid, snapshot);
         if (this.p.updatedAt === stamp) {
           this.dirty = false;
-          try { localStorage.setItem(this.backupKey, JSON.stringify({ dirty: false, profile: snapshot })); } catch {}
+          try { localStorage.setItem(this.backupKey, JSON.stringify({ dirty: false })); } catch {}
         }
         this.lastSync = Date.now();
         this.emitSync(this.dirty ? 'pending' : 'saved');
       } catch (e) {
         console.warn('Synchronisation échouée, nouvel essai plus tard', e);
         this.emitSync('error');
+        // refus des règles : compte suspendu ou modifié par un admin depuis l'ouverture → l'app recharge le profil
+        if (String((e && e.code) || '').includes('permission-denied') && this.onRejected) this.onRejected(e);
       }
     });
   }

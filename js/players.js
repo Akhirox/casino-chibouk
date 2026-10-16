@@ -10,7 +10,7 @@ export async function getPlayers(backend, wallet, force = false) {
   if (cache.pending) return withMe(await cache.pending, wallet);
   cache.pending = (async () => {
     await wallet.flush();
-    const rows = await backend.listPlayers(200);
+    const rows = (await backend.listPlayers(200)).filter((r) => !r.banned); // comptes suspendus : hors classements
     cache = { ts: Date.now(), rows, pending: null };
     return rows;
   })();

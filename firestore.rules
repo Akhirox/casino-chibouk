@@ -5,6 +5,11 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // Admin = compte présent dans la collection « admins » (document dont l'ID est son uid, créé à la main)
+    function isAdmin() {
+      return request.auth != null && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+    }
+
     match /users/{uid} {
       // Tout joueur connecté peut lire les profils (nécessaire pour le classement)
       allow read: if request.auth != null;
@@ -27,7 +32,20 @@ service cloud.firestore {
         && request.resource.data.balance >= 0
         && request.resource.data.balance <= 1000000000000000
         && (!('avatar' in request.resource.data) || (request.resource.data.avatar is string && request.resource.data.avatar.size() <= 40000))
-        && (!('bio' in request.resource.data) || (request.resource.data.bio is string && request.resource.data.bio.size() <= 200));
+        && (!('bio' in request.resource.data) || (request.resource.data.bio is string && request.resource.data.bio.size() <= 200))
+        // compte suspendu : plus aucune écriture ; et le joueur ne peut toucher ni à sa suspension ni aux corrections d'un admin
+        // (adminRev change à chaque correction : un onglet ouvert avant la correction voit sa sauvegarde refusée et se recharge)
+        && resource.data.get('banned', false) != true
+        && request.resource.data.get('banned', false) == resource.data.get('banned', false)
+        && request.resource.data.get('banReason', '') == resource.data.get('banReason', '')
+        && request.resource.data.get('adminRev', 0) == resource.data.get('adminRev', 0)
+        && request.resource.data.get('adminNote', '') == resource.data.get('adminNote', '');
+
+      // Correction par un admin : solde, coffre, suspension et note uniquement, avec adminRev + 1
+      allow update: if isAdmin()
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['balance', 'vault', 'banned', 'banReason', 'adminRev', 'adminAt', 'adminNote'])
+        && request.resource.data.adminRev == resource.data.get('adminRev', 0) + 1
+        && request.resource.data.balance is number && request.resource.data.balance >= 0;
 
       allow delete: if false;
     }
@@ -109,8 +127,7 @@ service cloud.firestore {
 
     // Journal des mini-jeux : chacun écrit ses propres parties, seuls les admins lisent, personne ne modifie
     match /logs/{id} {
-      allow read: if request.auth != null
-        && exists(/databases/$(database)/documents/admins/$(request.auth.uid));
+      allow read: if isAdmin();
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.game is string
