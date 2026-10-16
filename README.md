@@ -20,6 +20,7 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 - **Profils** : photo (ou un des 12 singes) et petite bio, visibles en cliquant sur un pseudo dans les classements. La photo est réduite à quelques Ko et stockée dans Firestore (pas besoin de Firebase Storage, donc ça reste gratuit).
 - **Singe conseiller** : petites astuces contextuelles sur chaque page, désactivables depuis le menu du pseudo.
 - **Paris automatiques** sur les 13 jeux de casino (tickets automatiques pour les jeux à gratter) : nombre de paris libre ou infini, arrêt sur objectif de gain, limite de perte ou solde minimum, et mise qui augmente ou baisse d'un pourcentage après chaque perte (retour à la mise de départ après une victoire ; pas sur le blackjack, la roulette et les tickets, dont la mise ne se résume pas à un seul montant).
+- **Mode turbo** sur les jeux de casino à enchaîner (Plinkoko, Dice, Limbo, Keno, Roue, Mines, Tower, Hi-Lo, tickets, roulette, Crash) : animations raccourcies et auto quasi sans pause, mêmes maths. Les écritures locales sont regroupées (`js/lazysave.js`) pour rester fluide.
 - **Volume** réglable (bouton haut-parleur, ou menu du pseudo sur téléphone), gardé sur l'appareil.
 - **Nouveautés** : journal des versions sur le site (et dans `CHANGELOG.md`).
 - **Classement à côté de chaque jeu** : top 5 des plus gros parieurs (volume misé), du meilleur multiplicateur et du plus gros gain sur ce jeu.
@@ -229,6 +230,7 @@ js/achpage.js              page des succès
 js/profile.js              profils (avatar, bio, fiche joueur)
 js/tips.js                 le singe conseiller (astuces)
 js/changelog.js            journal des versions (page Nouveautés) et numéro de version
+js/lazysave.js             écritures locales regroupées (sauvegarde de secours, historique, suivi)
 js/updater.js              détection d'une nouvelle version publiée et rechargement propre
 js/progress.js             rangs VIP (rakeback, bonus de passage, multiplicateur gratuit), roue du jour, quêtes
 js/dailywheel.js           fenêtre de la roue du jour

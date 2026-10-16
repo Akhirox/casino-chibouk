@@ -2,7 +2,7 @@
 // « Tout gratter » ou les paris automatiques font le reste. 3 montants identiques = gagné.
 import { TICKETS, makeTicket, RTP } from './scratch-math.js';
 import { icon } from '../art.js';
-import { $, $$, fmt, money, toast, modal, coinRain, sleep, autoHTML, bindAuto, CUR } from '../ui.js';
+import { $, $$, fmt, money, toast, modal, coinRain, sleep, autoHTML, bindAuto, CUR, isTurbo } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const fmtM = (m) => '×' + String(m).replace('.', ',');
@@ -131,7 +131,7 @@ export function mount(view, { wallet }) {
     for (const i of order) {
       if (!alive || c.done || cur !== c) return;
       openCell(i, true);
-      if (!document.hidden) await sleep(fast ? 25 : 90);
+      if (!document.hidden && !isTurbo('scratch')) await sleep(fast ? 25 : 90);
     }
   }
 
@@ -163,8 +163,8 @@ export function mount(view, { wallet }) {
     ${tk.prizes.map((p) => `<tr><td>${fmtM(p.m)}</td><td class="r">${fmt(p.m * tk.price)}</td><td class="r">1 sur ${fmt(Math.round(1 / p.p))}</td></tr>`).join('')}</tbody></table></div>`,
     buttons: [{ label: 'Compris', value: true, primary: true }] });
 
-  const auto = bindAuto(view, 'sc-auto', { wallet, game: 'scratch', delay: 500,
-    play: async () => { if (cur && !cur.done) await revealAll(true); if (!buy()) return false; await sleep(document.hidden ? 0 : 150); await revealAll(true); return true; },
+  const auto = bindAuto(view, 'sc-auto', { wallet, game: 'scratch', turbo: true, delay: 500,
+    play: async () => { if (cur && !cur.done) await revealAll(true); if (!buy()) return false; await sleep(document.hidden || isTurbo('scratch') ? 0 : 150); await revealAll(true); return true; },
     onState: (on) => { autoOn = on; if (alive) renderPick(); } });
 
   const onResize = () => { if (cur && !cur.done) sizeCanvas(); };

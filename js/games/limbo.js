@@ -2,7 +2,7 @@
 // Résultat = 0,99 ÷ U (U uniforme) → P(résultat ≥ cible) = 0,99 ÷ cible → RTP 99 %
 import { randInt } from './slots-math.js';
 import { icon } from '../art.js';
-import { $, $$, fmt, money, toast, modal, coinRain, sleep, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR } from '../ui.js';
+import { $, $$, fmt, money, toast, modal, coinRain, sleep, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR, isTurbo } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const MIN_T = 1.01, MAX_T = 1000000;
@@ -82,8 +82,8 @@ export function mount(view, { wallet }) {
     // animation : le multiplicateur grimpe jusqu'au résultat
     res.className = 'lb-result rolling';
     view.querySelector('.lb-stage').classList.remove('win', 'lose');
-    sfx.spinStart();
-    const dur = autoLeft ? 260 : Math.min(1100, 380 + Math.log10(r) * 260);
+    if (!isTurbo('limbo')) sfx.spinStart();
+    const dur = isTurbo('limbo') ? 80 : autoLeft ? 260 : Math.min(1100, 380 + Math.log10(r) * 260);
     const t0 = performance.now();
     while (alive) {
       const k = Math.min(1, (performance.now() - t0) / dur);
@@ -98,7 +98,7 @@ export function mount(view, { wallet }) {
     res.className = 'lb-result ' + (win ? 'win' : 'lose');
     view.querySelector('.lb-stage').classList.add(win ? 'win' : 'lose');
     sub.innerHTML = win ? `Gagné ! ${f2(r)}× ≥ ${f2(t)}× : +${money(payout)}` : `Perdu : ${f2(r)}× n'atteint pas ${f2(t)}×`;
-    if (win) { sfx.coin(); if (t >= 10) { sfx.win(true); coinRain(Math.min(60, 10 + Math.log10(t) * 15)); } } else sfx.lose();
+    if (win) { sfx.coin(); if (t >= 10) { sfx.win(true); coinRain(Math.min(60, 10 + Math.log10(t) * 15)); } } else if (!isTurbo('limbo')) sfx.lose();
     history.unshift({ r, win }); history = history.slice(0, 16);
     $('#lb-hist', view).innerHTML = history.map((x) => `<span class="${x.win ? 'good' : 'bad'}">${f2(x.r)}×</span>`).join('');
     busy = false;
@@ -106,7 +106,7 @@ export function mount(view, { wallet }) {
     return true;
   }
 
-  const auto = bindAuto(view, 'lb-auto', { wallet, game: 'limbo', bet, delay: 200, play: () => play(), onState: (on) => { autoLeft = on ? 1 : 0; if (alive) setDisabled(on); } });
+  const auto = bindAuto(view, 'lb-auto', { wallet, game: 'limbo', turbo: true, bet, delay: 200, play: () => play(), onState: (on) => { autoLeft = on ? 1 : 0; if (alive) setDisabled(on); } });
   $('#lb-play', view).onclick = () => play();
   $('#lb-rules', view).onclick = () => modal({ title: 'Règles du Limbo', html: `
     <ul class="muted"><li>Choisis un <b>multiplicateur cible</b> (de ×1,01 à ×1 000 000).</li>

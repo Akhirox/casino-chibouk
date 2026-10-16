@@ -1,9 +1,22 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '18.2';
+export const VERSION = '19';
 
 export const CHANGELOG = [
+  {
+    v: '19', date: '16 octobre 2026', title: 'Mode turbo',
+    groups: [
+      ['Mode turbo', [
+        'Nouvel interrupteur Turbo dans le panneau des paris automatiques du Plinkoko, du Dice, du Limbo, du Keno, de la Roue du Singe, des Mines, de la Tower, du Hi-Lo, des jeux à gratter, de la roulette et du Crash.',
+        'En turbo, les animations sont très courtes (noix 3 fois plus rapides, dé et Limbo instantanés, tickets grattés d\'un coup, roue et roulette accélérées, fusée du Crash ×4) et l\'auto enchaîne les parties presque sans pause. Le réglage marche aussi quand tu joues à la main, et il est gardé pour chaque jeu.',
+        'Les maths ne changent pas : mêmes chances, mêmes gains. Les sons répétitifs sont coupés en turbo.',
+      ]],
+      ['Performances', [
+        'La sauvegarde locale de secours, l\'historique des parties et le suivi de session s\'écrivent maintenant par paquets au lieu de le faire à chaque partie, pour rester fluide même à plusieurs dizaines de parties par seconde. La sauvegarde en ligne reste groupée toutes les 30 s, comme avant.',
+      ]],
+    ],
+  },
   {
     v: '18.2', date: '16 octobre 2026', title: 'Rangs VIP élevés rééquilibrés',
     groups: [['Équilibrage', [

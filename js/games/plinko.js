@@ -2,7 +2,7 @@
 import { TABLES, RISKS, ROWS, rtp, probability, dropPath } from './plinko-math.js';
 import { randInt } from './slots-math.js';
 import { icon } from '../art.js';
-import { h, $, $$, fmt, money, toast, modal, coinRain, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR } from '../ui.js';
+import { h, $, $$, fmt, money, toast, modal, coinRain, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR, isTurbo } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const W = 800, H = 720;
@@ -96,7 +96,7 @@ export function mount(view, { wallet }) {
   };
   document.addEventListener('keydown', onKey);
 
-  const auto = bindAuto(view, 'plk-auto', { wallet, game: 'plinko', bet, delay: 260,
+  const auto = bindAuto(view, 'plk-auto', { wallet, game: 'plinko', turbo: true, bet, delay: 260,
     play: () => drop(),
     onState: (on) => { autoLeft = on ? 1 : 0; if (alive) updateSide(); } });
 
@@ -141,14 +141,14 @@ export function mount(view, { wallet }) {
     if (quiet) return;
     if (b.rows === rows) binPulse[b.bin] = 1;
     renderHist();
-    if (b.mult >= 10) { sfx.win(true); coinRain(Math.min(50, 10 + b.mult / 10)); toast(`×${fmtMult(b.mult)} ! +${fmt(b.payout)} ${CUR}`, 'win'); }
+    if (b.mult >= (isTurbo('plinko') ? 100 : 10)) { sfx.win(true); coinRain(Math.min(50, 10 + b.mult / 10)); toast(`×${fmtMult(b.mult)} ! +${fmt(b.payout)} ${CUR}`, 'win'); }
     else if (b.mult >= 1) sfx.coin(); else sfx.bounce(0.6);
   }
 
   /* ---------------- boucle ---------------- */
   let lastT = 0;
   function update(dt) {
-    const segDur = 0.12; // secondes par rangée
+    const segDur = isTurbo('plinko') ? 0.035 : 0.12; // secondes par rangée
     for (const b of balls) {
       b.t += dt / segDur;
       while (b.t >= 1 && b.seg < b.pts.length - 1) {
@@ -157,7 +157,7 @@ export function mount(view, { wallet }) {
         if (pt.peg !== undefined) {
           const key = pt.peg + ':' + Math.round(pt.x);
           pegFlash.set(key, 1);
-          if (Math.random() < 0.5) sfx.tick();
+          if (Math.random() < (isTurbo('plinko') ? 0.06 : 0.5)) sfx.tick();
         }
       }
       if (b.seg >= b.pts.length - 1) { land(b); continue; }

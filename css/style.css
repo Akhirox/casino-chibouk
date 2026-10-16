@@ -2154,3 +2154,10 @@ td.vol .bar-track { height: 8px; }
 .upd-txt b { color: var(--gold); }
 .upd-go { flex: none; }
 @media (max-width: 760px) { .upd-bar { bottom: calc(76px + env(safe-area-inset-bottom)); font-size: .8rem; } }
+/* interrupteur Turbo dans les paris automatiques */
+.ab-title-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.auto-box2 .turbo-sw { text-transform: none; letter-spacing: 0; font-size: .8rem; color: var(--text); }
+.auto-box2 .turbo-sw i { background: #0f1813; border-color: var(--line); }
+.side-panel .ab-grid2 { grid-template-columns: 1fr; }
+.side-panel .ab-grid2 > label:first-child { display: grid; grid-template-columns: 1fr 1fr; align-items: center; }
+.auto-box2 .turbo-sw input:not(:checked) + i::after { background: var(--muted); }

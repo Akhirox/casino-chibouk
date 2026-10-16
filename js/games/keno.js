@@ -2,7 +2,7 @@
 import { randInt } from './slots-math.js';
 import { KENO_N, KENO_DRAW, KENO_TABLES, kenoP } from './keno-math.js';
 import { icon } from '../art.js';
-import { $, $$, fmt, money, toast, modal, coinRain, sleep, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR } from '../ui.js';
+import { $, $$, fmt, money, toast, modal, coinRain, sleep, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR, isTurbo } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const RISKS = { low: 'Faible', medium: 'Moyen', high: 'Élevé' };
@@ -106,18 +106,18 @@ export function mount(view, { wallet }) {
       const hit = picks.has(n);
       b.classList.add('drawn', hit ? 'hit' : 'miss');
       if (hit) { shown++; sfx.coin(); renderPay(shown); } else sfx.tick && sfx.tick();
-      await sleep(autoLeft ? 45 : 140);
+      await sleep(isTurbo('keno') ? 6 : autoLeft ? 45 : 140);
     }
     reveal();
     if (!alive) return true;
     renderPay(hits);
     $('#kn-msg', view).innerHTML = payout ? `${hits} numéro${hits > 1 ? 's' : ''} touché${hits > 1 ? 's' : ''} : ${fx(m)} → +${money(payout)}` : `${hits} numéro${hits > 1 ? 's' : ''} touché${hits > 1 ? 's' : ''}… pas de gain cette fois.`;
-    if (m >= 10) { sfx.win(true); coinRain(Math.min(60, 15 + m / 5)); } else if (!payout) sfx.lose();
+    if (m >= 10) { sfx.win(true); coinRain(Math.min(60, 15 + m / 5)); } else if (!payout && !isTurbo('keno')) sfx.lose();
     busy = false; render();
     return true;
   }
 
-  const auto = bindAuto(view, 'kn-auto', { wallet, game: 'keno', bet, delay: 400, play: () => play(), onState: (on) => { autoLeft = on ? 1 : 0; if (alive) render(); } });
+  const auto = bindAuto(view, 'kn-auto', { wallet, game: 'keno', turbo: true, bet, delay: 400, play: () => play(), onState: (on) => { autoLeft = on ? 1 : 0; if (alive) render(); } });
   $('#kn-play', view).onclick = () => play();
   $('#kn-rules', view).onclick = () => modal({ title: 'Règles du Keno', cls: 'wide', html: `
     <ul class="muted"><li>Choisis de <b>1 à 10 numéros</b> sur 40. Le tirage sort <b>10 numéros</b>.</li>

@@ -2,7 +2,7 @@
 // Multiplicateur = 99 / chance  → RTP ≈ 99 %
 import { randInt } from './slots-math.js';
 import { icon } from '../art.js';
-import { $, $$, fmt, money, toast, modal, coinRain, sleep, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR } from '../ui.js';
+import { $, $$, fmt, money, toast, modal, coinRain, sleep, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR, isTurbo } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const MIN_CH = 0.01, MAX_CH = 98;
@@ -118,9 +118,9 @@ export function mount(view, { wallet }) {
     });
 
     // animation : défilement des chiffres puis le marqueur glisse sur le résultat
-    sfx.spinStart();
+    if (!isTurbo('dice')) sfx.spinStart();
     resEl.className = 'dc-result rolling';
-    const t0 = performance.now(), dur = autoLeft > 0 ? 220 : 420;
+    const t0 = performance.now(), dur = isTurbo('dice') ? 70 : autoLeft > 0 ? 220 : 420;
     while (performance.now() - t0 < dur && alive) {
       resEl.textContent = fmt2(randInt(10001) / 100);
       await sleep(40);
@@ -133,7 +133,7 @@ export function mount(view, { wallet }) {
     marker.className = 'dc-marker show ' + (win ? 'win' : 'lose');
     marker.querySelector('span').textContent = fmt2(r);
     subEl.innerHTML = win ? `Gagné ! ${fmt2(r)} est ${mode === 'under' ? 'sous' : 'au-dessus de'} ${fmt2(target)} : +${money(payout)}` : `Perdu : ${fmt2(r)} n'est pas ${mode === 'under' ? 'sous' : 'au-dessus de'} ${fmt2(target)}`;
-    if (win) { sfx.coin(); if (mult >= 10) { sfx.win(true); coinRain(Math.min(60, 10 + mult)); } } else sfx.lose();
+    if (win) { sfx.coin(); if (mult >= 10) { sfx.win(true); coinRain(Math.min(60, 10 + mult)); } } else if (!isTurbo('dice')) sfx.lose();
     history.unshift({ r, win }); history = history.slice(0, 18);
     $('#dc-hist', view).innerHTML = history.map((x) => `<span class="${x.win ? 'good' : 'bad'}">${fmt2(x.r)}</span>`).join('');
     lastResult = r;
@@ -142,7 +142,7 @@ export function mount(view, { wallet }) {
     return true;
   }
 
-  const auto = bindAuto(view, 'dc-auto', { wallet, game: 'dice', bet, delay: 220,
+  const auto = bindAuto(view, 'dc-auto', { wallet, game: 'dice', turbo: true, bet, delay: 220,
     play: () => roll(),
     onState: (on) => { autoLeft = on ? 1 : 0; if (alive) setDisabled(on); } });
 

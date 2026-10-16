@@ -3,6 +3,7 @@
 // - continue quand on change de jeu ou qu'on recharge la page, jusqu'au reset
 import { icon } from './art.js';
 import { h, $, fmt } from './ui.js';
+import { lazySave } from './lazysave.js';
 
 const MAX_POINTS = 400;
 const MERGE_MS = 350; // une mise et son gain quasi simultanés ne font qu'un point
@@ -14,7 +15,10 @@ export function createTracker(wallet, toggleBtn) {
 
   function fresh() { return { active: true, open: true, net: 0, wagered: 0, rounds: 0, max: 0, min: 0, points: [{ t: Date.now(), v: 0 }], lastAt: 0 }; }
   function load() { try { return JSON.parse(localStorage.getItem(key) || 'null'); } catch { return null; } }
-  function save() { try { localStorage.setItem(key, JSON.stringify(st)); } catch {} }
+  const saver = lazySave(() => localStorage.setItem(key, JSON.stringify(st)), 500);
+  function save() { saver.save(); }
+  let rq = 0; // un seul rendu du graphique par image, même en turbo
+  const renderSoon = () => { if (!rq) rq = requestAnimationFrame(() => { rq = 0; if (panel) render(); }); };
 
   function record(delta, isBet) {
     if (!st || !st.active || !delta) return;
@@ -28,7 +32,7 @@ export function createTracker(wallet, toggleBtn) {
     st.lastAt = now;
     if (st.points.length > MAX_POINTS) st.points = st.points.filter((_, i) => i === 0 || i % 2 === 1 || i === st.points.length - 1);
     save();
-    if (panel) render();
+    if (panel) renderSoon();
   }
 
   const off = wallet.on((evt) => {

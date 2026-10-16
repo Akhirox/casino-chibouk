@@ -1,7 +1,7 @@
 // Roulette Banane — roulette européenne (un seul zéro), roue animée sur canvas
 import { randInt } from './slots-math.js';
 import { icon } from '../art.js';
-import { h, $, $$, fmt, money, toast, sleep, coinRain, autoHTML, bindAuto, CUR } from '../ui.js';
+import { h, $, $$, fmt, money, toast, sleep, coinRain, autoHTML, bindAuto, CUR, isTurbo } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
@@ -292,7 +292,7 @@ export function mount(view, { wallet }) {
 
   function animateTo(number, fast) {
     const idx = ORDER.indexOf(number);
-    const dur = fast ? 4200 : 6800;
+    const dur = isTurbo('roulette') ? 1500 : fast ? 4200 : 6800;
     const w0 = wheelAngle;
     const W = TAU * (fast ? 1.6 : 2.6);
     const LAND = 0.82;
@@ -360,7 +360,7 @@ export function mount(view, { wallet }) {
   }
 
   let autoOn = false;
-  const auto = bindAuto(view, 'rl-auto', { wallet, game: 'roulette', delay: 700,
+  const auto = bindAuto(view, 'rl-auto', { wallet, game: 'roulette', turbo: true, delay: 700,
     play: () => spin(),
     onState: (on) => { autoOn = on; view.classList.toggle('rl-autoing', on); } });
   renderBets();

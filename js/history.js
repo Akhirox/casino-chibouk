@@ -1,5 +1,6 @@
 // Historique des 50 dernières parties de chaque jeu (gardé sur cet appareil, sans lecture en base)
 import { fmt, esc } from './ui.js';
+import { lazySave } from './lazysave.js';
 
 const MAX = 50;
 let key = null, data = {}, pend = {};
@@ -8,7 +9,8 @@ export function initHistory(wallet) {
   key = 'chibouk_history_' + wallet.uid;
   try { data = JSON.parse(localStorage.getItem(key) || '{}') || {}; } catch { data = {}; }
   pend = {};
-  const save = () => { try { localStorage.setItem(key, JSON.stringify(data)); } catch {} };
+  const k = key, saver = lazySave(() => localStorage.setItem(k, JSON.stringify(data)), 500);
+  const save = () => saver.save();
   const push = (g, entry) => { (data[g] = data[g] || []).unshift(entry); data[g] = data[g].slice(0, MAX); save(); };
   return wallet.on((e) => {
     if (!e || !wallet.stats.games[e.game]) return;

@@ -1,7 +1,7 @@
 // Crashibouk — jeu "crash" : le multiplicateur grimpe, encaisse avant l'explosion
 // Loi du point de crash : P(crash ≥ x) = 0,99 / x  → RTP de 99 % quelle que soit la stratégie
 import { monkeySVG, icon } from '../art.js';
-import { h, $, $$, fmt, money, toast, modal, coinRain, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR } from '../ui.js';
+import { h, $, $$, fmt, money, toast, modal, coinRain, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR, isTurbo } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const W = 900, H = 520, PAD_L = 56, PAD_B = 40, PAD_T = 24, PAD_R = 24;
@@ -90,7 +90,7 @@ export function mount(view, { wallet }) {
   }
 
   let autoRun = false;
-  const auto = bindAuto(view, 'cr-autobet', { wallet, game: 'crash', bet, delay: 900,
+  const auto = bindAuto(view, 'cr-autobet', { wallet, game: 'crash', turbo: true, bet, delay: 900,
     play: async () => {
       if (!autoOn) { autoOn = true; autoChk.checked = true; }
       if (!start()) return false;
@@ -257,7 +257,7 @@ export function mount(view, { wallet }) {
       // (on n'a plus rien à gagner, inutile d'attendre l'explosion pour rejouer)
       const real = Math.max(0, (now - round.last) / 1000);
       round.last = now;
-      const speed = round.cashed ? Math.min(25, 4 * Math.pow(1.8, (now - round.cashedAt) / 1000)) : 1;
+      const speed = round.cashed ? Math.min(25, 4 * Math.pow(1.8, (now - round.cashedAt) / 1000)) : isTurbo('crash') ? 4 : 1;
       round.vt += real * speed;
       const t = round.vt;
       let m = multAt(t);

@@ -2,7 +2,7 @@
 // Multiplicateur à l'étage k = 0,99 × (cases / cases sûres)^k  → RTP 99 % quel que soit le moment où on encaisse
 import { randInt } from './slots-math.js';
 import { icon, monkeySVG, bananaTileSVG, bombTileSVG } from '../art.js';
-import { $, $$, fmt, money, toast, modal, coinRain, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR } from '../ui.js';
+import { $, $$, fmt, money, toast, modal, coinRain, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR, isTurbo } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const FLOORS = 9;
@@ -177,7 +177,7 @@ export function mount(view, { wallet }) {
   $('#tw-top', view).onclick = () => { floorsIn.value = FLOORS; floorsIn.onchange(); sfx.click(); };
   $('#tw-plan-rand', view).onclick = () => { plan = plan.map(() => randInt(TOWER_LEVELS[level].tiles)); savePlan(); game = null; msg.className = 'tw-msg'; sfx.click(); render(); };
   $('#tw-plan-clear', view).onclick = () => { plan = plan.map(() => null); savePlan(); game = null; msg.className = 'tw-msg'; sfx.click(); render(); };
-  const auto = bindAuto(view, 'tw-auto', { wallet, game: 'tower', bet, delay: 600,
+  const auto = bindAuto(view, 'tw-auto', { wallet, game: 'tower', turbo: true, bet, delay: 600,
     play: async () => {
       if (!start()) return false;
       const target = planFloors();
@@ -185,12 +185,12 @@ export function mount(view, { wallet }) {
       render();
       // découverte rapide, étage par étage, des cases du parcours (ou au hasard)
       while (alive && game && !game.over && game.floor < target) {
-        await new Promise((r) => setTimeout(r, 170));
+        await new Promise((r) => setTimeout(r, isTurbo('tower') ? 25 : 170));
         const c = plan[game.floor];
         pick(c !== null && c !== undefined ? c : randInt(TOWER_LEVELS[game.level].tiles));
       }
-      if (alive && game && !game.over) { await new Promise((r) => setTimeout(r, 150)); cashOut(); }
-      await new Promise((r) => setTimeout(r, game && game.cashed ? 350 : 650));
+      if (alive && game && !game.over) { await new Promise((r) => setTimeout(r, isTurbo('tower') ? 25 : 150)); cashOut(); }
+      await new Promise((r) => setTimeout(r, isTurbo('tower') ? 60 : game && game.cashed ? 350 : 650));
       return alive;
     },
     onState: (on) => { autoOn = on; floorsIn.disabled = on; $$('.tw-plan button', view).forEach((b) => (b.disabled = on)); if (alive) updateSide(); } });

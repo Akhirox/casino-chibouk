@@ -1,5 +1,5 @@
 // Petits utilitaires d'interface
-import { coinSVG } from './art.js';
+import { coinSVG, icon } from './art.js';
 import { CONFIG } from './config.js';
 
 export const $ = (sel, root = document) => root.querySelector(sel);
@@ -124,6 +124,22 @@ export function bindBetField(root, id, storageKey, wallet, def = 10) {
   };
 }
 
+/* ---------------- Mode turbo (par jeu, gardé sur l'appareil) ----------------
+   Animations raccourcies et paris auto enchaînés presque sans pause. Les maths ne changent pas. */
+const TURBO = {};
+export function isTurbo(game) {
+  if (!(game in TURBO)) { try { TURBO[game] = localStorage.getItem('chibouk_turbo_' + game) === '1'; } catch { TURBO[game] = false; } }
+  return TURBO[game];
+}
+export function setTurbo(game, on) { TURBO[game] = !!on; try { localStorage.setItem('chibouk_turbo_' + game, on ? '1' : '0'); } catch {} }
+// interrupteur Turbo à placer dans un panneau de jeu
+export function turboSwitchHTML(game, title = 'Animations accélérées, paris enchaînés sans attendre') {
+  return `<label class="turbo-sw" title="${title}"><input type="checkbox" data-turbo="${game}" ${isTurbo(game) ? 'checked' : ''}><i></i>${icon('bolt')}Turbo</label>`;
+}
+export function bindTurbo(root, game, onChange) {
+  root.querySelectorAll(`[data-turbo="${game}"]`).forEach((c) => (c.onchange = () => { setTurbo(game, c.checked); onChange && onChange(c.checked); }));
+}
+
 /* ---------------- Paris automatiques (commun à tous les jeux) ----------------
    Nombre de paris libre (vide = infini), arrêt optionnel sur gain, perte ou solde minimum,
    et mise qui augmente / baisse d'un pourcentage après chaque perte (retour à la mise de départ après une victoire). */
@@ -149,8 +165,14 @@ export function autoHTML(id, title = 'Paris automatiques', extra = '') {
 // play() : joue UNE partie, renvoie false pour arrêter (solde insuffisant…). Le bilan se calcule
 // à partir des mises/gains du jeu (événements du portefeuille), donc même les gains différés comptent.
 // bet (facultatif) : objet { value } lisible et modifiable, pour faire varier la mise après une perte.
-export function bindAuto(root, id, { wallet, game, play, delay = 300, onState, bet = null } = {}) {
+export function bindAuto(root, id, { wallet, game, play, delay = 300, onState, bet = null, turbo = false } = {}) {
   const box = root.querySelector('#' + id);
+  if (turbo) {
+    const t = box.querySelector('.ab-title');
+    t.classList.add('ab-title-row');
+    t.innerHTML = `<span>${t.textContent}</span>${turboSwitchHTML(game)}`;
+    bindTurbo(box, game, typeof turbo === 'function' ? turbo : null);
+  }
   const q = (a) => box.querySelector(`[data-a="${a}"]`);
   const key = 'chibouk_auto_' + id;
   const FIELDS = ['count', 'win', 'loss', 'floor', 'lmode', 'lpct'];
@@ -205,7 +227,7 @@ export function bindAuto(root, id, { wallet, game, play, delay = 300, onState, b
       if (winStop && net >= winStop) { toast(`Auto arrêté : objectif de gain atteint (+${fmt(net)})`, 'win'); break; }
       if (lossStop && -net >= lossStop) { toast(`Auto arrêté : limite de perte atteinte (${fmt(net)})`, 'error'); break; }
       if (floor && wallet.balance < floor) { toast(`Auto arrêté : ton solde est passé sous ${fmt(floor)} ${CUR}`, 'error'); break; }
-      await sleep(delay);
+      await sleep(turbo && isTurbo(game) ? Math.min(delay, 30) : delay);
     }
     running = false;
     off && off(); off = null;

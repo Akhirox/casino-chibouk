@@ -1,6 +1,7 @@
 // Portefeuille du joueur : tout se passe en local, et on synchronise avec la base
 // au maximum toutes les SYNC_INTERVAL_MS (+ à la fermeture de l'onglet et aux événements importants).
 import { CONFIG } from './config.js';
+import { lazySave } from './lazysave.js';
 
 export function parisDate(d = new Date()) {
   return new Intl.DateTimeFormat('en-CA', { timeZone: CONFIG.TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(d);
@@ -118,7 +119,9 @@ export class Wallet {
     this.p.updatedAt = Date.now();
     if (this.p.balance > (this.p.stats.peakBalance || 0)) this.p.stats.peakBalance = this.p.balance;
     this.dirty = true;
-    try { localStorage.setItem(this.backupKey, JSON.stringify({ dirty: true, profile: this.pick() })); } catch {}
+    // sauvegarde locale de secours, regroupée (le mode turbo enchaîne des dizaines de parties par seconde)
+    if (!this._bk) this._bk = lazySave(() => { if (this.dirty) localStorage.setItem(this.backupKey, JSON.stringify({ dirty: true, profile: this.pick() })); }, 400);
+    this._bk.save();
     this.emit(evt);
     this.emitSync('pending');
   }

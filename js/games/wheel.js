@@ -2,7 +2,7 @@
 // RTP = moyenne des multiplicateurs de la roue = 99 % pour chaque risque.
 import { randInt } from './slots-math.js';
 import { icon } from '../art.js';
-import { $, $$, fmt, money, toast, modal, coinRain, sleep, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR } from '../ui.js';
+import { $, $$, fmt, money, toast, modal, coinRain, sleep, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR, isTurbo } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const SEG = 30;
@@ -100,11 +100,11 @@ export function mount(view, { wallet }) {
     $('#wh-res', view).textContent = '…';
     const jitter = (randInt(1000) / 1000 - 0.5) * (360 / SEG) * 0.7;
     const targetDeg = -(i * 360) / SEG + jitter;
-    const turns = autoLeft ? 2 : 5;
+    const turbo = isTurbo('wheel'), turns = turbo ? 1 : autoLeft ? 2 : 5;
     const cur = ((angle % 360) + 360) % 360;
     let delta = ((targetDeg - cur) % 360 + 360) % 360;
     angle = angle + delta + 360 * turns;
-    const dur = autoLeft ? 900 : 3200;
+    const dur = turbo ? 380 : autoLeft ? 900 : 3200;
     wheel.style.transition = `transform ${dur}ms cubic-bezier(.12,.75,.2,1)`;
     wheel.style.transform = `rotate(${angle}deg)`;
     sfx.spinStart();
@@ -126,7 +126,7 @@ export function mount(view, { wallet }) {
     return true;
   }
 
-  const auto = bindAuto(view, 'wh-auto', { wallet, game: 'wheel', bet, delay: 300, play: () => spin(), onState: (on) => { autoLeft = on ? 1 : 0; if (alive) setDisabled(on); } });
+  const auto = bindAuto(view, 'wh-auto', { wallet, game: 'wheel', turbo: true, bet, delay: 300, play: () => spin(), onState: (on) => { autoLeft = on ? 1 : 0; if (alive) setDisabled(on); } });
   $('#wh-spin', view).onclick = () => spin();
   $('#wh-rules', view).onclick = () => modal({ title: 'Règles de la Roue du Singe', html: `
     <ul class="muted"><li>La roue a <b>30 cases</b>, chacune a la même chance de tomber sous le pointeur.</li>

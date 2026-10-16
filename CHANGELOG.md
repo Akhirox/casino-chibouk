@@ -2,12 +2,26 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V19 — Mode turbo (16 octobre 2026)
+
+### Mode turbo
+
+- Nouvel interrupteur Turbo dans le panneau des paris automatiques du Plinkoko, du Dice, du Limbo, du Keno, de la Roue du Singe, des Mines, de la Tower, du Hi-Lo, des jeux à gratter, de la roulette et du Crash.
+- En turbo, les animations sont très courtes (noix 3 fois plus rapides, dé et Limbo instantanés, tickets grattés d'un coup, roue et roulette accélérées, fusée du Crash ×4) et l'auto enchaîne les parties presque sans pause. Le réglage marche aussi quand tu joues à la main, et il est gardé pour chaque jeu.
+- Les maths ne changent pas : mêmes chances, mêmes gains. Les sons répétitifs sont coupés en turbo.
+
+### Performances
+
+- La sauvegarde locale de secours, l'historique des parties et le suivi de session s'écrivent maintenant par paquets au lieu de le faire à chaque partie, pour rester fluide même à plusieurs dizaines de parties par seconde. La sauvegarde en ligne reste groupée toutes les 30 s, comme avant.
+
 ## V18.2 — Rangs VIP élevés rééquilibrés (16 octobre 2026)
 
 ### Équilibrage
 
-- Affinage des statistiques pour atteindre 99% de RTP (rakeback et bonus de passages compris)
-- Augmentation des mises nécessaires pour passer les paliers
+- Les jeux eux-mêmes n'ont pas changé (le Plinkoko rend bien 99 %), mais aux gros volumes de mises, le rakeback et les bonus de passage rendaient plus que ce que le casino garde : enchaîner les mises devenait rentable à coup sûr.
+- Les rangs du haut sont plus durs à atteindre : Orang-outan à 250 millions misés, Gorille à 2,5 milliards, Gorille argenté à 25 milliards, Roi Singe à 250 milliards. Leurs bonus de passage passent à +300 000, +2,5 M, +15 M et +100 M.
+- Rakeback des rangs du haut : 0,62 % à 0,7 % (au lieu de 0,75 % à 1,35 %). Il s'adapte maintenant à la marge de chaque jeu : ×0,4 au blackjack, ×2,3 aux tickets à gratter, ×3,7 à la roulette.
+- Résultat : à partir d'Orang-outan, tous les jeux de casino rendent entre 99,5 et 99,9 % rakeback compris. Les petits rangs, leurs bonus et les soldes de chacun ne changent pas.
 
 ## V18.1 — Mises à jour automatiques (16 octobre 2026)
 

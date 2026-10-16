@@ -2,7 +2,7 @@
 // Paquet infini (chaque rang a 1 chance sur 13). Multiplicateur = 0,99 × Π(1 / probabilité de chaque pari) → RTP 99 %.
 import { randInt } from './slots-math.js';
 import { icon } from '../art.js';
-import { $, $$, fmt, money, toast, modal, coinRain, sleep, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR } from '../ui.js';
+import { $, $$, fmt, money, toast, modal, coinRain, sleep, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR, isTurbo } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'V', 'D', 'R'];
@@ -108,7 +108,7 @@ export function mount(view, { wallet }) {
     const cur = $('#hl-current', view);
     cur.innerHTML = cardHTML(next, 'deal');
     sfx.tick && sfx.tick();
-    await sleep(autoLeft ? 160 : 380);
+    await sleep(isTurbo('hilo') ? 50 : autoLeft ? 160 : 380);
   }
 
   async function guess(which) {
@@ -164,14 +164,14 @@ export function mount(view, { wallet }) {
   $('#hl-lo', view).onclick = () => guess('lo');
   $('#hl-skip', view).onclick = skip;
 
-  const auto = bindAuto(view, 'hl-auto', { wallet, game: 'hilo', bet, delay: 250,
+  const auto = bindAuto(view, 'hl-auto', { wallet, game: 'hilo', turbo: true, bet, delay: 250,
     play: async () => {
       if (!start()) return false;
       while (alive && game && game.steps < autoSteps) {
         const [hi, lo] = options(current.r);
         const ok = await guess(hi.p >= lo.p ? 'hi' : 'lo');
         if (!ok) return alive;
-        await sleep(120);
+        await sleep(isTurbo('hilo') ? 20 : 120);
       }
       if (alive && game) cash();
       return alive;

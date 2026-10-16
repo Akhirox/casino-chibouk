@@ -2,7 +2,7 @@
 // Multiplicateur après k bananes = 0,99 × Π (25−i)/(25−mines−i)  → RTP 99 %
 import { randInt } from './slots-math.js';
 import { icon, bananaTileSVG, bombTileSVG } from '../art.js';
-import { $, $$, fmt, money, toast, modal, coinRain, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR } from '../ui.js';
+import { $, $$, fmt, money, toast, modal, coinRain, betFieldHTML, bindBetField, autoHTML, bindAuto, CUR, isTurbo } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const N = 25;
@@ -141,16 +141,16 @@ export function mount(view, { wallet }) {
   const picksIn = $('#mn-auto-picks', view);
   try { const v = +localStorage.getItem('chibouk_mn_auto_picks'); if (v >= 1 && v <= 24) picksIn.value = v; } catch {}
   picksIn.onchange = () => { picksIn.value = Math.max(1, Math.min(24, Math.floor(+picksIn.value) || 1)); try { localStorage.setItem('chibouk_mn_auto_picks', picksIn.value); } catch {} };
-  const auto = bindAuto(view, 'mn-auto', { wallet, game: 'mines', bet, delay: 600,
+  const auto = bindAuto(view, 'mn-auto', { wallet, game: 'mines', turbo: true, bet, delay: 600,
     play: async () => {
       if (!start()) return false;
       const target = Math.max(1, Math.min(N - game.mines, +picksIn.value || 1));
       while (alive && game && !game.over && game.revealed.size < target) {
-        await new Promise((r) => setTimeout(r, 200));
+        await new Promise((r) => setTimeout(r, isTurbo('mines') ? 25 : 200));
         const free = [...Array(N).keys()].filter((i) => !game.revealed.has(i));
         reveal(free[randInt(free.length)]);
       }
-      if (alive && game && !game.over) { await new Promise((r) => setTimeout(r, 200)); cashOut(); }
+      if (alive && game && !game.over) { await new Promise((r) => setTimeout(r, isTurbo('mines') ? 25 : 200)); cashOut(); }
       return alive;
     },
     onState: (on) => { autoOn = on; picksIn.disabled = on; if (alive) updateSide(); } });
