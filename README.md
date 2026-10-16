@@ -5,7 +5,7 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 - Connexion par **pseudo + mot de passe**, sans email.
 - **1 000 Brundles offerts** à la création du compte, puis la **roue du jour** (500 à 5 000 Brundles, une fois par jour, remise à zéro à minuit heure de Paris), multipliée par la série de jours consécutifs (jusqu'à ×2).
 - **Quêtes du jour** : 3 missions renouvelées à minuit (+300 / +600 / +1 000, +500 si les 3 sont faites).
-- **11 rangs VIP** selon le total misé (de Ouistiti à Roi Singe, 10 milliards) : **bonus de passage** à chaque nouveau rang (+500 à +100 millions, versé une seule fois, y compris rétroactivement pour les rangs déjà atteints), **rakeback en continu** (0,1 à 1,35 % de chaque mise aux jeux de casino tombe dans une cagnotte récupérable à tout moment), **multiplicateur de tous les gains gratuits** (roue du jour, quêtes, quiz, mot du jour, casse-briques… de ×1,2 à ×10, versé en plus du gain normal). Clic sur un rang pour voir le tableau complet.
+- **11 rangs VIP** selon le total misé (de Ouistiti à Roi Singe, 250 milliards) : **bonus de passage** à chaque nouveau rang (+500 à +100 millions, versé une seule fois, y compris rétroactivement pour les rangs déjà atteints), **rakeback en continu** (0,1 à 0,7 % de chaque mise aux jeux de casino, adapté à la marge de chaque jeu, tombe dans une cagnotte récupérable à tout moment), **multiplicateur de tous les gains gratuits** (roue du jour, quêtes, quiz, mot du jour, casse-briques… de ×1,2 à ×10, versé en plus du gain normal). Clic sur un rang pour voir le tableau complet. À partir du rang Orang-outan, rakeback + bonus de passage restent sous l'avantage du casino : les jeux de casino rendent entre 99,5 et 99,9 % au total (sauf la slot, volontairement au-dessus de 100 % pour l'instant). Détail par rang et par jeu : `node tools/vip-rtp.mjs`.
 - **Classement de la semaine** (bénéfice du lundi au dimanche), trophée permanent pour le vainqueur et palmarès.
 - **Boutique cosmétique** : cadres d'avatar, titres, dos de cartes, thèmes de la slot, effets de victoire (de 2 000 à 100 millions de Brundles). Ça donne une utilité aux Brundles et freine l'inflation des soldes.
 - **Jackpot commun** alimenté par 1 % des mises de la slot (payé par le casino), qui peut tomber sur n'importe quel spin. Chance par spin = 1,5 % × mise ÷ jackpot, plafonnée à 1 % (ex. : jackpot de 10 000 et mise de 100 → 1 sur 6 667), affichée sur la slot.
@@ -259,5 +259,6 @@ firestore.rules            règles de sécurité à publier
 tools/simulate-rtp.mjs     RTP de la slot (calcul exact + simulation)
 tools/keno-rtp.mjs         RTP exact des tables du Keno
 tools/plinko-rtp.mjs       RTP exact + simulation de chaque mode du Plinkoko
+tools/vip-rtp.mjs          retour effectif de chaque jeu avec le rakeback et les bonus VIP, rang par rang
 tools/new-games-rtp.mjs    RTP des jeux de la V9
 ```

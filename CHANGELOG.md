@@ -2,6 +2,13 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V18.2 — Rangs VIP élevés rééquilibrés (16 octobre 2026)
+
+### Équilibrage
+
+- Affinage des statistiques pour atteindre 99% de RTP (rakeback et bonus de passages compris)
+- Augmentation des mises nécessaires pour passer les paliers
+
 ## V18.1 — Mises à jour automatiques (16 octobre 2026)
 
 ### Nouveau

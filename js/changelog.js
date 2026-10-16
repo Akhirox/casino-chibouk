@@ -1,9 +1,18 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '18.1';
+export const VERSION = '18.2';
 
 export const CHANGELOG = [
+  {
+    v: '18.2', date: '16 octobre 2026', title: 'Rangs VIP élevés rééquilibrés',
+    groups: [['Équilibrage', [
+      'Les jeux eux-mêmes n\'ont pas changé (le Plinkoko rend bien 99 %), mais aux gros volumes de mises, le rakeback et les bonus de passage rendaient plus que ce que le casino garde : enchaîner les mises devenait rentable à coup sûr.',
+      'Les rangs du haut sont plus durs à atteindre : Orang-outan à 250 millions misés, Gorille à 2,5 milliards, Gorille argenté à 25 milliards, Roi Singe à 250 milliards. Leurs bonus de passage passent à +300 000, +2,5 M, +15 M et +100 M.',
+      'Rakeback des rangs du haut : 0,62 % à 0,7 % (au lieu de 0,75 % à 1,35 %). Il s\'adapte maintenant à la marge de chaque jeu : ×0,4 au blackjack, ×2,3 aux tickets à gratter, ×3,7 à la roulette.',
+      'Résultat : à partir d\'Orang-outan, tous les jeux de casino rendent entre 99,5 et 99,9 % rakeback compris. Les petits rangs, leurs bonus et les soldes de chacun ne changent pas.',
+    ]]],
+  },
   {
     v: '18.1', date: '16 octobre 2026', title: 'Mises à jour automatiques',
     groups: [['Nouveau', [

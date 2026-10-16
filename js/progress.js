@@ -15,10 +15,14 @@ export const VIP = [
   { id: 'babouin', name: 'Babouin', min: 1000000, rb: 0.004, mult: 2.5, up: 25000, color: '#c0c9d0' },
   { id: 'chimpanze', name: 'Chimpanzé', min: 5000000, rb: 0.005, mult: 3, up: 100000, color: '#f5c542' },
   { id: 'mandrill', name: 'Mandrill', min: 25000000, rb: 0.006, mult: 4, up: 400000, color: '#2fb1ff' },
-  { id: 'orang', name: 'Orang-outan', min: 100000000, rb: 0.0075, mult: 5, up: 1500000, color: '#ff8a3d' },
-  { id: 'gorille', name: 'Gorille', min: 500000000, rb: 0.009, mult: 6, up: 6000000, color: '#3ddc84' },
-  { id: 'argente', name: 'Gorille argenté', min: 2500000000, rb: 0.011, mult: 8, up: 25000000, color: '#e8eef2' },
-  { id: 'roi', name: 'Roi Singe', min: 10000000000, rb: 0.0135, mult: 10, up: 100000000, color: '#c77dff' },
+  // V18.2 : rangs élevés plus durs et bonus de passage plus petits. À ces volumes le hasard s'efface et le RTP réel colle au
+  // RTP théorique : rakeback + bonus de passage doivent rester sous l'avantage du casino (1 % sur les jeux à 99 %).
+  // Pendant chaque tranche à partir d'Orang-outan, le joueur récupère au plus ~0,73 % de ses mises, et 0,70 % au rang max :
+  // un jeu à 99 % reste entre 99,5 et 99,9 % de retour effectif (voir tools/vip-rtp.mjs).
+  { id: 'orang', name: 'Orang-outan', min: 250000000, rb: 0.0062, mult: 5, up: 300000, color: '#ff8a3d' },
+  { id: 'gorille', name: 'Gorille', min: 2500000000, rb: 0.0064, mult: 6, up: 2500000, color: '#3ddc84' },
+  { id: 'argente', name: 'Gorille argenté', min: 25000000000, rb: 0.0066, mult: 8, up: 15000000, color: '#e8eef2' },
+  { id: 'roi', name: 'Roi Singe', min: 250000000000, rb: 0.007, mult: 10, up: 100000000, color: '#c77dff' },
 ];
 export const vipIndex = (id) => VIP.findIndex((v) => v.id === id);
 export function vipOf(totalWagered = 0) {
@@ -47,6 +51,11 @@ export function claimRake(wallet) {
   return amount;
 }
 
+// Rakeback proportionnel à l'avantage du casino de chaque jeu (référence : 1 %, les jeux à 99 %) :
+// blackjack bien joué ~0,5 % → ×0,4 ; tickets 2 % → ×2,3 ; roulette 2,7 % → ×3,7. Ainsi, aux rangs élevés,
+// chaque jeu reste entre 99,5 et 99,9 % de retour effectif. La slot (RTP ≥ 100 % avec le jackpot) garde ×1 pour l'instant.
+export const RAKE_WEIGHT = { blackjack: 0.4, scratch: 2.3, roulette: 3.7 };
+
 // Suivi des rangs : rakeback sur chaque mise de casino + bonus de passage de rang (une seule fois par rang)
 export function initVip(wallet, onUp) {
   wallet.freeMult = () => freeMult(wallet);
@@ -62,7 +71,7 @@ export function initVip(wallet, onUp) {
   };
   const off = wallet.on((e) => {
     if (!e || e.type !== 'bet' || !wallet.stats.games[e.game]) return;
-    const rate = vipOf(wallet.stats.totalWagered).rb;
+    const rate = vipOf(wallet.stats.totalWagered).rb * (RAKE_WEIGHT[e.game] ?? 1);
     if (rate > 0) wallet.p.rake = { ...(wallet.p.rake || { total: 0 }), pot: rakePot(wallet) + e.amount * rate };
     pay();
   });
