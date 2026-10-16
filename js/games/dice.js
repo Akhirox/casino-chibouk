@@ -142,7 +142,7 @@ export function mount(view, { wallet }) {
     return true;
   }
 
-  const auto = bindAuto(view, 'dc-auto', { wallet, game: 'dice', delay: 220,
+  const auto = bindAuto(view, 'dc-auto', { wallet, game: 'dice', bet, delay: 220,
     play: () => roll(),
     onState: (on) => { autoLeft = on ? 1 : 0; if (alive) setDisabled(on); } });
 

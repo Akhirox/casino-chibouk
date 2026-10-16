@@ -177,7 +177,7 @@ export function mount(view, { wallet }) {
   $('#tw-top', view).onclick = () => { floorsIn.value = FLOORS; floorsIn.onchange(); sfx.click(); };
   $('#tw-plan-rand', view).onclick = () => { plan = plan.map(() => randInt(TOWER_LEVELS[level].tiles)); savePlan(); game = null; msg.className = 'tw-msg'; sfx.click(); render(); };
   $('#tw-plan-clear', view).onclick = () => { plan = plan.map(() => null); savePlan(); game = null; msg.className = 'tw-msg'; sfx.click(); render(); };
-  const auto = bindAuto(view, 'tw-auto', { wallet, game: 'tower', delay: 600,
+  const auto = bindAuto(view, 'tw-auto', { wallet, game: 'tower', bet, delay: 600,
     play: async () => {
       if (!start()) return false;
       const target = planFloors();

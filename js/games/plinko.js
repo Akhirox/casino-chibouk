@@ -96,7 +96,7 @@ export function mount(view, { wallet }) {
   };
   document.addEventListener('keydown', onKey);
 
-  const auto = bindAuto(view, 'plk-auto', { wallet, game: 'plinko', delay: 260,
+  const auto = bindAuto(view, 'plk-auto', { wallet, game: 'plinko', bet, delay: 260,
     play: () => drop(),
     onState: (on) => { autoLeft = on ? 1 : 0; if (alive) updateSide(); } });
 
@@ -106,7 +106,8 @@ export function mount(view, { wallet }) {
     if (!wallet.bet('plinko', amount)) { toast(`Solde insuffisant pour miser ${fmt(amount)} ${CUR}`, 'error'); return false; }
     const { path, bin } = dropPath(rows, () => randInt(2));
     const mult = TABLES[rows][risk][bin];
-    const payout = Math.round(amount * mult);
+    // arrondi aléatoire au Brundle près : l'espérance reste exactement mise × multi (RTP 99 % même avec une mise de 1)
+    const raw = amount * mult, payout = Math.floor(raw) + (randInt(1000000) < Math.round((raw - Math.floor(raw)) * 1000000) ? 1 : 0);
     // Trajectoire : positions (en demi-écarts) à chaque rangée
     const pts = [{ x: W / 2 + (Math.random() - 0.5) * 6, y: geo.top - 45 }];
     let p = 0;

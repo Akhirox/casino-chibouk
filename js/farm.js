@@ -144,12 +144,11 @@ export function mount(view, { wallet, backend }) {
   if (!hasFarm(wallet.p) || !Array.isArray(wallet.p.farm.g)) wallet.p.farm = F.normalize(wallet.p.farm);
   const f = () => wallet.p.farm;
   F.tick(f());
-  try { if (localStorage.getItem('chibouk_farm_tab') === 'nb') tab = 'nb'; } catch {}
 
   view.innerHTML = `<div class="fm-wrap">
     <div class="game-head"><h1>Ferme à <span>bananes</span></h1><div class="actions"><span class="seg fm-tabs"><button data-t="me">Ma ferme</button><button data-t="nb">Les voisins</button></span><button class="btn btn-ghost btn-sm fm-helpbtn" id="fm-help" title="Comment ça marche ?"><span class="fm-help-l">Comment ça marche ?</span><span class="fm-help-s">?</span></button></div></div>
     <div id="fm-body"></div></div>`;
-  $$('.fm-tabs button', view).forEach((b) => (b.onclick = () => { tab = b.dataset.t; try { localStorage.setItem('chibouk_farm_tab', tab); } catch {} render(); }));
+  $$('.fm-tabs button', view).forEach((b) => (b.onclick = () => { tab = b.dataset.t; render(); }));
   $('#fm-help', view).onclick = help;
 
   function render() {
@@ -262,6 +261,9 @@ export function mount(view, { wallet, backend }) {
     };
   }
 
+  // production horaire si la case i contenait `tile` (null = case vide), le reste de la ferme ne bougeant pas
+  function prodWith(fm, i, tile) { const g = fm.g.slice(); g[i] = tile; return F.productionPerHour({ ...fm, g }); }
+
   // effet actuel → niveau suivant
   function detail(x) {
     const fm = f(), nx = Math.min(x.l + 1, F.B[x.t].max), same = nx === x.l;
@@ -274,7 +276,14 @@ export function mount(view, { wallet, backend }) {
     }
     if (x.t === 'C') return `<ul class="fm-stats">${row('Singes logés', F.housing(x.l), F.housing(nx))}</ul>`;
     if (x.t === 'E') return `<ul class="fm-stats">${row('Capacité', fmt(F.storage(x.l)), fmt(F.storage(nx)))}</ul>`;
-    if (x.t === 'P') return `<ul class="fm-stats">${row('Bananeraies voisines', `+${Math.round(F.wellBonus(x.l) * 100)} %`, `+${Math.round(F.wellBonus(nx) * 100)} %`)}</ul>`;
+    if (x.t === 'P') {
+      // effet réel sur la ferme telle qu'elle est construite : production sans le puits / maintenant / au niveau suivant
+      const now = F.productionPerHour(fm), without = prodWith(fm, sel, null), next = same ? now : prodWith(fm, sel, { t: 'P', l: nx });
+      return `<ul class="fm-stats">${row('Bananeraies voisines', `+${Math.round(F.wellBonus(x.l) * 100)} %`, `+${Math.round(F.wellBonus(nx) * 100)} %`)}
+        <li><span>Apport actuel</span><b>+${fmt(now - without)}/h</b></li>
+        ${same ? '' : `<li class="fm-gain"><span>Après amélioration</span><b>+${fmt(next - now)} bananes/h</b></li>`}
+        ${row('Production de la ferme', `${fmt(now)}/h`, `${fmt(next)}/h`)}</ul>`;
+    }
     if (x.t === 'M') return `<ul class="fm-stats">${row('Prix de vente', `${(F.SELL_BASE * (1 + 0.1 * x.l)).toFixed(3).replace('.', ',')} ${CUR}`, `${(F.SELL_BASE * (1 + 0.1 * nx)).toFixed(3).replace('.', ',')} ${CUR}`)}</ul>`;
     return '';
   }
@@ -283,7 +292,7 @@ export function mount(view, { wallet, backend }) {
     const fm = f();
     return `<h3>Construire ici</h3><div class="fm-builds">${F.TYPES.map((t) => {
       const d = F.B[t], c = F.costOf(fm, t, 1), err = F.canBuild(fm, sel, t);
-      const eff = t === 'F' ? `${fmt(F.perWorker(1))}/h par singe, ${F.slots(1)} places` : t === 'C' ? `${F.housing(1)} singes logés` : t === 'E' ? `+${fmt(F.storage(1))} de stockage` : t === 'P' ? `+${Math.round(F.wellBonus(1) * 100)} % aux bananeraies voisines` : `vente +10 % par niveau`;
+      const eff = t === 'F' ? `${fmt(F.perWorker(1))}/h par singe, ${F.slots(1)} places` : t === 'C' ? `${F.housing(1)} singes logés` : t === 'E' ? `+${fmt(F.storage(1))} de stockage` : t === 'P' ? `+${Math.round(F.wellBonus(1) * 100)} % aux bananeraies voisines (ici : +${fmt(prodWith(fm, sel, { t: 'P', l: 1 }) - F.productionPerHour(fm))}/h)` : `vente +10 % par niveau`;
       return `<div class="fm-build ${err ? 'off' : ''}"><span class="fm-build-art">${tileArt(t, 1)}</span><div><b>${d.name}</b><small>${eff}</small><small>${ban(c)} · ${dur(F.timeOf(t, 1))}</small>${err && err !== 'Pas assez de bananes' ? `<small class="fm-err">${err}</small>` : ''}</div>
         <button class="btn btn-gold btn-sm" data-build="${t}" ${err ? 'disabled' : ''}>Construire</button></div>`;
     }).join('')}</div>`;

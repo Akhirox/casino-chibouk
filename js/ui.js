@@ -118,12 +118,15 @@ export function bindBetField(root, id, storageKey, wallet, def = 10) {
   }));
   return {
     get value() { return v; },
+    // utilisé par l'auto (mise qui augmente ou baisse après une perte) : on prévient le jeu pour qu'il mette à jour ses affichages
+    set value(n) { set(n); input.dispatchEvent(new Event('input', { bubbles: true })); },
     set disabled(d) { input.disabled = d; box.querySelectorAll('button').forEach((b) => (b.disabled = d)); },
   };
 }
 
 /* ---------------- Paris automatiques (commun à tous les jeux) ----------------
-   Nombre de paris libre (vide = infini), arrêt optionnel sur gain ou perte. */
+   Nombre de paris libre (vide = infini), arrêt optionnel sur gain, perte ou solde minimum,
+   et mise qui augmente / baisse d'un pourcentage après chaque perte (retour à la mise de départ après une victoire). */
 export function autoHTML(id, title = 'Paris automatiques', extra = '') {
   return `<div class="auto-box2" id="${id}">
     <div class="ab-title">${title}</div>
@@ -133,6 +136,11 @@ export function autoHTML(id, title = 'Paris automatiques', extra = '') {
       <label>Stop gain ≥<input class="bet-input" type="number" min="0" step="1" inputmode="numeric" placeholder="—" data-a="win"></label>
       <label>Stop perte ≥<input class="bet-input" type="number" min="0" step="1" inputmode="numeric" placeholder="—" data-a="loss"></label>
     </div>
+    <div class="ab-grid ab-grid2">
+      <label title="Arrête l'auto dès que ton solde passe sous ce montant">Solde min.<input class="bet-input" type="number" min="0" step="1" inputmode="numeric" placeholder="—" data-a="floor"></label>
+      <label class="ab-onloss">En cas de perte<span class="ab-ol"><select class="bet-input" data-a="lmode"><option value="">mise fixe</option><option value="up">augmenter de</option><option value="down">réduire de</option></select><input class="bet-input" type="number" min="1" max="1000" step="1" inputmode="numeric" placeholder="%" data-a="lpct"></span></label>
+    </div>
+    <p class="ab-olnote" data-a="olnote" hidden>Après une victoire, la mise revient à sa valeur de départ.</p>
     <button type="button" class="btn btn-blue wide ab-go" data-a="go">Lancer l'auto</button>
     <div class="ab-status" data-a="status"></div>
   </div>`;
@@ -140,30 +148,50 @@ export function autoHTML(id, title = 'Paris automatiques', extra = '') {
 
 // play() : joue UNE partie, renvoie false pour arrêter (solde insuffisant…). Le bilan se calcule
 // à partir des mises/gains du jeu (événements du portefeuille), donc même les gains différés comptent.
-export function bindAuto(root, id, { wallet, game, play, delay = 300, onState } = {}) {
+// bet (facultatif) : objet { value } lisible et modifiable, pour faire varier la mise après une perte.
+export function bindAuto(root, id, { wallet, game, play, delay = 300, onState, bet = null } = {}) {
   const box = root.querySelector('#' + id);
   const q = (a) => box.querySelector(`[data-a="${a}"]`);
   const key = 'chibouk_auto_' + id;
-  try { const s = JSON.parse(localStorage.getItem(key) || '{}'); for (const k of ['count', 'win', 'loss']) if (s[k]) q(k).value = s[k]; } catch {}
-  const save = () => { try { localStorage.setItem(key, JSON.stringify({ count: q('count').value, win: q('win').value, loss: q('loss').value })); } catch {} };
-  ['count', 'win', 'loss'].forEach((k) => q(k).addEventListener('change', save));
-  let running = false, stopAsked = false, done = 0, net = 0, off = null;
+  const FIELDS = ['count', 'win', 'loss', 'floor', 'lmode', 'lpct'];
+  if (!bet) { q('lmode').closest('label').remove(); }
+  const has = (k) => !!q(k);
+  try { const s = JSON.parse(localStorage.getItem(key) || '{}'); for (const k of FIELDS) if (s[k] && has(k)) q(k).value = s[k]; } catch {}
+  const save = () => { try { const o = {}; for (const k of FIELDS) if (has(k)) o[k] = q(k).value; localStorage.setItem(key, JSON.stringify(o)); } catch {} };
+  const note = () => { if (has('lmode')) q('olnote').hidden = !q('lmode').value; };
+  FIELDS.forEach((k) => has(k) && q(k).addEventListener('change', () => { save(); note(); }));
+  note();
+  let running = false, stopAsked = false, done = 0, net = 0, off = null, base = 0, streak = 0;
   const status = () => {
     const total = Math.floor(+q('count').value) || 0;
+    const prog = running && bet && has('lmode') && q('lmode').value && streak ? ` · mise ${fmt(bet.value)} (${streak} perte${streak > 1 ? 's' : ''} de suite)` : '';
     q('status').innerHTML = running || done
-      ? `${running ? 'En cours' : 'Terminé'} · ${done}${total ? '/' + total : ' (∞)'} paris · bilan <b class="${net >= 0 ? 'pos' : 'neg'}">${net >= 0 ? '+' : ''}${fmt(net)}</b>`
+      ? `${running ? 'En cours' : 'Terminé'} · ${done}${total ? '/' + total : ' (∞)'} paris · bilan <b class="${net >= 0 ? 'pos' : 'neg'}">${net >= 0 ? '+' : ''}${fmt(net)}</b>${prog}`
       : 'Laisse « Nombre » vide pour jouer à l\'infini.';
     q('go').textContent = running ? (stopAsked ? 'Arrêt…' : 'Arrêter l\'auto') : 'Lancer l\'auto';
     q('go').classList.toggle('btn-red', running);
     q('go').classList.toggle('btn-blue', !running);
-    ['count', 'win', 'loss'].forEach((k) => (q(k).disabled = running));
+    FIELDS.forEach((k) => has(k) && (q(k).disabled = running));
   };
   async function start() {
     if (running) return;
-    running = true; stopAsked = false; done = 0; net = 0;
+    const floor = Math.floor(+q('floor').value) || 0;
+    if (floor && wallet.balance < floor) { toast(`Ton solde est déjà sous ${fmt(floor)} : baisse le « Solde min. » pour lancer l'auto`, 'error'); return; }
+    const lmode = bet && has('lmode') ? q('lmode').value : '', lpct = lmode ? Math.max(0, Math.min(1000, +q('lpct').value || 0)) : 0;
+    running = true; stopAsked = false; done = 0; net = 0; streak = 0;
+    base = bet ? bet.value : 0;
     off = wallet.on((e) => {
       if (!e || e.game !== game) return;
       if (e.type === 'bet') net -= e.amount; else if (e.type === 'win' || e.type === 'refund') net += e.amount;
+      // progression de mise : on regarde le résultat de chaque partie terminée
+      if (e.type === 'round' && lmode && lpct && running) {
+        const i = e.info || {}, stake = i.bet || 0;
+        const push = i.result === 'push' || i.mult === 1 || (stake && e.payout === stake);
+        if (push) return;
+        if (e.payout > stake) { streak = 0; bet.value = base; }
+        else { streak++; bet.value = Math.max(1, Math.round(bet.value * (lmode === 'up' ? 1 + lpct / 100 : 1 - lpct / 100))); }
+        status();
+      }
     });
     onState && onState(true); status();
     const total = Math.floor(+q('count').value) || 0;
@@ -176,14 +204,18 @@ export function bindAuto(root, id, { wallet, game, play, delay = 300, onState } 
       status();
       if (winStop && net >= winStop) { toast(`Auto arrêté : objectif de gain atteint (+${fmt(net)})`, 'win'); break; }
       if (lossStop && -net >= lossStop) { toast(`Auto arrêté : limite de perte atteinte (${fmt(net)})`, 'error'); break; }
+      if (floor && wallet.balance < floor) { toast(`Auto arrêté : ton solde est passé sous ${fmt(floor)} ${CUR}`, 'error'); break; }
       await sleep(delay);
     }
     running = false;
     off && off(); off = null;
+    // la mise revient à sa valeur de départ quand l'auto s'arrête
+    if (bet && lmode && lpct && base && document.body.contains(box)) bet.value = base;
+    streak = 0;
     onState && onState(false);
     if (document.body.contains(box)) status();
   }
   q('go').onclick = () => { if (running) { stopAsked = true; status(); } else start(); };
   status();
-  return { get running() { return running; }, stop() { stopAsked = true; running = false; off && off(); off = null; } };
+  return { get running() { return running; }, stop() { stopAsked = true; running = false; off && off(); off = null; if (bet && base && streak) bet.value = base; streak = 0; } };
 }

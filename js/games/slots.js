@@ -51,23 +51,23 @@ export function mount(view, { wallet, social }) {
       <button type="button" class="slot-jp" id="sl-jp" title="Comment marche le jackpot ?"><span>JACKPOT</span><b id="sl-jp-amt">—</b><small id="sl-jp-ch"></small></button>
       <div class="slot-info">
         <div class="win-display"><span>GAIN</span><b class="win-amt">0</b><small class="win-mult"></small></div>
-        <div class="slot-msg">Bonne chance ! 3 SCATTER n'importe où = tours gratuits ×2</div>
+        <div class="slot-msg">3 SCATTER n'importe où = tours gratuits ×2</div>
       </div>
       <div class="slot-controls">
         <div class="bet-box">
-          <div class="bet-label">Mise totale</div>
-          <div class="bet-ctrl"><button class="btn btn-ghost btn-sm" id="bet-down">−</button><input id="line-bet" class="bet-input" type="number" min="${MIN_BET}" step="1" inputmode="numeric" aria-label="Mise totale"><button class="btn btn-ghost btn-sm" id="bet-up">+</button><button class="btn btn-ghost btn-sm max-btn" id="bet-max">MAX</button></div>
-          <div class="bet-total">${LINE_COUNT} lignes · <b id="total-bet"></b> par spin</div>
+          <div class="bet-label">Mise</div>
+          <div class="bet-ctrl"><button class="btn btn-ghost btn-sm" id="bet-down" title="Mise inférieure">−</button><input id="line-bet" class="bet-input" type="number" min="${MIN_BET}" step="1" inputmode="numeric" aria-label="Mise"><button class="btn btn-ghost btn-sm" id="bet-up" title="Mise supérieure">+</button></div>
+          <div class="bet-quick"><button class="btn btn-ghost btn-sm" id="bet-half" title="Diviser la mise par 2">½</button><button class="btn btn-ghost btn-sm" id="bet-double" title="Doubler la mise">×2</button><button class="btn btn-ghost btn-sm max-btn" id="bet-max">MAX</button></div>
         </div>
         <button class="spin-btn" id="spin" title="Espace"><span>SPIN</span></button>
-        <div class="auto-box">
-          <div class="bet-label">Options</div>
-          <label class="turbo"><input type="checkbox" id="turbo"> Turbo ${icon('bolt')}</label>
-          <button class="btn btn-ghost btn-sm" id="to-auto">Auto ↓</button>
+        <div class="sl-autowrap">
+          <div class="sl-auto-head"><span class="bet-label">Spins auto</span>
+            <label class="turbo-sw" title="Rouleaux plus rapides"><input type="checkbox" id="turbo"><i></i>${icon('bolt')}Turbo</label></div>
+          ${autoHTML('sl-auto', '')}
         </div>
       </div>
     </div>
-    <div class="slot-auto">${autoHTML('sl-auto', 'Spins automatiques', '<p class="ab-note">Les tours gratuits se jouent tout seuls pendant l\'auto, puis l\'auto reprend.</p>')}</div>
+    <p class="sl-auto-note muted">Les tours gratuits se jouent tout seuls pendant l'auto, puis l'auto reprend.</p>
   </div>`;
 
   const machine = $('.slot-machine', view);
@@ -107,11 +107,12 @@ export function mount(view, { wallet, social }) {
   function updateBet() {
     const inp = $('#line-bet', view);
     if (document.activeElement !== inp) inp.value = totalBet();
-    $('#total-bet', view).innerHTML = money(totalBet());
     const locked = spinning || (fs && fs.left > 0) || autoLeft > 0;
     $('#bet-down', view).disabled = locked || curBet <= MIN_BET;
     $('#bet-up', view).disabled = locked;
     $('#bet-max', view).disabled = locked;
+    $('#bet-half', view).disabled = locked || curBet <= MIN_BET;
+    $('#bet-double', view).disabled = locked;
     inp.disabled = locked;
     spinBtn.disabled = (spinning && !autoLeft) || (fs && fs.left > 0);
     spinBtn.classList.toggle('stop', autoLeft > 0);
@@ -132,9 +133,10 @@ export function mount(view, { wallet, social }) {
   $('#bet-up', view).onclick = () => { const next = STEPS.find((x) => x > curBet); setBet(next || curBet * 2); sfx.click(); };
   $('#bet-max', view).onclick = () => { setBet(Math.max(MIN_BET, Math.floor(wallet.balance))); sfx.click(); };
   $('#line-bet', view).onchange = (e) => setBet(+e.target.value);
-  $('#line-bet', view).oninput = (e) => { const v = Math.floor(+e.target.value); if (v >= MIN_BET) { curBet = v; $('#total-bet', view).innerHTML = money(v); } };
+  $('#line-bet', view).oninput = (e) => { const v = Math.floor(+e.target.value); if (v >= MIN_BET) curBet = v; };
   $('#turbo', view).onchange = (e) => { turbo = e.target.checked; };
-  $('#to-auto', view).onclick = () => $('.slot-auto', view).scrollIntoView({ behavior: 'smooth', block: 'center' });
+  $('#bet-half', view).onclick = () => { setBet(Math.floor(curBet / 2)); sfx.click(); };
+  $('#bet-double', view).onclick = () => { setBet(curBet * 2); sfx.click(); };
   spinBtn.onclick = () => {
     if (autoLeft > 0) { auto.stop(); autoLeft = 0; updateBet(); return; }
     if (!spinning) spin();
@@ -156,7 +158,7 @@ export function mount(view, { wallet, social }) {
     <li>Exemples avec un jackpot de 10 000 : mise de 100 → 1 sur 6 667, mise de 1 000 → 1 sur 667, mise de 6 667 ou plus → 1 sur 100 (plafond).</li>
     <li>Quand il tombe, il repart à ${fmt(CONFIG.JACKPOT_SEED)}. En moyenne, il redistribue un peu plus que ce qu'il reçoit.</li></ul>`, buttons: [{ label: 'Compris', value: true, primary: true }] });
 
-  const auto = bindAuto(view, 'sl-auto', { wallet, game: 'slots', delay: 50,
+  const auto = bindAuto(view, 'sl-auto', { wallet, game: 'slots', bet: { get value() { return curBet; }, set value(v) { setBet(v); } }, delay: 50,
     play: async () => {
       // tours gratuits en cours : on attend qu'ils se terminent
       while (alive && (spinning || (fs && fs.left > 0))) await sleep(200);

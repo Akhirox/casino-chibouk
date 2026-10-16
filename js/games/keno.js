@@ -117,7 +117,7 @@ export function mount(view, { wallet }) {
     return true;
   }
 
-  const auto = bindAuto(view, 'kn-auto', { wallet, game: 'keno', delay: 400, play: () => play(), onState: (on) => { autoLeft = on ? 1 : 0; if (alive) render(); } });
+  const auto = bindAuto(view, 'kn-auto', { wallet, game: 'keno', bet, delay: 400, play: () => play(), onState: (on) => { autoLeft = on ? 1 : 0; if (alive) render(); } });
   $('#kn-play', view).onclick = () => play();
   $('#kn-rules', view).onclick = () => modal({ title: 'Règles du Keno', cls: 'wide', html: `
     <ul class="muted"><li>Choisis de <b>1 à 10 numéros</b> sur 40. Le tirage sort <b>10 numéros</b>.</li>

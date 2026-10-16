@@ -126,7 +126,7 @@ export function mount(view, { wallet }) {
     return true;
   }
 
-  const auto = bindAuto(view, 'wh-auto', { wallet, game: 'wheel', delay: 300, play: () => spin(), onState: (on) => { autoLeft = on ? 1 : 0; if (alive) setDisabled(on); } });
+  const auto = bindAuto(view, 'wh-auto', { wallet, game: 'wheel', bet, delay: 300, play: () => spin(), onState: (on) => { autoLeft = on ? 1 : 0; if (alive) setDisabled(on); } });
   $('#wh-spin', view).onclick = () => spin();
   $('#wh-rules', view).onclick = () => modal({ title: 'Règles de la Roue du Singe', html: `
     <ul class="muted"><li>La roue a <b>30 cases</b>, chacune a la même chance de tomber sous le pointeur.</li>

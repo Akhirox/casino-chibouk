@@ -19,7 +19,8 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 - **Succès** : 157 défis (globaux et par jeu) qui rapportent de +100 à +10 000 Brundles, avec une page dédiée et une notification à chaque déblocage. Un clic sur un succès montre qui l'a débloqué, et qui l'a eu en premier (avec la date).
 - **Profils** : photo (ou un des 12 singes) et petite bio, visibles en cliquant sur un pseudo dans les classements. La photo est réduite à quelques Ko et stockée dans Firestore (pas besoin de Firebase Storage, donc ça reste gratuit).
 - **Singe conseiller** : petites astuces contextuelles sur chaque page, désactivables depuis le menu du pseudo.
-- **Paris automatiques** sur les 13 jeux de casino (tickets automatiques pour les jeux à gratter) : nombre de paris libre ou infini, arrêt sur objectif de gain ou limite de perte.
+- **Paris automatiques** sur les 13 jeux de casino (tickets automatiques pour les jeux à gratter) : nombre de paris libre ou infini, arrêt sur objectif de gain, limite de perte ou solde minimum, et mise qui augmente ou baisse d'un pourcentage après chaque perte (retour à la mise de départ après une victoire ; pas sur le blackjack, la roulette et les tickets, dont la mise ne se résume pas à un seul montant).
+- **Volume** réglable (bouton haut-parleur, ou menu du pseudo sur téléphone), gardé sur l'appareil.
 - **Nouveautés** : journal des versions sur le site (et dans `CHANGELOG.md`).
 - **Classement à côté de chaque jeu** : top 5 des plus gros parieurs (volume misé), du meilleur multiplicateur et du plus gros gain sur ce jeu.
 - **Stats** par jeu (misé, gagné, bilan, RTP réel, plus gros gain…), un **classement** des soldes et un **classement des meilleures wins par jeu** (top 3).
@@ -34,7 +35,7 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 | **Chibouk Slot** | Machine à sous 5×3, 99 lignes connectées. WILD, WILD ×2, et 3 SCATTER n'importe où = tours gratuits avec gains ×2 (re-déclenchables). Animation des gros gains à partir de ×10. | ≈ 100 % |
 | **Blackjack du Singe** | 6 jeux, blackjack payé 3:2, croupier reste sur 17, doubler, séparer **n'importe quelles cartes** (4 mains), cartes 3D. Mises annexes **Perfect Pairs** (6:1 / 15:1 / 25:1, RTP 99,7 %) et **21+3** (couleur 5:1, suite 11:1, brelan 30:1, quinte flush 45:1, brelan couleur 100:1, RTP 99,5 %). | ≈ 99,5 % |
 | **Roulette Banane** | Roulette européenne à un zéro, roue et bille animées. | 97,3 % |
-| **Plinkoko** | 8, 12 ou 16 rangées, risque faible / moyen / élevé, jusqu'à ×1000, billes multiples. | 99 % |
+| **Plinkoko** | 8, 12 ou 16 rangées, risque faible / moyen / élevé, jusqu'à ×1000, billes multiples. RTP de chaque mode entre 98,9 et 99,1 % (`tools/plinko-rtp.mjs`), gain arrondi au Brundle de façon aléatoire pour rester juste même avec une mise de 1. | 99 % |
 | **Crashibouk** | Le multiplicateur grimpe, encaisse avant l'explosion. Encaissement auto possible. Une fois la mise encaissée, la manche passe en avance rapide pour pouvoir rejouer tout de suite. | 99 % |
 | **Tower** | 9 étages, 5 difficultés (de 1 bombe sur 4 cases à 3 bombes sur 4). Chaque étage monte le multi, encaisse quand tu veux. Auto avec parcours tracé sur le plateau. | 99 % |
 | **Mines** | Grille 5×5, 1 à 24 mines. Chaque banane trouvée augmente le multi, encaisse avant de tomber sur une mine. | 99 % |
@@ -52,12 +53,12 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 | **Plus ou moins** | Gratuit : quel film a eu le plus gros budget ? Série jusqu'à 15, +10 par bonne réponse, +50 au bout. Budgets tirés de ta base TMDB. | — |
 | **Queens** | Gratuit : une reine par ligne, colonne et zone de couleur, jamais deux reines qui se touchent. Grilles 7×7, 8×8, 9×9 générées à la volée avec une solution unique. +60 / +90 / +130, +50 % sous le temps de référence. | — |
 | **Tango** | Gratuit : grille 6×6 de soleils et de lunes (3 de chaque par ligne et colonne, jamais 3 pareils d'affilée, signes = et ×). 3 niveaux, solution unique. +40 / +70 / +100, +50 % si rapide. | — |
-| **Pinpoint** | Gratuit : trouver la catégorie commune à 5 indices dévoilés un par un (235 catégories, réponses tolérantes). +40 au 1er indice, puis +28 / +20 / +12 / +6. | — |
+| **Pinpoint** | Gratuit : trouver la catégorie commune à 5 indices dévoilés un par un (570 catégories, jamais deux fois la même avant d'avoir tout vu, réponses tolérantes). +40 au 1er indice, puis +28 / +20 / +12 / +6. | — |
 | **Sudoku** | Gratuit : 3 niveaux (40 / 32 / 25 chiffres donnés), solution unique, notes. +80 / +160 / +300, +50 % si rapide. | — |
 | **Démineur** | Gratuit, contre la montre : 9×9 (10 mines, 3 min), 16×16 (40 mines, 8 min), 16×30 (99 mines, 15 min). +40 / +120 / +300, jusqu'au double selon le temps restant. | — |
 | **Snake** | Gratuit : 3 niveaux (bords traversables, murs, puis accélération). +1 / +2 / +4 par banane. | — |
 | **Memory** | Gratuit : retrouver les paires. 4×4, 6×4, 6×6. +30 / +60 / +100, +50 % si peu de coups. | — |
-| **Mots croisés** | Gratuit : grille générée à chaque partie à partir de 280 mots et définitions. 7, 10 ou 14 mots (première lettre donnée en facile). +40 / +70 / +110, chaque lettre révélée coûte 10 % du gain. | — |
+| **Mots croisés** | Gratuit : grille générée à chaque partie à partir de 900 mots et définitions (les mots des 25 dernières grilles sont évités). 7, 10 ou 14 mots (première lettre donnée en facile). +40 / +70 / +110, chaque lettre révélée coûte 10 % du gain. | — |
 | **Casse-briques** | Gratuit, sans mise, accessible à tout moment : +100 Brundles par niveau terminé (6 niveaux en boucle, de plus en plus durs). | — |
 
 Si tu quittes la page au milieu d'une partie de Tower ou de Mines, elle est encaissée automatiquement au palier atteint (ou la mise est remboursée si aucune case n'a été choisie). Pareil pour le Crash (encaissement au multiplicateur du moment) et le Blackjack (la main est terminée en restant).
@@ -99,6 +100,8 @@ Aucune autre clé API n'est nécessaire.
 2. Envoie **tout le contenu du dossier** à la racine du dépôt : `index.html`, `css/`, `js/`, `assets/`… Le plus simple est le glisser-déposer via *Add file → Upload files*.
 3. **Settings → Pages** → *Source : Deploy from a branch* → branche `main`, dossier `/ (root)` → *Save*.
 4. Au bout d'une minute environ, le site est en ligne sur `https://tonpseudo.github.io/casino-chibouk/`.
+
+**Publier une nouvelle version :** envoie les fichiers modifiés comme d'habitude. Les joueurs déjà connectés sont prévenus en moins de 3 minutes par un bandeau « Nouvelle version disponible ». La mise à jour s'installe toute seule au prochain changement de page, ou tout de suite avec le bouton « Mettre à jour ». Avant de recharger, le site encaisse les parties en cours, sauvegarde le profil et re-télécharge tous ses fichiers, pour ne jamais mélanger deux versions. La version détectée est la constante `VERSION` de `js/changelog.js` : pense à l'augmenter à chaque publication (c'est ce qui affiche aussi la fenêtre « Quoi de neuf »).
 
 Le fichier `.nojekyll` est déjà inclus. Il empêche GitHub de transformer les fichiers.
 
@@ -225,7 +228,8 @@ js/achievements.js         définition des succès et moteur de déblocage
 js/achpage.js              page des succès
 js/profile.js              profils (avatar, bio, fiche joueur)
 js/tips.js                 le singe conseiller (astuces)
-js/changelog.js            journal des versions (page Nouveautés)
+js/changelog.js            journal des versions (page Nouveautés) et numéro de version
+js/updater.js              détection d'une nouvelle version publiée et rechargement propre
 js/progress.js             rangs VIP (rakeback, bonus de passage, multiplicateur gratuit), roue du jour, quêtes
 js/dailywheel.js           fenêtre de la roue du jour
 js/shop.js                 boutique et cosmétiques
@@ -242,7 +246,7 @@ js/games/higher.js         Plus ou moins
 js/games/free-common.js    outils communs des jeux de réflexion (chrono, niveaux, fin de partie)
 js/games/queens.js         Queens (+ queens-gen.js : génération à solution unique)
 js/games/tango.js          Tango (+ tango-gen.js)
-js/games/pinpoint.js       Pinpoint (+ pinpoint-data.js : 235 catégories)
+js/games/pinpoint.js       Pinpoint (+ pinpoint-data.js : 570 catégories)
 js/games/sudoku.js         Sudoku (+ sudoku-gen.js)
 js/games/demineur.js       Démineur
 js/games/snake.js          Snake
@@ -254,5 +258,6 @@ data/                      films, drapeaux, dictionnaire
 firestore.rules            règles de sécurité à publier
 tools/simulate-rtp.mjs     RTP de la slot (calcul exact + simulation)
 tools/keno-rtp.mjs         RTP exact des tables du Keno
+tools/plinko-rtp.mjs       RTP exact + simulation de chaque mode du Plinkoko
 tools/new-games-rtp.mjs    RTP des jeux de la V9
 ```

@@ -49,6 +49,7 @@ import { mountBoard } from './gameboard.js';
 import { initAchievements, achSummary, TIERS } from './achievements.js';
 import * as AchPage from './achpage.js';
 import * as News from './changelog.js';
+import { initUpdater } from './updater.js';
 import * as Stats from './stats.js';
 import * as Ranking from './ranking.js';
 import { createTracker } from './tracker.js';
@@ -67,6 +68,7 @@ let tracker = null;
 let achievements = null;
 let inboxTimer = null;
 let tips = null;
+let updater = null;
 let quests = null;
 let vip = null;
 let farmTimer = null;
@@ -89,21 +91,21 @@ const ROUTES = {
   wheel: { label: 'Roue du Singe', icon: 'wheel', mount: WheelGame.mount, group: 'casino' },
   limbo: { label: 'Limbo', icon: 'limbo', mount: Limbo.mount, group: 'casino' },
   scratch: { label: 'Jeux à gratter', icon: 'scratch', mount: Scratch.mount, group: 'casino' },
-  quiz: { label: 'Calcul mental', icon: 'quiz', mount: Quiz.mount, group: 'free' },
-  capitals: { label: 'Capitales', icon: 'globe', mount: Capitals.mount, group: 'free' },
-  flags: { label: 'Drapeaux', icon: 'flag', mount: Flags.mount, group: 'free' },
-  movies: { label: 'Quiz ciné', icon: 'film', mount: Movies.mount, group: 'free' },
-  higher: { label: 'Plus ou moins', icon: 'higher', mount: Higher.mount, group: 'free' },
-  motus: { label: 'Mot du jour', icon: 'motus', mount: Motus.mount, group: 'free' },
-  queens: { label: 'Queens', icon: 'queens', mount: Queens.mount, group: 'free' },
-  tango: { label: 'Tango', icon: 'tango', mount: Tango.mount, group: 'free' },
-  pinpoint: { label: 'Pinpoint', icon: 'pinpoint', mount: Pinpoint.mount, group: 'free' },
-  sudoku: { label: 'Sudoku', icon: 'sudoku', mount: Sudoku.mount, group: 'free' },
-  demineur: { label: 'Démineur', icon: 'demineur', mount: Demineur.mount, group: 'free' },
-  snake: { label: 'Snake', icon: 'snake', mount: Snake.mount, group: 'free' },
-  memory: { label: 'Memory', icon: 'memory', mount: Memory.mount, group: 'free' },
-  crossword: { label: 'Mots croisés', icon: 'crossword', mount: Crossword.mount, group: 'free' },
-  breaker: { label: 'Casse-briques', icon: 'breaker', mount: Breaker.mount, group: 'free' },
+  quiz: { label: 'Calcul mental', icon: 'quiz', mount: Quiz.mount, group: 'free', sub: 'quiz' },
+  capitals: { label: 'Capitales', icon: 'globe', mount: Capitals.mount, group: 'free', sub: 'quiz' },
+  flags: { label: 'Drapeaux', icon: 'flag', mount: Flags.mount, group: 'free', sub: 'quiz' },
+  movies: { label: 'Quiz ciné', icon: 'film', mount: Movies.mount, group: 'free', sub: 'quiz' },
+  higher: { label: 'Plus ou moins', icon: 'higher', mount: Higher.mount, group: 'free', sub: 'quiz' },
+  motus: { label: 'Mot du jour', icon: 'motus', mount: Motus.mount, group: 'free', sub: 'puzzle' },
+  queens: { label: 'Queens', icon: 'queens', mount: Queens.mount, group: 'free', sub: 'puzzle' },
+  tango: { label: 'Tango', icon: 'tango', mount: Tango.mount, group: 'free', sub: 'puzzle' },
+  pinpoint: { label: 'Pinpoint', icon: 'pinpoint', mount: Pinpoint.mount, group: 'free', sub: 'quiz' },
+  sudoku: { label: 'Sudoku', icon: 'sudoku', mount: Sudoku.mount, group: 'free', sub: 'puzzle' },
+  demineur: { label: 'Démineur', icon: 'demineur', mount: Demineur.mount, group: 'free', sub: 'puzzle' },
+  snake: { label: 'Snake', icon: 'snake', mount: Snake.mount, group: 'free', sub: 'arcade' },
+  memory: { label: 'Memory', icon: 'memory', mount: Memory.mount, group: 'free', sub: 'puzzle' },
+  crossword: { label: 'Mots croisés', icon: 'crossword', mount: Crossword.mount, group: 'free', sub: 'puzzle' },
+  breaker: { label: 'Casse-briques', icon: 'breaker', mount: Breaker.mount, group: 'free', sub: 'arcade' },
   farm: { label: 'Ferme', icon: 'banana', mount: Farm.mount },
   shop: { label: 'Boutique', icon: 'shop', mount: Shop.mount },
   achievements: { label: 'Succès', icon: 'medal', mount: AchPage.mount },
@@ -112,20 +114,25 @@ const ROUTES = {
   news: { label: 'Nouveautés', icon: 'scroll', mount: News.mount, nav: false },
   profile: { label: 'Mon profil', icon: 'user', mount: Profile.mount, nav: false },
 };
-const GROUPS = { casino: { label: 'Casino', icon: 'chip' }, free: { label: 'Gratuit', icon: 'gift' } };
+const GROUPS = { casino: { label: 'Casino', icon: 'chip' }, free: { label: 'Mini-jeux', icon: 'gift' } };
+const SUBS = { puzzle: 'Puzzle', quiz: 'Quiz', arcade: 'Adresse' };
 
 // Jeux qui affichent leur classement à côté (clé de stats -> nom affiché)
 const BOARD_GAMES = { slots: 'Chibouk Slot', blackjack: 'Blackjack', roulette: 'Roulette', plinko: 'Plinkoko', crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice', hilo: 'Hi-Lo', keno: 'Keno', wheel: 'Roue du Singe', limbo: 'Limbo', scratch: 'Jeux à gratter' };
 
-// Menu : Accueil · Casino ▾ · Gratuit ▾ · Boutique · Succès · Stats
+// Menu : Accueil | Casino ▾ · Mini-jeux ▾ · Ferme | Boutique · Succès · Classements · Stats
 function navHTML() {
   const link = (k, r, cls = '') => `<a href="#/${k}" data-r="${k}" title="${r.label}" class="${cls}"><span class="ni">${icon(r.icon)}</span><span class="nl">${r.label}</span></a>`;
   const group = (g) => {
     const items = Object.entries(ROUTES).filter(([, r]) => r.group === g);
-    return `<div class="nav-group" data-g="${g}"><button type="button" class="nav-gbtn ${g === 'free' ? 'nav-free' : ''}" aria-haspopup="true"><span class="ni">${icon(GROUPS[g].icon)}</span><span class="nl">${GROUPS[g].label} <i class="chev">${icon('chev')}</i></span></button>
-      <div class="nav-pop ${g}"><div class="nav-pop-title">${GROUPS[g].label === 'Casino' ? 'Jeux de casino' : 'Jeux gratuits'}</div><div class="nav-pop-grid">${items.map(([k, r]) => link(k, r, g === 'free' ? 'nav-free' : '')).join('')}</div></div></div>`;
+    const btn = `<button type="button" class="nav-gbtn ${g === 'free' ? 'nav-free' : ''}" aria-haspopup="true"><span class="ni">${icon(GROUPS[g].icon)}</span><span class="nl">${GROUPS[g].label} <i class="chev">${icon('chev')}</i></span></button>`;
+    const body = g === 'free'
+      ? Object.entries(SUBS).map(([sk, sl]) => `<div class="nav-pop-title">${sl}</div><div class="nav-pop-grid">${items.filter(([, r]) => r.sub === sk).map(([k, r]) => link(k, r, 'nav-free')).join('')}</div>`).join('')
+      : `<div class="nav-pop-title">Jeux de casino</div><div class="nav-pop-grid">${items.map(([k, r]) => link(k, r)).join('')}</div>`;
+    return `<div class="nav-group" data-g="${g}">${btn}<div class="nav-pop ${g}">${body}</div></div>`;
   };
-  return link('lobby', ROUTES.lobby) + group('casino') + group('free') + link('farm', ROUTES.farm, 'nav-farm') + ['shop', 'achievements', 'ranking', 'stats'].map((k) => link(k, ROUTES[k])).join('');
+  const sep = '<span class="nav-sep" aria-hidden="true"></span>';
+  return link('lobby', ROUTES.lobby) + sep + group('casino') + group('free') + link('farm', ROUTES.farm, 'nav-farm') + sep + ['shop', 'achievements', 'ranking', 'stats'].map((k) => link(k, ROUTES[k])).join('');
 }
 
 /* ============================== DÉMARRAGE ============================== */
@@ -168,6 +175,11 @@ async function boot() {
       wallet = w;
       renderShell();
       route();
+      // nouvelle version publiée pendant qu'on joue : bandeau, puis rechargement au prochain changement de page
+      if (!updater) updater = initUpdater({ current: News.VERSION, beforeReload: async () => {
+        if (cleanupView) { try { cleanupView(); } catch (e) { console.error(e); } cleanupView = null; } // parties en cours encaissées
+        if (wallet) await wallet.flush();
+      } });
     } catch (e) {
       console.error(e);
       app.innerHTML = `<div class="fatal">${monkeySVG({})}<h2>Erreur de chargement du profil</h2><p>${esc(e.message)}</p><p>As-tu bien publié les règles Firestore ? (voir README)</p><button class="btn btn-gold" id="retry">Réessayer</button> <button class="btn btn-ghost" id="out">Se déconnecter</button></div>`;
@@ -248,6 +260,7 @@ function renderAuth() {
 }
 
 /* ================================ COQUE ================================ */
+const volSliderHTML = () => `<input type="range" class="vol-range" min="0" max="100" step="1" aria-label="Volume du son">`;
 function renderShell() {
   app.innerHTML = '';
   const shell = h(`<div class="shell">
@@ -262,9 +275,10 @@ function renderShell() {
         <button class="icon-btn vault-btn" title="Coffre-fort">${icon('vault')}</button>
         <button class="icon-btn send-btn" title="Envoyer des ${CUR}">${icon('send')}</button>
         <button class="icon-btn tracker-btn" title="Suivi de balance">${icon('chart')}</button>
-        <button class="icon-btn mute-btn" title="Son">${icon(sfx.muted ? 'mute' : 'sound')}</button>
+        <div class="vol-wrap"><button class="icon-btn mute-btn" title="Son et volume" aria-haspopup="true">${icon(sfx.muted ? 'mute' : 'sound')}</button>
+          <div class="vol-pop" role="dialog" aria-label="Volume"><div class="vol-head"><span>Volume</span><b class="vol-pct"></b></div>${volSliderHTML()}<button type="button" class="btn btn-ghost btn-sm wide vol-mute"></button></div></div>
         <div class="user-menu"><button class="user-btn"><span class="ub-av">${Profile.avatarHTML(wallet.p, 'av-xs')}</span><span class="ub-name">${esc(wallet.pseudo)}</span> ▾</button>
-          <div class="user-drop"><a href="#/profile">Mon profil</a><a href="#/shop">Boutique</a><a href="#/stats">Mes stats</a><a href="#/ranking">Classements</a><a href="#/achievements">Mes succès</a><a href="#/news">Nouveautés</a><button class="vault-menu">Coffre-fort</button><button class="send-menu">Envoyer des ${CUR}</button><button class="tip-menu">Un conseil du singe</button><button class="tip-toggle"></button><button class="logout">Se déconnecter</button></div></div>
+          <div class="user-drop"><a href="#/profile">Mon profil</a><a href="#/shop">Boutique</a><a href="#/stats">Mes stats</a><a href="#/ranking">Classements</a><a href="#/achievements">Mes succès</a><a href="#/news">Nouveautés</a><div class="ud-vol"><span>${icon('sound')}</span>${volSliderHTML()}</div><button class="vault-menu">Coffre-fort</button><button class="send-menu">Envoyer des ${CUR}</button><button class="tip-menu">Un conseil du singe</button><button class="tip-toggle"></button><button class="logout">Se déconnecter</button></div></div>
       </div>
     </header>
     <main id="view"></main>
@@ -324,7 +338,26 @@ function renderShell() {
   $('.vault-menu', shell).onclick = () => openVault(wallet);
   $('.send-menu', shell).onclick = openTransfer;
   startInbox();
-  $('.mute-btn', shell).onclick = (e) => { const m = sfx.toggle(); e.currentTarget.innerHTML = icon(m ? 'mute' : 'sound'); };
+  // son : bouton haut-parleur → petite fenêtre avec le curseur de volume (aussi dans le menu du pseudo)
+  const volWrap = $('.vol-wrap', shell);
+  const syncVol = () => {
+    const pct = Math.round(sfx.volume * 100), off = sfx.muted;
+    $$('.vol-range', shell).forEach((r) => { if (document.activeElement !== r) r.value = off ? 0 : pct; r.style.setProperty('--p', (off ? 0 : pct) + '%'); });
+    $('.vol-pct', shell).textContent = off ? 'coupé' : pct + ' %';
+    $('.mute-btn', shell).innerHTML = icon(off ? 'mute' : 'sound');
+    $('.vol-mute', shell).textContent = off ? 'Réactiver le son' : 'Couper le son';
+  };
+  $('.mute-btn', shell).onclick = (e) => { e.stopPropagation(); volWrap.classList.toggle('open'); };
+  volWrap.addEventListener('click', (e) => e.stopPropagation());
+  $('.vol-mute', shell).onclick = () => { sfx.toggle(); syncVol(); if (!sfx.muted) sfx.click(); };
+  let volTick = 0;
+  $$('.vol-range', shell).forEach((r) => {
+    r.addEventListener('click', (e) => e.stopPropagation());
+    r.addEventListener('input', () => { sfx.setVolume(+r.value / 100); syncVol(); const t = Date.now(); if (t - volTick > 120) { volTick = t; sfx.click(); } });
+  });
+  $('.ud-vol', shell).addEventListener('click', (e) => e.stopPropagation());
+  document.addEventListener('click', () => volWrap.classList.remove('open'));
+  syncVol();
   const um = $('.user-menu', shell);
   $('.user-btn', shell).onclick = (e) => { e.stopPropagation(); um.classList.toggle('open'); tipToggle.textContent = `Conseils automatiques : ${tips.off ? 'non' : 'oui'}`; };
   document.addEventListener('click', () => um.classList.remove('open'));
@@ -442,6 +475,7 @@ function route() {
   const view = $('#view');
   if (!view) return;
   if (cleanupView) { try { cleanupView(); } catch (e) { console.error(e); } cleanupView = null; }
+  if (updater && updater.pending) { updater.apply(); return; }
   view.innerHTML = '';
   view.className = 'view view-' + (ROUTES[key] ? key : 'lobby');
   const cur = ROUTES[key] ? key : 'lobby';
@@ -581,31 +615,39 @@ function mountLobby(view, { wallet: w }) {
     <h2 class="lobby-cat"><button type="button" class="lc-toggle" aria-expanded="true">${icon('chip')}Jeux de casino<small class="lc-count">${casinoCards.length} jeux</small><span class="lc-chev">${icon('arrow')}</span></button></h2>
     <div class="lc-body"><section class="games-grid">${casinoCards.join('')}</section></div></section>
     <section class="lobby-sec" data-sec="free">
-    <h2 class="lobby-cat free"><button type="button" class="lc-toggle" aria-expanded="true">${icon('gift')}Gagner des ${CUR} gratuitement<small class="lc-count">roue du jour, jeux de réflexion, quiz, arcade</small>${freeMult(w) > 1 ? `<span class="vip-x big" title="Multiplicateur VIP sur tous les gains gratuits">VIP ${xMult(freeMult(w))}</span>` : ''}<span class="lc-chev">${icon('arrow')}</span></button></h2>
+    <h2 class="lobby-cat free"><button type="button" class="lc-toggle" aria-expanded="true">${icon('gift')}Mini-jeux gratuits<small class="lc-count">roue du jour, puzzles, quiz, jeux d'adresse</small>${freeMult(w) > 1 ? `<span class="vip-x big" title="Multiplicateur VIP sur tous les gains gratuits">VIP ${xMult(freeMult(w))}</span>` : ''}<span class="lc-chev">${icon('arrow')}</span></button></h2>
     <div class="lc-body">
     <section id="lobby-daily" class="daily-card"></section>
+    <h3 class="sub-cat">Puzzle<small>mots, logique et mémoire</small></h3>
     <section class="games-grid free-grid">
       ${card('motus', 'Mot du jour', 'Le même mot pour tout le monde, 6 essais, la première lettre est donnée. Jusqu\'à +400 ' + CUR + '.', today(w).motus && today(w).motus.done ? 'Fait aujourd\'hui' : 'Une fois par jour', motusArtSVG())}
+      ${card('crossword', 'Mots croisés', 'Une nouvelle grille à chaque partie, 3 tailles. Vérification gratuite, lettres à révéler si tu bloques.', `+${Crossword.CW_LEVELS[0].reward} à +${Crossword.CW_LEVELS[2].reward} ${CUR}`, crosswordArtSVG())}
       ${card('queens', 'Queens', 'Une reine par ligne, colonne et zone de couleur, sans jamais qu\'elles se touchent. Grilles de 7×7 à 9×9.', `+${Queens.QUEENS_LEVELS[0].reward} à +${Math.round(Queens.QUEENS_LEVELS[2].reward * 1.5)} ${CUR}`, queensArtSVG())}
       ${card('tango', 'Tango', 'Soleils et lunes à parts égales, jamais trois pareils d\'affilée, et respecte les signes = et ×.', `+${Tango.TANGO_LEVELS[0].reward} à +${Math.round(Tango.TANGO_LEVELS[2].reward * 1.5)} ${CUR}`, tangoArtSVG())}
-      ${card('pinpoint', 'Pinpoint', 'Trouve le point commun entre des indices dévoilés un par un. Moins il en faut, plus ça rapporte.', `+${Pinpoint.PP_REWARDS[4]} à +${Pinpoint.PP_REWARDS[0]} ${CUR}`, pinpointArtSVG())}
       ${card('sudoku', 'Sudoku', 'Le grand classique en 3 niveaux, avec notes et bonus de vitesse.', `+${Sudoku.SUDOKU_INFO[0].reward} à +${Math.round(Sudoku.SUDOKU_INFO[2].reward * 1.5)} ${CUR}`, sudokuArtSVG())}
       ${card('demineur', 'Démineur', 'Déminer avant la fin du chrono : 9×9, 16×16 ou 16×30. Plus tu es rapide, plus ça rapporte.', `+${Demineur.MS_LEVELS[0].reward} à +${Demineur.MS_LEVELS[2].reward * 2} ${CUR}`, demineurArtSVG())}
-      ${card('snake', 'Snake', 'Le serpent de la jungle a faim : mange un max de bananes sans te mordre la queue.', `+1 à +4 ${CUR} par banane`, snakeArtSVG())}
-      ${card('crossword', 'Mots croisés', 'Une nouvelle grille à chaque partie, 3 tailles. Vérification gratuite, lettres à révéler si tu bloques.', `+${Crossword.CW_LEVELS[0].reward} à +${Crossword.CW_LEVELS[2].reward} ${CUR}`, crosswordArtSVG())}
       ${card('memory', 'Memory', 'Retrouve toutes les paires de cartes, de 8 à 18 paires. Bonus si tu fais peu d\'erreurs.', `+${Memory.MEMORY_LEVELS[0].reward} à +${Math.round(Memory.MEMORY_LEVELS[2].reward * 1.5)} ${CUR}`, memoryArtSVG())}
+    </section>
+    <h3 class="sub-cat">Quiz<small>culture générale et calcul</small></h3>
+    <section class="games-grid free-grid">
+      ${card('pinpoint', 'Pinpoint', 'Trouve le point commun entre des indices dévoilés un par un. Moins il en faut, plus ça rapporte.', `+${Pinpoint.PP_REWARDS[4]} à +${Pinpoint.PP_REWARDS[0]} ${CUR}`, pinpointArtSVG())}
       ${card('quiz', 'Calcul mental', `${CONFIG.QUIZ_QUESTIONS} calculs, ${CONFIG.QUIZ_SECONDS} s chacun : +${CONFIG.QUIZ_PER_CORRECT} ${CUR} par bonne réponse, bonus pour un sans-faute.`, 'Gratuit', quizArtSVG())}
       ${card('capitals', 'Quiz capitales', `${CONFIG.QUIZ_QUESTIONS} questions dans les deux sens, mode facile ou expert (gains doublés).`, 'Gratuit', capitalsArtSVG())}
       ${card('flags', 'Quiz drapeaux', `${CONFIG.QUIZ_QUESTIONS} drapeaux à reconnaître parmi ${Flags.FLAGS.length} pays, mode facile ou expert.`, 'Gratuit', flagsArtSVG())}
       ${card('movies', 'Quiz ciné', `${CONFIG.QUIZ_QUESTIONS} questions sur 800 films cultes : réalisateurs, acteurs, années. +${CONFIG.QUIZ_PER_CORRECT} ${CUR} par bonne réponse.`, 'Gratuit', moviesArtSVG())}
       ${card('higher', 'Plus ou moins', 'Quel film a coûté le plus cher ? Enchaîne jusqu\'à 15 bonnes réponses.', 'Gratuit', higherArtSVG())}
+    </section>
+    <h3 class="sub-cat">Adresse<small>réflexes et précision</small></h3>
+    <section class="games-grid free-grid">
+      ${card('snake', 'Snake', 'Le serpent de la jungle a faim : mange un max de bananes sans te mordre la queue.', `+1 à +4 ${CUR} par banane`, snakeArtSVG())}
       ${card('breaker', 'Casse-briques', `Casse toutes les briques d'un niveau : +${CONFIG.BREAKER_REWARD} ${CUR}. Gratuit, sans mise.`, 'Gratuit',
         `<div class="mini-bricks">${Array.from({ length: 15 }, (_, i) => `<i style="--h:${(i * 37) % 360}"></i>`).join('')}</div>`)}
       <a class="game-card gc-ach" href="#/achievements">
         <div class="gc-art"><div class="ach-teaser"><b>${achSummary(w).done}</b><span>/ ${achSummary(w).total}</span></div></div>
         <div class="gc-body"><div class="gc-title"><span class="gc-logo">${icon('medal')}</span><h3>Succès</h3></div><p>Relève des défis sur chaque jeu : de +100 à +10 000 ${CUR} par succès débloqué.</p><span class="gc-tag">Récompenses</span></div>
       </a>
-    </section></div></section>
+    </section>
+    </div></section>
     <section class="mini-stats">
       <div><span>Total misé</span><b>${money(s.totalWagered)}</b></div>
       <div><span>Total gagné</span><b>${money(s.totalWon)}</b></div>
@@ -651,7 +693,9 @@ function mountLobby(view, { wallet: w }) {
   });
   const ago = setInterval(() => { const fb = $('#feed-box', view); if (fb && lastSocial) fb.innerHTML = feedHTML(lastSocial); }, 60000);
   // la bulle de description d'un succès reste toujours dans le cadre du fil
-  view.addEventListener('mouseover', (e) => {
+  // (les écouteurs sont posés sur #view, qui est réutilisé d'une page à l'autre : il faut les retirer en quittant l'accueil,
+  //  sinon après N passages sur l'accueil un clic était traité N fois et « Voir plus » s'annulait lui-même)
+  const onOver = (e) => {
     const a = e.target.closest('.fd-ach'); if (!a) return;
     const card = a.querySelector('.hover-card'), fb = $('#feed-box', view); if (!card || !fb) return;
     card.style.left = '0px';
@@ -660,14 +704,16 @@ function mountLobby(view, { wallet: w }) {
     if (r.right > box.right - 10) dx = box.right - 10 - r.right;
     if (r.left + dx < box.left + 10) dx = box.left + 10 - r.left;
     card.style.left = dx + 'px';
-  });
-  view.addEventListener('click', (e) => {
+  };
+  const onFeedClick = (e) => {
     const more = e.target.closest('[data-feedmore]'), fx = e.target.closest('[data-fdx]');
     if (fx) { const k = fx.dataset.fdx; feedOpen.has(k) ? feedOpen.delete(k) : feedOpen.add(k); }
     else if (more) feedAll = !feedAll;
     else return;
     const fb = $('#feed-box', view); if (fb && lastSocial) fb.innerHTML = feedHTML(lastSocial);
-  });
+  };
+  view.addEventListener('mouseover', onOver);
+  view.addEventListener('click', onFeedClick);
   const farmBox = $('#fm-lobby', view);
   const farmCard = () => {
     if (!farmBox) return;
@@ -682,7 +728,7 @@ function mountLobby(view, { wallet: w }) {
   };
   farmCard();
   const farmIv = setInterval(farmCard, 5000);
-  return () => { off(); offSocial(); clearTimeout(t); clearInterval(ago); clearInterval(farmIv); };
+  return () => { off(); offSocial(); clearTimeout(t); clearInterval(ago); clearInterval(farmIv); view.removeEventListener('mouseover', onOver); view.removeEventListener('click', onFeedClick); };
 }
 
 boot();

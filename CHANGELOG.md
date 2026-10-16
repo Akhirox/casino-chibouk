@@ -2,6 +2,50 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V18.1 — Mises à jour automatiques (16 octobre 2026)
+
+### Nouveau
+
+- Quand une nouvelle version du casino est publiée pendant que tu joues, un bandeau te prévient. La mise à jour s'installe toute seule au prochain changement de page (ou tout de suite avec le bouton), après avoir encaissé ta partie en cours et sauvegardé ton profil.
+
+## V18 — Auto plus malin et réglage du volume (16 octobre 2026)
+
+### Paris automatiques
+
+- Nouvelle option « Solde min. » : l'auto s'arrête dès que ton solde passe sous le montant choisi.
+- Nouvelle option « En cas de perte » : la mise augmente ou baisse du pourcentage de ton choix après chaque partie perdue, et revient à sa valeur de départ après une victoire (et à la fin de l'auto). Disponible sur tous les jeux à mise unique : slot, Plinkoko, Crash, Tower, Mines, Dice, Hi-Lo, Keno, Roue et Limbo.
+
+### Son
+
+- Le bouton haut-parleur ouvre un curseur de volume (avec « Couper le son »). Sur téléphone, le curseur est dans le menu du pseudo. Le réglage est gardé sur l'appareil.
+
+## V17 — Menu rangé, nouvelle Chibouk Slot et plein de contenu (16 octobre 2026)
+
+### Navigation
+
+- Le menu est regroupé : Accueil, puis Casino, Mini-jeux et Ferme, puis Boutique, Succès, Classements et Stats.
+- « Gratuit » devient « Mini-jeux », rangés en trois familles : Puzzle, Quiz et Adresse (dans le menu et sur l'accueil).
+- La ferme s'ouvre toujours sur ta propre ferme, même si tu étais chez les voisins la dernière fois.
+
+### Chibouk Slot
+
+- Le résultat de chaque spin s'affiche en grand, au centre sous les rouleaux.
+- Nouveaux boutons ½ et ×2 pour diviser ou doubler la mise.
+- Les spins automatiques sont maintenant à droite du bouton SPIN, avec l'interrupteur Turbo juste à côté.
+
+### Contenu
+
+- Pinpoint : 335 nouvelles catégories (570 au total).
+- Mots croisés : plus de 600 nouveaux mots (900 au total), et les mots de tes 25 dernières grilles sont évités.
+- Tickets à gratter : chaque montant a sa couleur pour repérer les trios d'un coup d'œil.
+- Ferme : en sélectionnant un puits, tu vois combien de bananes par heure il rapporte déjà et combien son amélioration ajoutera, selon ce qui est construit autour.
+
+### Correctifs
+
+- Plinkoko : avec de toutes petites mises, l'arrondi du gain faussait le RTP (jusqu'à 110 % avec une mise de 1). Le gain est maintenant arrondi au hasard, au Brundle supérieur ou inférieur, et chaque mode reste à 99 %.
+- Fil « En direct de la jungle » : le bouton Voir plus / Voir moins ne répondait plus après quelques allers-retours sur l'accueil.
+- Sur petit téléphone, la barre du haut dépassait de l'écran depuis l'ajout du coffre.
+
 ## V16 — Coffre-fort, jeux à gratter, Memory et mots croisés (16 octobre 2026)
 
 ### Coffre-fort

@@ -141,7 +141,7 @@ export function mount(view, { wallet }) {
   const picksIn = $('#mn-auto-picks', view);
   try { const v = +localStorage.getItem('chibouk_mn_auto_picks'); if (v >= 1 && v <= 24) picksIn.value = v; } catch {}
   picksIn.onchange = () => { picksIn.value = Math.max(1, Math.min(24, Math.floor(+picksIn.value) || 1)); try { localStorage.setItem('chibouk_mn_auto_picks', picksIn.value); } catch {} };
-  const auto = bindAuto(view, 'mn-auto', { wallet, game: 'mines', delay: 600,
+  const auto = bindAuto(view, 'mn-auto', { wallet, game: 'mines', bet, delay: 600,
     play: async () => {
       if (!start()) return false;
       const target = Math.max(1, Math.min(N - game.mines, +picksIn.value || 1));

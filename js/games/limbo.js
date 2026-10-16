@@ -106,7 +106,7 @@ export function mount(view, { wallet }) {
     return true;
   }
 
-  const auto = bindAuto(view, 'lb-auto', { wallet, game: 'limbo', delay: 200, play: () => play(), onState: (on) => { autoLeft = on ? 1 : 0; if (alive) setDisabled(on); } });
+  const auto = bindAuto(view, 'lb-auto', { wallet, game: 'limbo', bet, delay: 200, play: () => play(), onState: (on) => { autoLeft = on ? 1 : 0; if (alive) setDisabled(on); } });
   $('#lb-play', view).onclick = () => play();
   $('#lb-rules', view).onclick = () => modal({ title: 'Règles du Limbo', html: `
     <ul class="muted"><li>Choisis un <b>multiplicateur cible</b> (de ×1,01 à ×1 000 000).</li>

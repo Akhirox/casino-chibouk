@@ -42,10 +42,12 @@ export function mount(view, { wallet }) {
   function blank() {
     $('#sc-stage', view).innerHTML = ticketHTML(tk, null) + '<p class="sc-msg" id="sc-msg">Achète un ticket pour commencer à gratter.</p>';
   }
+  // couleur par montant : rang du lot dans la table du ticket (0 = remboursé … 7 = gros lot)
+  const tierOf = (t, m) => { const r = t.prizes.findIndex((p) => p.m === m), k = t.prizes.length - 1; return r <= 0 ? 0 : 1 + Math.round(((r - 1) * 6) / Math.max(1, k - 1)); };
   function ticketHTML(t, data) {
     return `<div class="sc-ticket sc-t-${t.theme}">
       <div class="sc-head"><b>${t.name}</b><span>3 montants identiques = gagné !</span><em>Jusqu'à ${fmt(t.max * t.price)} ${CUR}</em></div>
-      <div class="sc-gridwrap"><div class="sc-grid" style="--cols:${t.cols}">${Array.from({ length: t.cells }, (_, i) => `<div class="sc-cell" data-i="${i}">${data ? `<b>${fmt(data.cells[i] * t.price)}</b><small>${fmtM(data.cells[i])}</small>` : '<b>?</b>'}</div>`).join('')}</div>
+      <div class="sc-gridwrap"><div class="sc-grid" style="--cols:${t.cols}">${Array.from({ length: t.cells }, (_, i) => `<div class="sc-cell${data ? ' sc-m' + tierOf(t, data.cells[i]) : ''}" data-i="${i}">${data ? `<b>${fmt(data.cells[i] * t.price)}</b><small>${fmtM(data.cells[i])}</small>` : '<b>?</b>'}</div>`).join('')}</div>
       ${data ? '<canvas class="sc-cover" id="sc-cover"></canvas>' : '<div class="sc-cover-plain"></div>'}</div>
       <div class="sc-foot">Prix ${fmt(t.price)} ${CUR} · RTP ${Math.round(RTP * 100)} %</div></div>`;
   }

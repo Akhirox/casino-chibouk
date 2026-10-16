@@ -164,7 +164,7 @@ export function mount(view, { wallet }) {
   $('#hl-lo', view).onclick = () => guess('lo');
   $('#hl-skip', view).onclick = skip;
 
-  const auto = bindAuto(view, 'hl-auto', { wallet, game: 'hilo', delay: 250,
+  const auto = bindAuto(view, 'hl-auto', { wallet, game: 'hilo', bet, delay: 250,
     play: async () => {
       if (!start()) return false;
       while (alive && game && game.steps < autoSteps) {

@@ -90,7 +90,7 @@ export function mount(view, { wallet }) {
   }
 
   let autoRun = false;
-  const auto = bindAuto(view, 'cr-autobet', { wallet, game: 'crash', delay: 900,
+  const auto = bindAuto(view, 'cr-autobet', { wallet, game: 'crash', bet, delay: 900,
     play: async () => {
       if (!autoOn) { autoOn = true; autoChk.checked = true; }
       if (!start()) return false;

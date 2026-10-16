@@ -12,6 +12,7 @@ export const CW_LEVELS = [
   { name: 'Moyen', desc: '10 mots', words: 10, maxSize: 13, reward: 70 },
   { name: 'Difficile', desc: '14 mots, grande grille', words: 14, maxSize: 15, reward: 110 },
 ];
+const RECENT_KEY = 'chibouk_cw_recent', RECENT_MAX = 300; // ~25 grilles sans revoir un mot
 const HINT_COST = 0.1; // chaque lettre révélée retire 10 % du gain
 
 export function mount(view, { wallet }) {
@@ -36,7 +37,13 @@ export function mount(view, { wallet }) {
 
   function start() {
     const L = CW_LEVELS[lv];
-    pz = generateCrossword(WORDS, L);
+    // on évite les mots des dernières grilles (mémorisés sur l'appareil) pour ne pas retomber sur les mêmes
+    let recent = [];
+    try { recent = JSON.parse(localStorage.getItem(RECENT_KEY) || '[]'); } catch {}
+    const avoid = new Set(recent), pool = WORDS.filter((w) => !avoid.has(w.word));
+    pz = generateCrossword(pool.length >= 250 ? pool : WORDS, L);
+    recent = [...recent.filter((w) => !pz.words.some((x) => x.word === w)), ...pz.words.map((x) => x.word)].slice(-RECENT_MAX);
+    try { localStorage.setItem(RECENT_KEY, JSON.stringify(recent)); } catch {}
     fill = {}; given = new Set(); hints = 0; checked = false; state = 'play';
     if (L.firstLetters) for (const w of pz.words) { fill[key(w.r, w.c)] = w.word[0]; given.add(key(w.r, w.c)); }
     const first = pz.words[0];
