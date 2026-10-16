@@ -39,8 +39,8 @@ export function mount(view, { wallet, backend }) {
 
   async function loadLB(force) {
     const box = $('#lb', view), bw = $('#bw', view);
-    if (force && playersFresh()) toast(`Classement déjà à jour (cache de ${CONFIG.LEADERBOARD_CACHE_MS / 60000} min)`);
-    try { players = await getPlayers(backend, wallet, false); }
+    if (force && playersFresh(true)) toast('Classement déjà à jour (relu il y a moins d\'une minute)');
+    try { players = await getPlayers(backend, wallet, !!force); }
     catch (e) {
       console.error(e);
       if (alive && box) box.innerHTML = `<p class="neg">Impossible de charger le classement (${esc(e.message)}).</p>`;

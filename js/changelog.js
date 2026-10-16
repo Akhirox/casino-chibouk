@@ -1,9 +1,24 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '21.1';
+export const VERSION = '22';
 
 export const CHANGELOG = [
+  {
+    v: '22', date: '17 octobre 2026', title: 'Casino économe',
+    groups: [
+      ['Serveur', [
+        'Le casino utilise beaucoup moins la base de données, pour rester dans l\'offre gratuite de Firebase même avec toute la bande connectée.',
+        'Sauvegarde automatique toutes les 60 s au lieu de 30 s, et plus d\'envoi immédiat à chaque partie de mini-jeu. Ta partie reste protégée par la sauvegarde de secours du navigateur.',
+        'Classements, fermes des voisins et palmarès sont gardés dans le navigateur : seuls les profils des joueurs qui ont bougé sont relus, au plus toutes les 10 min (bouton Actualiser : une fois par minute).',
+        'Après 4 min sans toucher à rien (ou onglet caché), le casino arrête de relire le fil, le jackpot et les transferts. Tout se remet à jour dès que tu reviens.',
+        'Le fil d\'activité est relu toutes les 2 min, les Brundles reçus toutes les 3 min, et les contributions au jackpot partent toutes les 5 min.',
+      ]],
+      ['Pour l\'admin', [
+        'Le journal des mini-jeux est envoyé par lots (jusqu\'à 60 parties par écriture, ou tout de suite en cas de triche). La page Journal lit les lots et affiche les parties comme avant.',
+      ]],
+    ],
+  },
   {
     v: '21.1', date: '17 octobre 2026', title: 'Fair-play des quiz',
     groups: [

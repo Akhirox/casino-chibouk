@@ -1,4 +1,5 @@
 // Classement affiché à côté de chaque jeu : plus gros parieurs (volume), meilleur multiplicateur, plus gros gain
+import { isIdle } from './activity.js';
 import { avatarHTML } from './profile.js';
 import { getPlayers } from './players.js';
 import { icon, coinSVG } from './art.js';
@@ -57,7 +58,8 @@ export function mountBoard(el, game, title, { wallet, backend }) {
   // ses propres chiffres bougent en direct (sans lecture en base), au plus toutes les 1,5 s
   const off = wallet.on(() => { if (!timer) timer = setTimeout(() => { timer = null; render(); }, tab === 'hist' ? 600 : 1500); });
   // la liste des autres joueurs se rafraîchit quand le cache expire
-  const refresh = setInterval(load, 130000);
+  // (rien n'est relu si le joueur est inactif ; le cache partagé ne relit la base qu'au plus toutes les 10 min)
+  const refresh = setInterval(() => { if (!isIdle()) load(); }, 130000);
 
   render();
   load();

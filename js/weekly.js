@@ -3,7 +3,12 @@ import { weekId, prevWeekId } from './wallet.js';
 import { getPlayers } from './players.js';
 import { setWeeks } from './profile.js';
 
-let weeks = [], loaded = 0, loadedFor = null;
+// Les semaines terminées ne changent plus jamais : on les garde dans le navigateur, et la base n'est relue
+// qu'une fois par semaine (quand la semaine précédente n'est pas encore dans la liste).
+const LS = 'chibouk_weeks_v2';
+let weeks = [], loaded = 0, loadedFor = null, inflight = null;
+try { const c = JSON.parse(localStorage.getItem(LS) || 'null'); if (c && Array.isArray(c.weeks)) { weeks = c.weeks; loaded = c.at || 0; } } catch {}
+const keepWeeks = () => { try { localStorage.setItem(LS, JSON.stringify({ weeks, at: loaded })); } catch {} };
 export const getWeeks = () => weeks;
 
 // Chiffres d'un joueur pour la semaine W (semaine en cours ou précédente, selon ce qui est enregistré)
@@ -20,17 +25,23 @@ export function weeklyRows(players, W = weekId()) {
 }
 
 // Au premier passage après la fin d'une semaine, un joueur enregistre le vainqueur (une seule fois, garanti par Firestore)
-export async function syncWeeks(backend, wallet, force = false) {
+export function syncWeeks(backend, wallet, force = false) {
+  if (!inflight) inflight = doSync(backend, wallet, force).finally(() => { inflight = null; });
+  return inflight;
+}
+async function doSync(backend, wallet, force) {
+  await null; // toujours asynchrone : l'appelant (affichage de la page) finit de se construire avant l'événement « weeks »
   const done = () => {
     setWeeks(weeks);
     wallet.weekWins = weeks.filter((w) => w.winnerUid === wallet.uid).length;
     wallet.emit({ type: 'weeks' }); // pour le succès « vainqueur de la semaine »
   };
-  if (!force && loadedFor === wallet.uid && Date.now() - loaded < 10 * 60000) { done(); return weeks; }
+  const W = prevWeekId();
+  // semaine précédente déjà connue, ou vérifiée il y a moins de 30 min (personne n'a joué cette semaine-là) : rien à relire
+  if (!force && (weeks.some((w) => w.id === W) || Date.now() - loaded < 30 * 60000)) { loadedFor = wallet.uid; done(); return weeks; }
   try {
     weeks = await backend.listWeeks();
     loaded = Date.now();
-    const W = prevWeekId();
     if (!weeks.some((w) => w.id === W)) {
       const rows = weeklyRows(await getPlayers(backend, wallet, true), W);
       if (rows.length) {
@@ -43,6 +54,7 @@ export async function syncWeeks(backend, wallet, force = false) {
       }
     }
     weeks.sort((a, b) => (a.id < b.id ? 1 : -1));
+    keepWeeks();
     loadedFor = wallet.uid;
     done();
   } catch (e) { console.warn('Palmarès indisponible', e); }

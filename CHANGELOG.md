@@ -2,6 +2,20 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V22 — Casino économe (17 octobre 2026)
+
+### Serveur
+
+- Le casino utilise beaucoup moins la base de données, pour rester dans l'offre gratuite de Firebase même avec toute la bande connectée.
+- Sauvegarde automatique toutes les 60 s au lieu de 30 s, et plus d'envoi immédiat à chaque partie de mini-jeu. Ta partie reste protégée par la sauvegarde de secours du navigateur.
+- Classements, fermes des voisins et palmarès sont gardés dans le navigateur : seuls les profils des joueurs qui ont bougé sont relus, au plus toutes les 10 min (bouton Actualiser : une fois par minute).
+- Après 4 min sans toucher à rien (ou onglet caché), le casino arrête de relire le fil, le jackpot et les transferts. Tout se remet à jour dès que tu reviens.
+- Le fil d'activité est relu toutes les 2 min, les Brundles reçus toutes les 3 min, et les contributions au jackpot partent toutes les 5 min.
+
+### Pour l'admin
+
+- Le journal des mini-jeux est envoyé par lots (jusqu'à 60 parties par écriture, ou tout de suite en cas de triche). La page Journal lit les lots et affiche les parties comme avant.
+
 ## V21.1 — Fair-play des quiz (17 octobre 2026)
 
 ### Fair-play

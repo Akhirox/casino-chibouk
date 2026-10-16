@@ -21,7 +21,7 @@ export function msUntilParisMidnight() {
   return Math.max(0, (86400 - secs) * 1000);
 }
 
-const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'shop', 'day', 'streak', 'week', 'lastWeek', 'rake', 'vipLevel', 'farm', 'vault', 'fair', 'adminRev', 'updatedAt', 'pseudo', 'pseudoLower'];
+const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'shop', 'day', 'streak', 'week', 'lastWeek', 'rake', 'vipLevel', 'farm', 'vault', 'fair', 'adminRev', 'updatedAt', 'pseudo', 'pseudoLower', 'lastLogin'];
 
 // Semaine ISO (lundi → dimanche, heure de Paris), ex : « 2026-W42 »
 export function weekId(d = new Date()) {
@@ -77,15 +77,16 @@ export class Wallet {
       }
     } catch {}
     w.start();
-    // dernière connexion (affichée sur la fiche du joueur) : 1 écriture à l'ouverture
+    // dernière connexion (affichée sur la fiche du joueur) : envoyée avec la prochaine sauvegarde, pas d'écriture en plus
     w.p.lastLogin = Date.now();
-    backend.saveProfile(user.uid, { lastLogin: w.p.lastLogin }).catch(() => {});
     return w;
   }
 
   start() {
     this.timer = setInterval(() => this.flush(), CONFIG.SYNC_INTERVAL_MS);
-    this._onHide = () => { if (document.visibilityState === 'hidden') this.flush(); };
+    // onglet caché : sauvegarde, mais pas plus d'une fois toutes les 20 s (ceux qui jonglent entre les onglets
+    // ne déclenchent pas une écriture à chaque fois ; la sauvegarde locale signée couvre le reste)
+    this._onHide = () => { if (document.visibilityState === 'hidden' && Date.now() - (this.lastSync || 0) > 20000) this.flush(); };
     this._onPageHide = () => this.flush();
     document.addEventListener('visibilitychange', this._onHide);
     window.addEventListener('pagehide', this._onPageHide);
@@ -305,7 +306,7 @@ export class Wallet {
     this.p.stats.breakerTotal += CONFIG.BREAKER_REWARD;
     this.touch({ type: 'breaker', amount: CONFIG.BREAKER_REWARD });
     this.vipBonus('breaker', CONFIG.BREAKER_REWARD);
-    this.flush();
+    // pas d'envoi immédiat : la synchro régulière s'en charge (1 écriture par minute au lieu d'1 par partie)
   }
 
   // Multiplicateur VIP des gains gratuits : la part en plus est versée à part (stats.vipfreeTotal)
@@ -329,7 +330,7 @@ export class Wallet {
     if (amount > 0) this.p.balance += amount;
     this.touch({ type: 'free', game: kind, amount: Math.max(0, amount), extra, meta });
     this.vipBonus(kind, amount);
-    this.flush();
+    // pas d'envoi immédiat : la synchro régulière s'en charge (1 écriture par minute au lieu d'1 par partie)
   }
 
   // Amende (triche détectée sur un mini-jeu) : prise sur le solde, puis sur le coffre si besoin. Renvoie le montant pris.
@@ -345,7 +346,7 @@ export class Wallet {
     return taken;
   }
 
-  // Profil public (photo + bio) : écrit tout de suite, une seule fois, hors de la synchro des 30 s
+  // Profil public (photo + bio) : écrit tout de suite, une seule fois, hors de la synchro régulière
   async saveCard({ avatar, bio }) {
     const data = { avatar: String(avatar || ''), bio: String(bio || '').slice(0, 160), updatedAt: Date.now() };
     await this.exclusive(() => this.backend.saveProfile(this.uid, data));
@@ -429,7 +430,7 @@ export class Wallet {
     });
   }
 
-  // Récupère les Brundles reçus (appelé à l'ouverture puis toutes les ~90 s)
+  // Récupère les Brundles reçus (appelé à l'ouverture puis toutes les 3 min si le joueur est là)
   async checkInbox() {
     if (this.disabled || this.inboxBusy) return [];
     this.inboxBusy = true;

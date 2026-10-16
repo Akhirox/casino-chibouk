@@ -1,6 +1,8 @@
 // Fil d'activité « En direct de la jungle » + jackpot commun de la slot.
-// Lectures économes : toutes les 90 s, on ne lit que les nouveaux messages (1 lecture s'il n'y a rien) + le jackpot (1 lecture).
+// Lectures économes : toutes les 2 min (et seulement si le joueur est là), on ne lit que les nouveaux messages
+// (1 lecture s'il n'y a rien) + le jackpot (1 lecture). Les contributions au jackpot partent toutes les 5 min.
 import { CONFIG } from './config.js';
+import { isIdle, onWake } from './activity.js';
 import { randInt } from './games/slots-math.js';
 import { ACHIEVEMENTS, TIERS } from './achievements.js';
 import { vipOf } from './progress.js';
@@ -122,18 +124,34 @@ export function chanceText(p) {
   return `1 sur ${fmt(one)} (${(p * 100).toLocaleString('fr-FR', { maximumSignificantDigits: 2 })} %)`;
 }
 
+const FEED_LS = 'chibouk_feed_v1';
 export function createSocial(wallet, backend) {
-  let entries = [], since = 0, jackpot = { amount: 0 }, pending = 0, timer = null, first = true, lastPost = 0, queue = [], alive = true;
+  let entries = [], since = 0, jackpot = { amount: 0 }, pending = 0, timer = null, first = true, lastPost = 0, queue = [], alive = true, lastPush = Date.now(), lastPoll = 0;
+  // fil gardé dans le navigateur : au rechargement de la page, on ne relit que les nouveaux messages
+  try {
+    const c = JSON.parse(localStorage.getItem(FEED_LS) || 'null');
+    if (c && Array.isArray(c.entries) && Date.now() - (c.since || 0) < 3 * 86400000) { entries = c.entries; since = c.since || 0; if (c.jackpot) jackpot = c.jackpot; }
+  } catch {}
+  const keepFeed = () => { try { localStorage.setItem(FEED_LS, JSON.stringify({ since, jackpot, entries: entries.filter((e) => !String(e.id).startsWith('local_')).slice(0, 40) })); } catch {} };
   const subs = new Set();
   const notify = () => subs.forEach((cb) => { try { cb({ entries, jackpot: jackpotValue(), last: jackpot }); } catch (e) { console.error(e); } });
   const jackpotValue = () => CONFIG.JACKPOT_SEED + (jackpot.amount || 0) + Math.floor(pending);
 
-  async function poll() {
-    if (!alive || document.visibilityState === 'hidden') return;
+  // contributions de la slot au jackpot : regroupées, 1 écriture toutes les JACKPOT_PUSH_MS au plus
+  async function pushJackpot(force = false) {
+    if (pending < 1 || (!force && Date.now() - lastPush < CONFIG.JACKPOT_PUSH_MS)) return;
+    const d = Math.floor(pending); pending -= d; lastPush = Date.now();
+    try { await backend.addJackpot(d); } catch (e) { pending += d; throw e; }
+  }
+
+  // Lecture du fil + jackpot : seulement si quelqu'un regarde (onglet visible, joueur actif depuis moins de IDLE_MS)
+  async function poll(force = false) {
+    if (!alive || (!force && isIdle())) return;
+    if (!force && Date.now() - lastPoll < 20000) return; // pas de double lecture (retour sur l'onglet + minuterie)
+    lastPoll = Date.now();
     try {
-      // contributions de la slot accumulées depuis le dernier passage
-      if (pending >= 1) { const d = Math.floor(pending); pending -= d; try { await backend.addJackpot(d); } catch (e) { pending += d; throw e; } }
-      const [fresh, jp] = await Promise.all([backend.fetchFeed(since, first ? 40 : 20), backend.getJackpot()]);
+      await pushJackpot();
+      const [fresh, jp] = await Promise.all([backend.fetchFeed(since, since ? 25 : 40), backend.getJackpot()]);
       jackpot = jp || { amount: 0 };
       if (fresh.length) {
         since = Math.max(since, ...fresh.map((e) => e.at || 0));
@@ -147,6 +165,7 @@ export function createSocial(wallet, backend) {
           .forEach((e) => toast(`<b>${esc(feedWho(e))}</b> ${esc(feedText(e))}`, e.kind === 'jackpot' ? 'win' : 'info', 5000));
       }
       first = false;
+      keepFeed();
       notify();
     } catch (e) { console.warn('Fil d\'activité indisponible', e); }
   }
@@ -229,20 +248,21 @@ export function createSocial(wallet, backend) {
   const onCustom = (ev) => { const d = ev.detail || {}; if (d.type === 'motus' && d.won) post({ kind: 'motus', tries: d.tries }); if (d.type === 'week') post({ kind: 'week', winner: d.winner, profit: d.profit }); };
   window.addEventListener('chibouk:feed', onCustom);
 
-  timer = setInterval(poll, CONFIG.FEED_INTERVAL_MS);
-  const onVis = () => { if (document.visibilityState === 'visible') poll(); };
-  document.addEventListener('visibilitychange', onVis);
-  setTimeout(poll, 1200);
+  timer = setInterval(() => poll(), CONFIG.FEED_INTERVAL_MS);
+  const offWake = onWake(() => poll()); // retour sur l'onglet ou reprise après une pause
+  const onLeave = () => { pushJackpot(true).catch(() => {}); };
+  window.addEventListener('pagehide', onLeave);
+  setTimeout(() => poll(true), 1200);
 
   return {
     subscribe(cb) { subs.add(cb); cb({ entries, jackpot: jackpotValue(), last: jackpot }); return () => subs.delete(cb); },
     get jackpot() { return jackpotValue(); },
-    refresh: poll,
+    refresh: () => poll(true),
     post,
     destroy() {
       alive = false; clearInterval(timer); off();
-      window.removeEventListener('chibouk:feed', onCustom); document.removeEventListener('visibilitychange', onVis);
-      if (pending >= 1) backend.addJackpot(Math.floor(pending)).catch(() => {});
+      window.removeEventListener('chibouk:feed', onCustom); offWake(); window.removeEventListener('pagehide', onLeave);
+      pushJackpot(true).catch(() => {});
     },
   };
 }

@@ -146,6 +146,11 @@ async function createFirebaseBackend() {
       const snap = await F.getDocs(F.query(F.collection(db, 'users'), F.limit(n)));
       return snap.docs.map((d) => ({ uid: d.id, ...normalizeProfile(d.data()) }));
     },
+    // Seulement les profils modifiés depuis `since` (1 lecture par profil renvoyé, 1 lecture si aucun)
+    async listPlayersSince(since, n = 200) {
+      const snap = await F.getDocs(F.query(F.collection(db, 'users'), F.where('updatedAt', '>', since), F.limit(n)));
+      return snap.docs.map((d) => ({ uid: d.id, ...normalizeProfile(d.data()) }));
+    },
     // Envoi : en une seule écriture atomique, on débite l'expéditeur et on crée le transfert
     async sendTransfer(t) {
       const batch = F.writeBatch(db);
@@ -204,14 +209,15 @@ async function createFirebaseBackend() {
     },
     // Journal des mini-jeux (lecture réservée aux admins : voir firestore.rules et la collection « admins »)
     async addLog(entry) { await F.addDoc(F.collection(db, 'logs'), entry); },
-    async fetchLogs({ before = 0, n = 300 } = {}) {
+    // Lecture par paquets de documents ; un document = une partie (ancien format) ou un lot de parties (items)
+    async fetchLogs({ before = 0, n = 40 } = {}) {
       const parts = [F.collection(db, 'logs')];
       if (before) parts.push(F.where('at', '<', before));
       parts.push(F.orderBy('at', 'desc'), F.limit(n));
       const snap = await F.getDocs(F.query(...parts));
-      return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-    },
-    // Correction d'un compte par un admin (règles : admins seulement, champs limités, adminRev + 1)
+      const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      return { rows: flattenLogs(docs), cursor: docs.length ? docs[docs.length - 1].at : before, done: docs.length < n };
+    },    // Correction d'un compte par un admin (règles : admins seulement, champs limités, adminRev + 1)
     async adminUpdateUser(uid, data, rev) {
       await F.updateDoc(F.doc(db, 'users', uid), { ...data, adminRev: (rev || 0) + 1, adminAt: Date.now() });
     },
@@ -219,6 +225,16 @@ async function createFirebaseBackend() {
       try { return (await F.getDoc(F.doc(db, 'admins', uid))).exists(); } catch { return false; }
     },
   };
+}
+
+// Journal : un document peut contenir un lot de parties (champ items) ; on le déplie en lignes
+export function flattenLogs(docs) {
+  const out = [];
+  for (const d of docs) {
+    if (Array.isArray(d.items)) d.items.forEach((it, k) => out.push({ uid: d.uid, pseudo: d.pseudo, v: d.v, ...it, id: d.id + ':' + k }));
+    else out.push(d);
+  }
+  return out.sort((a, b) => (b.at || 0) - (a.at || 0));
 }
 
 /* ------------------------------------------------------------------ */
@@ -287,6 +303,9 @@ function createDemoBackend() {
       const users = Object.values(read(K_USERS, {}));
       return users.slice(0, n).map((u) => ({ uid: u.uid, ...normalizeProfile(read(kProfile(u.uid), newProfile(u.pseudo))) }));
     },
+    async listPlayersSince(since, n = 200) {
+      return (await this.listPlayers(500)).filter((r) => (r.updatedAt || 0) > since).slice(0, n);
+    },
     async sendTransfer(t) {
       const p = read(kProfile(t.from), null);
       if (!p || p.balance < t.amount) throw new Error('Solde insuffisant');
@@ -327,7 +346,10 @@ function createDemoBackend() {
     async listWeeks() { return Object.entries(read(K_WEEKS, {})).map(([id, d]) => ({ id, ...d })); },
     async createWeek(id, data) { const w = read(K_WEEKS, {}); if (w[id]) return false; w[id] = data; write(K_WEEKS, w); return true; },
     async addLog(entry) { const l = read(K_LOGS, []); l.push({ ...entry, id: 'l_' + Math.random().toString(36).slice(2, 10) }); write(K_LOGS, l.slice(-2000)); },
-    async fetchLogs({ before = 0, n = 300 } = {}) { return read(K_LOGS, []).filter((e) => !before || e.at < before).sort((a, b) => b.at - a.at).slice(0, n); },
+    async fetchLogs({ before = 0, n = 40 } = {}) {
+      const docs = read(K_LOGS, []).filter((e) => !before || e.at < before).sort((a, b) => b.at - a.at).slice(0, n);
+      return { rows: flattenLogs(docs), cursor: docs.length ? docs[docs.length - 1].at : before, done: docs.length < n };
+    },
     async isAdmin() { return true; }, // en démo, tout le monde voit le journal
   };
 }

@@ -30,8 +30,8 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 - **Classement à côté de chaque jeu** : top 5 des plus gros parieurs (volume misé), du meilleur multiplicateur et du plus gros gain sur ce jeu.
 - **Stats** par jeu (misé, gagné, bilan, RTP réel, plus gros gain…), un **classement** des soldes et un **classement des meilleures wins par jeu** (top 3).
 - **Suivi de session** (bouton graphique dans la barre du haut) : courbe des gains/pertes qui part de 0 au lancement, verte au-dessus de 0 et rouge en dessous. Il continue quand on change de jeu ou qu'on recharge la page, jusqu'au reset. Seuls les jeux comptent (pas le bonus quotidien ni les transferts).
-- **Envoi de Brundles** entre joueurs (bouton avion en papier, ou menu du pseudo). Le destinataire les reçoit automatiquement dans les 90 secondes, avec une notification.
-- Sauvegarde **groupée toutes les 30 s** pour économiser les quotas Firebase (voir plus bas).
+- **Envoi de Brundles** entre joueurs (bouton avion en papier, ou menu du pseudo). Le destinataire les reçoit automatiquement dans les 3 minutes, avec une notification.
+- Sauvegarde **groupée toutes les 60 s** pour économiser les quotas Firebase (voir plus bas).
 
 ### Les jeux
 
@@ -120,18 +120,21 @@ Le plan gratuit Spark offre **50 000 lectures et 20 000 écritures par jour**. L
 
 | Action | Coût |
 |---|---|
-| Connexion / ouverture du site | 1 lecture |
-| Jouer (spins, mains, lancers…) | **0** : tout est calculé en local |
-| Sauvegarde du solde et des stats | 1 écriture **toutes les 30 s max**, seulement s'il y a eu un changement |
-| Fermeture de l'onglet, bonus quotidien, niveau de casse-briques | 1 écriture immédiate |
-| Page Stats, liste des destinataires d'un transfert | 1 lecture par joueur inscrit, gardée en cache 2 min |
-| Vérification des Brundles reçus | 1 lecture toutes les 90 s (seulement quand l'onglet est visible) |
-| Fil d'activité + jackpot | 2 lectures toutes les 90 s (seuls les nouveaux messages sont lus), + 1 écriture toutes les 90 s si tu as joué à la slot |
-| Publication dans le fil | 1 écriture par exploit (gros gain, succès Or/Légende…), 20 s minimum entre deux |
-| Palmarès des semaines | quelques lectures toutes les 15 min, 1 écriture par semaine (la première personne connectée le lundi) |
+| Connexion / ouverture du site | ~4 lectures (profil, fil depuis la dernière visite, jackpot, transferts reçus) |
+| Jouer (spins, mains, lancers, mini-jeux…) | **0** : tout est calculé en local |
+| Sauvegarde du solde et des stats | 1 écriture **toutes les 60 s max**, seulement s'il y a eu un changement |
+| Fermeture de l'onglet, bonus quotidien, boutique, coffre, amende | 1 écriture immédiate |
+| Journal des mini-jeux (pour l'admin) | 1 écriture pour 60 parties (ou 10 min après la première partie du lot ; tout de suite en cas de triche) |
+| Classements, stats, fermes des voisins, transferts | liste gardée dans le navigateur ; toutes les 10 min, 1 lecture par joueur **ayant joué depuis** (1 lecture si personne). Relecture complète au plus toutes les 12 h |
+| Vérification des Brundles reçus | 1 lecture toutes les 3 min |
+| Fil d'activité + jackpot | 2 lectures toutes les 2 min (seuls les nouveaux messages sont lus) ; contributions de la slot au jackpot : 1 écriture toutes les 5 min |
+| Publication dans le fil | 1 écriture par exploit (gros gain, succès…), 8 s minimum entre deux |
+| Palmarès des semaines | gardé dans le navigateur, relu une fois par semaine ; 1 écriture par semaine |
 | Envoi ou réception d'un transfert | 2 écritures |
 
-Un joueur qui joue 2 h sans pause fait au maximum ~240 écritures et ~80 lectures. Même à 20 potes, tu restes très loin des limites.
+**Joueur absent = 0 lecture :** après 4 min sans clic ni touche (ou onglet caché / téléphone verrouillé), plus rien n'est relu. Tout se remet à jour dès que le joueur revient. Une partie en spins automatiques compte comme de l'activité.
+
+Ordre de grandeur : un joueur actif pendant 1 h, c'est au plus ~80 écritures et ~150 lectures. 12 joueurs actifs 4 h par jour : ~4 000 écritures et ~7 000 lectures, loin des limites. Les réglages sont dans `js/config.js` (section « Économie de la base de données »).
 
 **Transferts :** l'expéditeur est débité et le transfert créé dans une seule écriture atomique, vérifiée par les règles Firestore (montant entier positif, destinataire existant, débit exact du même montant). Seul le destinataire peut encaisser un transfert, et une seule fois.
 

@@ -73,9 +73,9 @@ export function mount(view, { wallet, backend }) {
 
   async function load(force) {
     if (loading) return;
-    if (force && playersFresh()) toast(`Chiffres déjà à jour (cache de ${CONFIG.LEADERBOARD_CACHE_MS / 60000} min)`);
+    if (force && playersFresh(true)) toast('Chiffres déjà à jour (relus il y a moins d\'une minute)');
     loading = true;
-    try { players = await getPlayers(backend, wallet, false); }
+    try { players = await getPlayers(backend, wallet, !!force); }
     catch (e) { console.error(e); const b = $('#glob', view); if (alive && b) b.innerHTML = `<p class="neg">Impossible de charger les chiffres (${esc(e.message)}).</p>`; return; }
     finally { loading = false; }
     if (alive && tab === 'casino') renderGlobal();

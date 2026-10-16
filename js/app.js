@@ -1,6 +1,7 @@
 // Point d'entrée : authentification, coque du site, routeur, lobby, bonus quotidien
 import { CONFIG } from './config.js';
 import { createBackend } from './backend.js';
+import { initActivity, bump, isIdle, onWake } from './activity.js';
 import { Wallet, msUntilParisMidnight } from './wallet.js';
 import { h, $, $$, fmt, money, esc, toast, modal, coinRain, countUp, CUR } from './ui.js';
 import { monkeySVG, goldMonkeySVG, hangingMonkeySVG, coinSVG, symbolSVG, icon, plinkoArtSVG, crashArtSVG, towerArtSVG, minesArtSVG, diceArtSVG, quizArtSVG, capitalsArtSVG, moviesArtSVG, hiloArtSVG, kenoArtSVG, wheelArtSVG, limboArtSVG, flagsArtSVG, motusArtSVG, higherArtSVG } from './art.js';
@@ -151,6 +152,7 @@ async function boot() {
   }
   document.body.addEventListener('pointerdown', () => sfx.unlock(), { once: true });
   setupTabGuard();
+  initActivity();
   // clic sur un rang VIP => tableau des rangs
   document.addEventListener('click', (e) => { if (wallet && e.target.closest('[data-vip]') && !e.target.closest('.modal')) { e.preventDefault(); openVipModal(wallet); } });
   // clic sur un pseudo (classements) => fiche du joueur
@@ -343,7 +345,10 @@ function renderShell() {
   Shop.applyCosmetics(wallet);
   historyOff = initHistory(wallet);
   logOff = initGameLog(wallet, backend);
-  adminP = backend.isAdmin ? backend.isAdmin(wallet.uid) : Promise.resolve(false);
+  // une partie jouée (même en spins automatiques) compte comme de l'activité : le fil et les transferts restent à jour
+  const offAct = wallet.on(() => bump());
+  const prevLog = logOff; logOff = () => { offAct(); prevLog(); };
+  adminP = cachedIsAdmin(wallet.uid);
   adminP.then((ok) => { const a = $('.admin-menu', shell); if (a) a.hidden = !ok; });
   today(wallet);
   quests = initQuests(wallet, (q, bonus) => {
@@ -357,7 +362,7 @@ function renderShell() {
     if (bonus > 0) { toast(`<span class="ach-toast">${icon('star')}<span><small>Nouveau rang VIP</small><b>${esc(v.name)}</b><em>+${fmt(bonus)} ${CUR} de bonus</em></span></span>`, 'ach', 6000); sfx.bonus(); coinRain(40); }
   });
   syncWeeks(backend, wallet);
-  weeksTimer = setInterval(() => wallet && syncWeeks(backend, wallet), 15 * 60000);
+  weeksTimer = setInterval(() => wallet && !isIdle() && syncWeeks(backend, wallet), 15 * 60000); // sans lecture tant que la semaine n'a pas changé
   tips = createTips(wallet);
   const tipToggle = $('.tip-toggle', shell);
   const tipLabel = () => { tipToggle.textContent = `Conseils automatiques : ${tips.off ? 'non' : 'oui'}`; };
@@ -423,9 +428,21 @@ function countdown() {
 }
 
 /* ============================ TRANSFERTS ============================ */
+// Statut admin gardé 1 jour dans le navigateur (1 lecture de moins à chaque ouverture ; les règles Firestore restent juges)
+function cachedIsAdmin(uid) {
+  if (!backend.isAdmin) return Promise.resolve(false);
+  const k = 'chibouk_admin_' + uid;
+  try { const c = JSON.parse(localStorage.getItem(k) || 'null'); if (c && Date.now() - c.at < 86400000) return Promise.resolve(!!c.ok); } catch {}
+  return backend.isAdmin(uid).then((ok) => { try { localStorage.setItem(k, JSON.stringify({ ok, at: Date.now() })); } catch {} return ok; });
+}
+
+let inboxLast = 0, inboxWakeOff = null;
 function startInbox() {
-  const check = async () => {
-    if (!wallet || document.visibilityState === 'hidden') return;
+  // Brundles reçus : relus toutes les 3 min, seulement si le joueur est là (et tout de suite à son retour)
+  const check = async (force = false) => {
+    if (!wallet || (!force && isIdle())) return;
+    if (!force && Date.now() - inboxLast < 30000) return;
+    inboxLast = Date.now();
     const got = await wallet.checkInbox();
     for (const t of got) {
       toast(`${esc(t.fromPseudo)} t'a envoyé <b>${fmt(t.amount)} ${CUR}</b> !`, 'win', 5000);
@@ -433,11 +450,10 @@ function startInbox() {
     if (got.length) { sfx.coin(); coinRain(Math.min(40, 10 + got.length * 8)); }
   };
   clearInterval(inboxTimer);
-  inboxTimer = setInterval(check, CONFIG.INBOX_INTERVAL_MS);
-  if (window.__inboxVis) document.removeEventListener('visibilitychange', window.__inboxVis);
-  window.__inboxVis = () => { if (document.visibilityState === 'visible') check(); };
-  document.addEventListener('visibilitychange', window.__inboxVis);
-  setTimeout(check, 1500);
+  inboxTimer = setInterval(() => check(), CONFIG.INBOX_INTERVAL_MS);
+  if (inboxWakeOff) inboxWakeOff();
+  inboxWakeOff = onWake(() => check());
+  setTimeout(() => check(true), 1500);
 }
 
 async function openTransfer() {

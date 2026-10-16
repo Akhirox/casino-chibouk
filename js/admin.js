@@ -12,7 +12,7 @@ const when = (t) => new Date(t).toLocaleString('fr-FR', { day: '2-digit', month:
 const dur = (s) => (s == null ? '—' : s < 60 ? `${String(s).replace('.', ',')} s` : `${Math.floor(s / 60)} min ${String(Math.round(s % 60)).padStart(2, '0')}`);
 
 export function mount(view, { wallet, backend, isAdmin }) {
-  let alive = true, logs = [], done = false, loading = false, tab = 'players', players = null;
+  let alive = true, logs = [], done = false, loading = false, cursor = 0, tab = 'players', players = null;
   const f = { who: '', game: '', flag: '', since: 1 };
   view.innerHTML = `<div class="adm-wrap">
     <div class="game-head"><h1>Espace <span>admin</span></h1><div class="actions"><span class="seg adm-tabs"><button data-t="players" class="on">Joueurs</button><button data-t="logs">Journal des mini-jeux</button></span><button class="btn btn-ghost btn-sm" id="adm-reload">Actualiser</button></div></div>
@@ -103,13 +103,13 @@ export function mount(view, { wallet, backend, isAdmin }) {
   async function load(reset) {
     if (loading) return;
     loading = true;
-    if (reset) { logs = []; done = false; }
+    if (reset) { logs = []; done = false; cursor = 0; }
     try {
-      const before = logs.length ? logs[logs.length - 1].at : 0;
-      const got = await backend.fetchLogs({ before, n: 300 });
+      // 1 lecture par document ; depuis la V22 un document regroupe jusqu'à 60 parties
+      const got = await backend.fetchLogs({ before: cursor, n: 40 });
       if (!alive) return;
-      logs = logs.concat(got);
-      if (got.length < 300) done = true;
+      logs = logs.concat(got.rows).sort((a, b) => (b.at || 0) - (a.at || 0));
+      cursor = got.cursor; done = got.done;
       render();
     } catch (e) {
       body.innerHTML = `<div class="adm-deny"><h2>Lecture impossible</h2><p class="muted">${esc(e.message || e.code || e)}. As-tu publié la dernière version de firestore.rules et créé ton document dans « admins » ?</p></div>`;
@@ -159,7 +159,7 @@ export function mount(view, { wallet, backend, isAdmin }) {
           <td class="r">${dur(l.sec)}</td><td class="r">${l.actions ?? '—'}${l.ms ? ` <small title="temps de réponse médian">${l.ms} ms</small>` : ''}${l.fastShare ? ` <small title="part des actions à moins de 60 ms">${Math.round(l.fastShare * 100)} %</small>` : ''}</td><td class="r">${l.amount ? '+' + fmt(l.amount) : l.fine ? `<span class="neg">−${fmt(l.fine)}</span>` : '0'}</td>
           <td><span class="adm-flag ${cls}">${fl}</span></td><td class="adm-det">${esc(l.reason || '')}${l.strikes ? ` · récidive ${l.strikes}` : ''}${l.info && l.info !== '{}' ? `<small>${esc(l.info)}</small>` : ''}</td></tr>`; }).join('') || '<tr><td colspan="8" class="muted">Aucune partie.</td></tr>'}
       </tbody></table></div>
-      ${done ? '<p class="muted adm-end">Tout le journal est chargé.</p>' : '<button class="btn btn-ghost wide" id="adm-more">Charger les 300 parties précédentes</button>'}`;
+      ${done ? '<p class="muted adm-end">Tout le journal est chargé.</p>' : '<button class="btn btn-ghost wide" id="adm-more">Charger les parties précédentes</button>'}`;
     $$('[data-f]', body).forEach((s) => (s.onchange = () => { f[s.dataset.f] = s.dataset.f === 'since' ? +s.value : s.value; render(); }));
     $$('tr[data-who]', body).forEach((tr) => (tr.onclick = () => { f.who = tr.dataset.who; render(); }));
     const more = $('#adm-more', body); if (more) more.onclick = () => load(false);
