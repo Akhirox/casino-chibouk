@@ -8,33 +8,33 @@ export const HOUR = 3600000;
 
 // Bâtiments. cost(L) = prix en bananes pour atteindre le niveau L (L = 1 : construction)
 export const B = {
-  F: { name: 'Bananeraie', short: 'Champ', max: 15, base: 40, grow: 2.05, extra: 1.75, time: 45, tgrow: 1.8,
+  F: { name: 'Bananeraie', short: 'Champ', max: 15, base: 32, grow: 2.03, extra: 1.72, time: 35, tgrow: 1.75,
     desc: 'Les singes ouvriers y récoltent des bananes. Plus le niveau est haut, plus chaque singe récolte, et plus il y a de places.' },
-  C: { name: 'Cabane', short: 'Cabane', max: 12, base: 60, grow: 1.9, extra: 1.7, time: 60, tgrow: 1.7,
+  C: { name: 'Cabane', short: 'Cabane', max: 12, base: 48, grow: 1.88, extra: 1.67, time: 45, tgrow: 1.65,
     desc: 'Loge les singes ouvriers. Chaque niveau ajoute des places.' },
-  E: { name: 'Entrepôt', short: 'Entrepôt', max: 12, base: 80, grow: 1.95, extra: 1.8, time: 75, tgrow: 1.7,
+  E: { name: 'Entrepôt', short: 'Entrepôt', max: 12, base: 64, grow: 1.93, extra: 1.77, time: 55, tgrow: 1.65,
     desc: 'Stocke les bananes. Quand tout est plein, la récolte s\'arrête : reviens vendre ou dépenser !' },
-  P: { name: 'Puits', short: 'Puits', max: 6, base: 400, grow: 2.6, extra: 2, time: 300, tgrow: 2.1,
+  P: { name: 'Puits', short: 'Puits', max: 6, base: 300, grow: 2.55, extra: 1.95, time: 220, tgrow: 2,
     desc: 'Irrigue les 8 cases autour : les bananeraies voisines produisent plus.' },
-  M: { name: 'Marché', short: 'Marché', max: 10, base: 250, grow: 2.15, extra: 99, time: 180, tgrow: 1.8, unique: true,
+  M: { name: 'Marché', short: 'Marché', max: 10, base: 180, grow: 2.1, extra: 99, time: 140, tgrow: 1.75, unique: true,
     desc: 'Les bananes s\'y vendent plus cher. Un seul marché par ferme.' },
 };
 export const TYPES = ['F', 'C', 'E', 'P', 'M'];
 
 // Effets
 // bananes / h par singe (la progression ralentit après le niveau 12)
-export const perWorker = (L) => 5 * Math.pow(1.4, Math.min(L, 12) - 1) * Math.pow(1.2, Math.max(0, L - 12));
+export const perWorker = (L) => 5.75 * Math.pow(1.4, Math.min(L, 12) - 1) * Math.pow(1.2, Math.max(0, L - 12));
 export const slots = (L) => Math.min(7, 2 + Math.floor(L / 3));        // singes max par bananeraie
 export const housing = (L) => 2 + 2 * L;                               // singes logés par cabane
 export const storage = (L) => Math.round(250 * Math.pow(2.05, L - 1)); // capacité d'un entrepôt
 export const wellBonus = (L) => 0.1 * L;                               // +10 % par niveau aux champs voisins
-export const SELL_BASE = 0.1;                                          // Brundles par banane sans marché
+export const SELL_BASE = 0.12;                                         // Brundles par banane sans marché
 export const sellRate = (f) => { const m = findType(f, 'M'); return SELL_BASE * (1 + (m ? 0.1 * m.l : 0)); };
-export const hireCost = (n) => Math.round(20 * Math.pow(1.17, n));     // prix du (n+1)ᵉ singe, en bananes
-export const landCost = (k) => Math.round(800 * Math.pow(1.22, k));   // k-ième case achetée, en Brundles
-export const BUILDERS = [null, 0, 25000, 250000];                       // prix des bâtisseurs 2 et 3, en Brundles
+export const hireCost = (n) => Math.round(16 * Math.pow(1.16, n));     // prix du (n+1)ᵉ singe, en bananes
+export const landCost = (k) => Math.round(600 * Math.pow(1.2, k));    // k-ième case achetée, en Brundles
+export const BUILDERS = [null, 0, 15000, 150000];                       // prix des bâtisseurs 2 et 3, en Brundles
 export const rushCost = (ms) => Math.max(10, Math.ceil(ms / 60000) * 12); // finir tout de suite : 12 Brundles / min
-export const BUY_RATE = 1;                                              // acheter des bananes : 1 Brundle = 1 banane (10 fois plus cher que la vente)
+export const BUY_RATE = 1;                                              // acheter des bananes : 1 Brundle = 1 banane (environ 8 fois plus cher que la vente)
 
 // Graines d'or (fin de partie) : replanter la ferme remet les bâtiments à zéro mais rapporte des graines,
 // chacune donnant +5 % de production pour toujours. Les parcelles, les bâtisseurs et les graines sont conservés.

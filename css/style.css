@@ -1371,7 +1371,25 @@ main#view.has-board { max-width: 1640px; }
 .fd-motus .fd-ic, .fd-quests .fd-ic { color: var(--green); }
 .feed small { color: var(--muted); font-size: .72rem; white-space: nowrap; }
 .feed b { color: var(--gold); }
-@media (max-width: 980px) { .dash { grid-template-columns: 1fr 1fr; } .dash-card.jp { grid-column: 1 / -1; } }
+/* Défi de la jungle (accueil) */
+.dash-card.ch { background: radial-gradient(circle at 50% 0%, rgba(61, 220, 132, .16), transparent 65%), linear-gradient(180deg, #13281b, #0e1a12); border-color: #2f6b45; }
+.ch-clock { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 999px; background: rgba(0, 0, 0, .3); border: 1px solid rgba(255, 255, 255, .08); }
+.ch-clock .ic { width: 13px; height: 13px; color: var(--gold); }
+.ch-clock b { font-size: .82rem; color: #fff; }
+.ch-tags { display: flex; align-items: center; gap: 4px; }
+.ch-kind { font-size: .62rem; font-weight: 800; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); }
+.ch-text { margin: 0; font-size: 1.02rem; font-weight: 700; line-height: 1.3; }
+.ch-text small { font-weight: 500; }
+.ch-prize { font-size: .86rem; }
+.ch-status { font-size: .8rem; padding: 6px 10px; border-radius: 10px; background: rgba(255, 255, 255, .05); display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.ch-status .ic { width: 15px; height: 15px; }
+.ch-status.open { color: #bdf5d3; }
+.ch-status.win { background: rgba(245, 197, 66, .14); color: var(--gold); font-weight: 700; }
+.ch-status.lost { color: #e0c9c9; }
+.ch-status .pl-link { font-weight: 700; }
+.ch-foot { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ch-foot .btn .ic { width: 14px; height: 14px; }
+@media (max-width: 980px) { .dash { grid-template-columns: 1fr 1fr; } .dash-card.jp, .dash-card.ch { grid-column: 1 / -1; } }
 @media (max-width: 600px) { .dash { grid-template-columns: 1fr; } .feed li { grid-template-columns: 26px 1fr; } .feed small { grid-column: 2; } }
 
 /* Roue du jour */

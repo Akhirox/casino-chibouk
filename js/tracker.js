@@ -6,7 +6,20 @@ import { h, $, fmt } from './ui.js';
 import { lazySave } from './lazysave.js';
 
 const MAX_POINTS = 400;
-const MERGE_MS = 350; // une mise et son gain quasi simultanés ne font qu'un point
+// Une mise et son gain quasi simultanés ne font qu'un point. La fenêtre part de la création du point (et non du
+// dernier événement) : en turbo, les parties s'enchaînent toutes les 30 ms et tout finissait fondu dans un seul point.
+const MERGE_MS = 250;
+
+// Divise le nombre de points par 2 en gardant les pics : dans chaque paire, on garde le point le plus éloigné du précédent
+function thin(pts) {
+  const out = [pts[0]], end = pts.length - 1; // le premier et le dernier point sont toujours gardés
+  for (let i = 1; i < end; i += 2) {
+    const a = pts[i], b = i + 1 < end ? pts[i + 1] : a, prev = out[out.length - 1].v;
+    out.push(Math.abs(a.v - prev) >= Math.abs(b.v - prev) ? a : b);
+  }
+  out.push(pts[pts.length - 1]);
+  return out;
+}
 
 export function createTracker(wallet, toggleBtn) {
   const key = 'chibouk_tracker_' + wallet.uid;
@@ -27,10 +40,10 @@ export function createTracker(wallet, toggleBtn) {
     st.max = Math.max(st.max, st.net); st.min = Math.min(st.min, st.net);
     const now = Date.now();
     const last = st.points[st.points.length - 1];
-    if (st.points.length > 1 && now - st.lastAt < MERGE_MS) last.v = st.net;
+    if (st.points.length > 1 && now - last.t < MERGE_MS) last.v = st.net;
     else st.points.push({ t: now, v: st.net });
     st.lastAt = now;
-    if (st.points.length > MAX_POINTS) st.points = st.points.filter((_, i) => i === 0 || i % 2 === 1 || i === st.points.length - 1);
+    if (st.points.length > MAX_POINTS) st.points = thin(st.points);
     save();
     if (panel) renderSoon();
   }

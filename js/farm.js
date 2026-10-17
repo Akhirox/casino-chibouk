@@ -454,7 +454,7 @@ export function mount(view, { wallet, backend }) {
       <li>Les bananes servent à <b>tout construire et améliorer</b>, ou se <b>vendent</b> contre des ${CUR} au marché.</li>
       <li>Les chantiers prennent du temps (de quelques secondes à plusieurs heures). Engage des <b>bâtisseurs</b> pour en mener plusieurs à la fois, ou termine-les tout de suite en payant des ${CUR}.</li>
       <li>Les <b>parcelles</b> autour de ta ferme s'achètent en ${CUR}.</li>
-      <li>Tu peux aussi <b>acheter des bananes</b> au marché, à 1 ${CUR} la banane (10 fois le prix de vente) : pratique pour débloquer une amélioration.</li>
+      <li>Tu peux aussi <b>acheter des bananes</b> au marché, à 1 ${CUR} la banane (environ 8 fois le prix de vente) : pratique pour débloquer une amélioration.</li>
       <li><b>Graines d'or</b> : après 1 million de bananes récoltées, tu peux <b>replanter</b> ta ferme. Bâtiments, singes et bananes repartent de zéro, mais tu gardes tes parcelles et tes bâtisseurs, et chaque graine donne <b>+5 % de production pour toujours</b>. Plus tu récoltes avant de replanter, plus tu gagnes de graines.</li>
       <li>Onglet <b>Les voisins</b> : visite les fermes des autres joueurs et compare vos productions.</li></ul>`, buttons: [{ label: 'Compris', value: true, primary: true }] });
   }

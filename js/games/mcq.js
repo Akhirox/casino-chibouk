@@ -202,7 +202,9 @@ export function mountMCQ(view, { wallet }, opt) {
 
   // Contrôle fair-play puis récompense. Renvoie { amount } ou { refused: verdict, p: sanction }
   function settle(amount, extra, partial = false) {
-    const v = judgeReactions(guard, rts); guard = null;
+    // réponses à écrire (capitales en mode expert…) : contrôle souple ; réponses à cliquer : contrôle normal
+    const typed = (questions || []).some((q) => q.type === 'text');
+    const v = judgeReactions(guard, rts, { lenient: typed }); guard = null;
     if (v.flag === 'cheat') return { refused: v, p: punish(wallet, opt.kind, mode.key || null, v, Math.max(amount, PER() * 5)) };
     if (v.flag === 'fast') { tooFast(wallet, opt.kind, mode.key || null, v); return { refused: v }; }
     wallet.freeReward(opt.kind, amount, extra, { log: { lv: mode.key || null, sec: v.sec, actions: v.actions, fastShare: v.fastShare, ms: v.medianMs, partial } });

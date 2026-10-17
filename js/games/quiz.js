@@ -169,7 +169,7 @@ export function mount(view, { wallet }) {
   }
   // contrôle fair-play (temps de réponse) avant la récompense
   function settle(amount, extra, partial = false) {
-    const v = judgeReactions(guard, rts); guard = null;
+    const v = judgeReactions(guard, rts, { lenient: true }); guard = null; // réponses tapées : contrôle souple
     if (v.flag === 'cheat') return { refused: v, p: punish(wallet, 'quiz', modeKey, v, Math.max(amount, M().per * 5)) };
     if (v.flag === 'fast') { tooFast(wallet, 'quiz', modeKey, v); return { refused: v }; }
     wallet.freeReward('quiz', amount, extra, { log: { lv: modeKey, sec: v.sec, actions: v.actions, ms: v.medianMs, partial } });

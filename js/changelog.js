@@ -1,9 +1,30 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '22';
+export const VERSION = '23';
 
 export const CHANGELOG = [
+  {
+    v: '23', date: '17 octobre 2026', title: 'Défis de la jungle',
+    groups: [
+      ['Nouveau', [
+        'Défi de la jungle : toutes les 15 minutes, un nouveau défi commun à tout le monde, en alternance sur les jeux de casino (un ×100 au Plinkoko, 2 blackjacks naturels…) et les mini-jeux (un sans-faute au calcul mental, un sudoku moyen…). Le premier qui le réussit empoche la récompense : de 2 500 à 10 000 Brundles, multipliés par ton bonus VIP des gains gratuits.',
+        'Le défi en cours remplace le jackpot sur l\'accueil, avec le chrono, la récompense et le vainqueur. Le jackpot reste affiché à côté de la Chibouk Slot.',
+        'Défis remportés et Brundles gagnés visibles dans tes stats.',
+      ]],
+      ['Ferme à bananes', [
+        'Les singes récoltent environ 15 % de bananes en plus, et les bananes se vendent 20 % plus cher.',
+        'Constructions et améliorations moins chères (20 à 25 % de moins au début, encore un peu moins cher aux niveaux élevés) et environ 25 % plus rapides. Singes, parcelles et bâtisseurs moins chers aussi.',
+      ]],
+      ['Fair-play', [
+        'Jeux où il faut écrire la réponse (Pinpoint, mots croisés, calcul mental, capitales et ciné en mode écrit) : contrôle beaucoup plus souple. Plus jamais d\'amende ni de blocage sur ces jeux, au pire une partie physiquement impossible ne rapporte rien.',
+        'Les blocages et récidives déjà enregistrés sur ces jeux sont effacés.',
+      ]],
+      ['Corrections', [
+        'Suivi de session : la courbe se dessine correctement en mode turbo (toutes les parties finissaient fondues dans un seul point), et les pics sont conservés quand la session devient longue.',
+      ]],
+    ],
+  },
   {
     v: '22', date: '17 octobre 2026', title: 'Casino économe',
     groups: [

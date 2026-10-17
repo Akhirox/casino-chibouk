@@ -21,6 +21,19 @@ export function fairState(wallet) {
   f.strikes = f.strikes || {}; f.lock = f.lock || {};
   return f;
 }
+// Jeux à réponse écrite : depuis la V23, plus aucune sanction. Les blocages et récidives déjà enregistrés sur ces jeux sont effacés.
+export const TYPED_GAMES = ['pinpoint', 'crossword', 'quiz', 'capitals', 'movies', 'motus'];
+export function migrateFair(wallet) {
+  const f = wallet.p.fair;
+  if (!f || f.v >= 23) return false;
+  let changed = false;
+  for (const g of TYPED_GAMES) {
+    if (f.lock && f.lock[g]) { delete f.lock[g]; changed = true; }
+    if (f.strikes && f.strikes[g]) { delete f.strikes[g]; changed = true; }
+  }
+  f.v = 23;
+  return changed;
+}
 export const lockedUntil = (wallet, game) => { const t = (wallet.p.fair && wallet.p.fair.lock && wallet.p.fair.lock[game]) || 0; return t > Date.now() ? t : 0; };
 export const lockText = (until) => new Date(until).toLocaleString('fr-FR', { weekday: 'long', hour: '2-digit', minute: '2-digit' });
 export function lockBannerHTML(wallet, game) {
@@ -54,13 +67,21 @@ export function createGuard(stage) {
   };
 }
 
-// Verdict d'une partie gagnée. rules = { minActions, cheatSec, fastSec } ; renvoie { flag: 'ok' | 'fast' | 'cheat', reason, ... }
+// Jeux où il faut écrire la réponse (Pinpoint, mots croisés, calcul mental, capitales en mode expert…) :
+// taper au clavier est difficile à automatiser et les joueurs rapides tapent très vite, donc on reste souple.
+// Jamais d'amende ni de blocage : au pire la partie ne rapporte rien (« trop rapide ») quand c'est physiquement impossible.
+const LENIENT_UNTRUSTED = 6;
+
+// Verdict d'une partie gagnée. rules = { minActions, cheatSec, fastSec, noRobot, lenient } ; renvoie { flag: 'ok' | 'fast' | 'cheat', reason, ... }
 export function judge(guard, rules = {}) {
   const r = guard ? guard.result() : { sec: 999, actions: 999, untrusted: 0, fastShare: 0 };
   guard && guard.destroy();
   const s = Math.round(r.sec * 10) / 10;
   let flag = 'ok', reason = '';
-  if (r.untrusted >= 3) { flag = 'cheat'; reason = `${r.untrusted} actions simulées par un script`; }
+  if (rules.lenient) {
+    if (r.untrusted >= LENIENT_UNTRUSTED) { flag = 'fast'; reason = `${r.untrusted} saisies simulées par un script`; }
+    else if (rules.cheatSec && r.sec < rules.cheatSec) { flag = 'fast'; reason = `partie résolue en ${fr(s)} s, plus vite que le temps de taper la réponse`; }
+  } else if (r.untrusted >= 3) { flag = 'cheat'; reason = `${r.untrusted} actions simulées par un script`; }
   else if (rules.minActions && r.actions < rules.minActions) { flag = 'cheat'; reason = `partie résolue avec seulement ${r.actions} action${r.actions > 1 ? 's' : ''} du joueur (il en faut au moins ${rules.minActions})`; }
   else if (rules.cheatSec && r.sec < rules.cheatSec) { flag = 'cheat'; reason = `partie résolue en ${fr(s)} s, alors qu'il faut au moins ${fr(rules.cheatSec)} s rien que pour tout saisir`; }
   else if (!rules.noRobot && r.actions >= 15 && r.fastShare >= 0.4) { flag = 'cheat'; reason = `rythme robotique (${Math.round(r.fastShare * 100)} % des actions à moins de 60 ms d'intervalle)`; }
@@ -97,13 +118,17 @@ export function refusedHTML(v, p, extraBtn = '') {
 
 // Quiz : verdict à partir des temps de réponse (ms entre l'affichage de la question et la réponse).
 // Lire la question, reconnaître la réponse et cliquer prend bien plus de 0,5 s à un humain, même très entraîné.
-export function judgeReactions(guard, rts, { minAnswers = 4, cheatMs = 350, fastMs = 550 } = {}) {
+// lenient (réponses tapées au clavier) : seulement « trop rapide » (sans sanction) sous 200 ms de médiane, le temps d'appuyer sur une touche
+export function judgeReactions(guard, rts, { minAnswers = 4, cheatMs = 350, fastMs = 550, lenient = false } = {}) {
   const r = guard ? guard.result() : { sec: 0, actions: 0, untrusted: 0, fastShare: 0 };
   guard && guard.destroy();
   const sorted = [...rts].sort((a, b) => a - b), med = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
   const instant = rts.filter((t) => t < 250).length;
   let flag = 'ok', reason = '';
-  if (r.untrusted >= 3) { flag = 'cheat'; reason = `${r.untrusted} actions simulées par un script`; }
+  if (lenient) {
+    if (r.untrusted >= LENIENT_UNTRUSTED) { flag = 'fast'; reason = `${r.untrusted} saisies simulées par un script`; }
+    else if (rts.length >= minAnswers && med < 200) { flag = 'fast'; reason = `réponses tapées en ${Math.round(med)} ms en moyenne, plus vite qu'il n'est possible d'écrire`; }
+  } else if (r.untrusted >= 3) { flag = 'cheat'; reason = `${r.untrusted} actions simulées par un script`; }
   else if (rts.length >= minAnswers && med < cheatMs) { flag = 'cheat'; reason = `réponses données en ${Math.round(med)} ms en moyenne, plus vite que le temps de lire la question`; }
   else if (instant >= 3) { flag = 'cheat'; reason = `${instant} réponses en moins de 250 ms`; }
   else if (rts.length >= minAnswers && med < fastMs) { flag = 'fast'; reason = `réponses données en ${Math.round(med)} ms en moyenne, c'est trop rapide`; }

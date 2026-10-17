@@ -115,8 +115,8 @@ export function mount(view, { wallet }) {
   function finish(won) {
     state = 'done';
     const amount = won ? PP_REWARDS[shown - 1] : 0;
-    // fair-play : lire l'indice et taper la catégorie prend au moins quelques secondes
-    const v = judge(guard, won ? { minActions: 3, cheatSec: 1.2, fastSec: 2.5 } : {}); guard = null;
+    // fair-play : taper une catégorie prend forcément un peu de temps (au pire : pas de récompense, jamais d'amende)
+    const v = judge(guard, won ? { lenient: true, cheatSec: 0.8 } : {}); guard = null; // réponse tapée : contrôle souple, jamais de sanction
     if (won && v.flag !== 'ok') {
       credited = true;
       let pn = null;

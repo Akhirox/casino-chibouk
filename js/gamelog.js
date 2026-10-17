@@ -52,6 +52,8 @@ export function initGameLog(wallet, backend) {
       add({ ...base(), game: e.game, flag: 'ok', amount: Math.round(e.amount || 0),
         lv: log.lv ?? lvFromExtra(extra), sec: num(log.sec), actions: num(log.actions), fastShare: num(log.fastShare), ms: num(log.ms),
         info: JSON.stringify({ ...extra, ...(log.moves != null ? { moves: log.moves } : {}), ...(log.hints != null ? { hints: log.hints } : {}) }).slice(0, 300) });
+    } else if (e.type === 'challenge') {
+      add({ ...base(), game: '_defi', flag: 'ok', amount: Math.round(e.amount || 0), info: JSON.stringify({ ch: e.ch, slot: e.slot }) });
     } else if (e.type === 'breaker') {
       add({ ...base(), game: 'breaker', flag: 'ok', amount: Math.round(e.amount || 0) });
     } else if (e.type === 'fairplay') {

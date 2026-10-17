@@ -1,6 +1,7 @@
 // Point d'entrée : authentification, coque du site, routeur, lobby, bonus quotidien
 import { CONFIG } from './config.js';
 import { createBackend } from './backend.js';
+import { migrateFair } from './fairplay.js';
 import { initActivity, bump, isIdle, onWake } from './activity.js';
 import { Wallet, msUntilParisMidnight } from './wallet.js';
 import { h, $, $$, fmt, money, esc, toast, modal, coinRain, countUp, CUR } from './ui.js';
@@ -40,6 +41,7 @@ import * as FarmCore from './farm-core.js';
 import { queensArtSVG, tangoArtSVG, pinpointArtSVG, sudokuArtSVG, snakeArtSVG, demineurArtSVG } from './art.js';
 import * as Shop from './shop.js';
 import { initQuests, today, questText, vipOf, vipProgress, VIP, rakePot, claimRake, initVip, pctFmt, freeMult, xMult } from './progress.js';
+import { initChallenges, challengeRoute, MIN_BET } from './challenges.js';
 import { createSocial, feedRich, feedText, groupFeed, groupRich, FEED_ICON, jackpotChance, chanceText } from './social.js';
 import { openVipModal } from './vip.js';
 import { openVault } from './vault.js';
@@ -76,6 +78,7 @@ let quests = null;
 let vip = null;
 let farmTimer = null;
 let social = null;
+let challenges = null;
 let historyOff = null;
 let logOff = null;
 let adminP = null; // promesse : ce compte est-il admin ?
@@ -165,6 +168,7 @@ async function boot() {
     if (quests) { quests.destroy(); quests = null; }
     if (vip) { vip.destroy(); vip = null; }
     if (farmTimer) { farmTimer.destroy(); farmTimer = null; }
+    if (challenges) { challenges.destroy(); challenges = null; }
     if (social) { social.destroy(); social = null; }
     if (historyOff) { historyOff(); historyOff = null; }
     if (logOff) { logOff(); logOff = null; }
@@ -183,6 +187,7 @@ async function boot() {
       if (token !== authToken) { w.stop(); return; }
       if (w.p.banned) { w.disabled = true; w.stop(); renderBanned(w.p); return; }
       wallet = w;
+      if (migrateFair(w)) w.touch({ type: 'fairfix' }); // blocages des jeux à réponse écrite levés (V23)
       // sauvegarde refusée par Firebase : compte suspendu ou corrigé par un admin → on recharge le profil
       w.onRejected = async () => {
         if (w.rejecting) return; w.rejecting = true;
@@ -357,6 +362,11 @@ function renderShell() {
     sfx.bonus();
   });
   social = createSocial(wallet, backend);
+  challenges = initChallenges(wallet, backend, social, {
+    onWin: (c, prize) => { toast(`<span class="ach-toast">${icon('flag')}<span><small>Défi de la jungle remporté !</small><b>${esc(c.text)}</b><em>+${fmt(prize)} ${CUR}</em></span></span>`, 'ach', 6000); sfx.bonus(); sfx.win(true); coinRain(50); },
+    onLost: (c, w) => toast(`Défi réussi, mais <b>${esc(w.pseudo)}</b> a été plus rapide que toi !`, 'info', 5000),
+    onNew: (v) => { if (!isIdle() && location.hash !== '#/lobby' && location.hash !== '') toast(`<span class="ach-toast">${icon('flag')}<span><small>Nouveau défi de la jungle</small><b>${esc(v.c.text)}</b><em>+${fmt(v.prize)} ${CUR} pour le premier</em></span></span>`, 'ach', 6000); },
+  });
   farmTimer = Farm.initFarm(wallet);
   vip = initVip(wallet, (v, bonus) => {
     if (bonus > 0) { toast(`<span class="ach-toast">${icon('star')}<span><small>Nouveau rang VIP</small><b>${esc(v.name)}</b><em>+${fmt(bonus)} ${CUR} de bonus</em></span></span>`, 'ach', 6000); sfx.bonus(); coinRain(40); }
@@ -585,16 +595,25 @@ function vipHTML() {
     ${v.next ? `<div class="vip-pct"><div class="q-bar vip"><i style="width:${pct}%;background:${v.next.color}"></i></div><b>${pct.toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %</b></div><small class="muted">Prochain rang : <b>${v.next.name}</b> à ${fmt(v.next.min)} misés · bonus <b class="gold">+${fmt(v.next.up)}</b> · gains gratuits ${xMult(v.next.mult)}</small>` : '<small class="muted">Rang maximum atteint !</small>'}
     <div class="rake-row"><div><small class="muted">Cagnotte de rakeback</small><b>${money(pot)}</b></div><button class="btn btn-gold btn-sm" id="rk-claim" ${pot >= 1 ? '' : 'disabled'}>Récupérer</button></div>`;
 }
-// mise actuelle de la slot (mémorisée) pour afficher la chance de jackpot
-const jpBet = () => { try { const v = Math.floor(+localStorage.getItem('chibouk_slot_total')); return v >= 10 ? v : 100; } catch { return 100; } };
-function jackpotHTML(st) {
-  const last = st && st.last && st.last.lastPseudo ? `Dernier gagnant : <b>${esc(st.last.lastPseudo)}</b> (${fmt(st.last.lastAmount)})` : 'Personne ne l\'a encore remporté !';
-  return `<div class="dash-head">${icon('trophy')}<b>Jackpot commun</b></div>
-    <div class="jp-amount" id="jp-amount">${money(st ? st.jackpot : CONFIG.JACKPOT_SEED)}</div>
-    <small class="muted">1 % de chaque mise à la Chibouk Slot l'alimente. Il peut tomber sur n'importe quel spin, plus souvent avec une grosse mise.</small>
-    <small class="jp-odds">Ta chance par spin à ${fmt(jpBet())} : <b>${chanceText(jackpotChance(jpBet(), st ? st.jackpot : CONFIG.JACKPOT_SEED))}</b></small>
-    <small class="jp-last">${last}</small>
-    <a class="btn btn-ghost btn-sm" href="#/slots">Tenter ma chance ${icon('arrow')}</a>`;
+// Défi de la jungle (remplace le jackpot sur l'accueil ; le jackpot reste affiché à côté de la slot)
+const mmss = (ms) => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+function challengeHTML(v) {
+  const c = v.c, mine = v.winner && v.winner.uid === wallet.uid;
+  const status = mine ? `<div class="ch-status win">${icon('trophy')}Tu as remporté ce défi !</div>`
+    : v.winner ? `<div class="ch-status lost">${icon('flag')}Remporté par <button type="button" class="pl-link" data-player="${esc(v.winner.uid)}">${esc(v.winner.pseudo)}</button>. Prochain défi dans <b class="mono ch-time">${mmss(v.end - Date.now())}</b></div>`
+    : v.error ? `<div class="ch-status lost">${esc(v.error)}</div>`
+    : v.done ? '<div class="ch-status">Défi réussi, validation en cours…</div>'
+    : '<div class="ch-status open">Personne ne l\'a encore réussi : fonce !</div>';
+  const prog = c.n > 1 && !v.winner ? `<div class="q-bar"><i style="width:${Math.min(100, (v.p / c.n) * 100)}%"></i></div><small class="muted">${v.p} / ${c.n}</small>` : '';
+  const hist = (v.history || []).filter((h) => h.slot !== v.slot).slice(0, 3);
+  return `<div class="dash-head">${icon('flag')}<b>Défi de la jungle</b><small class="ch-clock" title="Temps restant">${icon('hourglass')}<b class="mono ch-time">${mmss(v.end - Date.now())}</b></small></div>
+    <div class="ch-tags"><span class="q-lv q${c.tier}">${['Facile', 'Moyen', 'Difficile'][c.tier]}</span><span class="ch-kind">${c.kind === 'casino' ? 'Casino' : 'Mini-jeu'}</span></div>
+    <p class="ch-text">${esc(c.text)}${c.kind === 'casino' ? ` <small class="muted">(mise d'au moins ${fmt(MIN_BET)})</small>` : ''}</p>
+    ${prog}
+    <div class="ch-prize">Récompense : <b class="gold">+${fmt(v.prize)} ${CUR}</b> <small class="muted">pour le premier qui réussit</small></div>
+    ${status}
+    <div class="ch-foot">${!v.winner && c.game !== 'lobby' ? `<a class="btn btn-gold btn-sm" href="${challengeRoute(c)}">Y aller ${icon('arrow')}</a>` : ''}
+      <small class="muted">Un nouveau défi toutes les 15 min${hist.length ? ` · derniers vainqueurs : ${hist.map((h) => `<b>${esc(h.pseudo)}</b>`).join(', ')}` : ''}</small></div>`;
 }
 let feedAll = false;
 const feedOpen = new Set();
@@ -650,7 +669,7 @@ function mountLobby(view, { wallet: w }) {
       ${hangingMonkeySVG()}
     </section>
     <section class="dash">
-      <div class="dash-card jp" id="dash-jp"></div>
+      <div class="dash-card ch" id="dash-ch"></div>
       <div class="dash-card" id="dash-quests"></div>
       <div class="dash-card" id="dash-vip"></div>
     </section>
@@ -722,17 +741,14 @@ function mountLobby(view, { wallet: w }) {
     if (v) { v.innerHTML = vipHTML(); const b = $('#rk-claim', v); if (b) b.onclick = () => { const a = claimRake(w); if (a) { sfx.win(true); coinRain(25); toast(`+${fmt(a)} ${CUR} de rakeback récupérés !`, 'win'); } dash(); }; }
   };
   dash();
-  let jpShown = null;
   const offSocial = social ? social.subscribe((st) => {
     lastSocial = st;
-    const jp = $('#dash-jp', view), fb = $('#feed-box', view);
-    if (jp) {
-      if (jpShown === null) jp.innerHTML = jackpotHTML(st);
-      else if (jpShown !== st.jackpot) { jp.innerHTML = jackpotHTML(st); const el = $('#jp-amount', jp); if (el) countUp(el, st.jackpot, { from: jpShown, ms: 1200, format: (x) => money(x) }); }
-      jpShown = st.jackpot;
-    }
+    const fb = $('#feed-box', view);
     if (fb) fb.innerHTML = feedHTML(st);
   }) : () => {};
+  let chState = null;
+  const offCh = challenges ? challenges.subscribe((v) => { chState = v; const el = $('#dash-ch', view); if (el) el.innerHTML = challengeHTML(v); }) : () => {};
+  const chClock = setInterval(() => { if (chState) $$('#dash-ch .ch-time', view).forEach((el) => { el.textContent = mmss(chState.end - Date.now()); }); }, 1000);
   let t = null;
   const off = w.on(() => {
     const hb = $('.hero-bal', view); if (hb) hb.innerHTML = `Ton solde : ${money(w.balance)}${w.vault ? `<small class="hero-vault">${icon('vault')} ${fmt(w.vault)} au coffre</small>` : ''}`;
@@ -775,7 +791,7 @@ function mountLobby(view, { wallet: w }) {
   };
   farmCard();
   const farmIv = setInterval(farmCard, 5000);
-  return () => { off(); offSocial(); clearTimeout(t); clearInterval(ago); clearInterval(farmIv); view.removeEventListener('mouseover', onOver); view.removeEventListener('click', onFeedClick); };
+  return () => { off(); offSocial(); offCh(); clearInterval(chClock); clearTimeout(t); clearInterval(ago); clearInterval(farmIv); view.removeEventListener('mouseover', onOver); view.removeEventListener('click', onFeedClick); };
 }
 
 boot();

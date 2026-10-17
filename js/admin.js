@@ -4,7 +4,7 @@ import { $, $$, fmt, esc, toast, modal, CUR } from './ui.js';
 import { CONFIG } from './config.js';
 
 const NAMES = { quiz: 'Calcul mental', capitals: 'Capitales', flags: 'Drapeaux', movies: 'Quiz ciné', higher: 'Plus ou moins', motus: 'Mot du jour',
-  queens: 'Queens', tango: 'Tango', pinpoint: 'Pinpoint', sudoku: 'Sudoku', demineur: 'Démineur', snake: 'Snake', memory: 'Memory', crossword: 'Mots croisés', breaker: 'Casse-briques', _save: 'Sauvegarde locale', _admin: 'Action admin' };
+  queens: 'Queens', tango: 'Tango', pinpoint: 'Pinpoint', sudoku: 'Sudoku', demineur: 'Démineur', snake: 'Snake', memory: 'Memory', crossword: 'Mots croisés', breaker: 'Casse-briques', _save: 'Sauvegarde locale', _admin: 'Action admin', _defi: 'Défi de la jungle' };
 const LV = ['facile', 'moyen', 'difficile'];
 const LVK = { easy: 'facile', medium: 'moyen', hard: 'difficile', expert: 'expert' };
 const FLAG = { ok: ['OK', 'ok'], fast: ['Trop rapide', 'fast'], cheat: ['Triche', 'cheat'] };

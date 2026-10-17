@@ -177,7 +177,7 @@ export function mount(view, { wallet }) {
     const L = CW_LEVELS[lv], sec = Math.round(timer.elapsed);
     const amount = Math.max(0, Math.round(L.reward * (1 - HINT_COST * hints)));
     // contrôle fair-play avant toute récompense
-    let v = judge(guard, { minActions: Math.floor(($$('.cw-cell:not(.blk)', stage).length - given.size) * 0.8), cheatSec: Math.round(($$('.cw-cell:not(.blk)', stage).length - given.size) * 0.12 * 10) / 10, noRobot: true }); guard = null;
+    let v = judge(guard, { lenient: true, cheatSec: Math.round(($$('.cw-cell:not(.blk)', stage).length - given.size) * 0.07 * 10) / 10 }); guard = null; // grille tapée : contrôle souple
     if (v.flag !== 'ok') {
       let pn = null;
       if (v.flag === 'cheat') { pn = punish(wallet, 'crossword', lv, v, amount); sfx.lose(); } else tooFast(wallet, 'crossword', lv, v);

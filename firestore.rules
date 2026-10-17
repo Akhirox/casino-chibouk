@@ -125,6 +125,24 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Défi de la jungle (un défi toutes les 15 min) : le premier joueur qui crée le document du créneau gagne.
+    // Le document s'appelle « c » + numéro du créneau (minutes depuis 1970 ÷ 15) ; il ne peut être créé que pendant
+    // ce créneau (+ 2 min de marge, heure du serveur), une seule fois, et n'est jamais modifié.
+    match /challenges/{id} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.slot is int
+        && id == 'c' + string(request.resource.data.slot)
+        && request.time.toMillis() >= request.resource.data.slot * 900000
+        && request.time.toMillis() < (request.resource.data.slot + 1) * 900000 + 120000
+        && request.resource.data.prize is number
+        && request.resource.data.prize >= 0
+        && request.resource.data.prize <= 5000000
+        && request.resource.data.size() <= 10;
+      allow update, delete: if false;
+    }
+
     // Journal des mini-jeux : chacun écrit ses propres parties, seuls les admins lisent, personne ne modifie
     match /logs/{id} {
       allow read: if isAdmin();

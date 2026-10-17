@@ -221,6 +221,17 @@ async function createFirebaseBackend() {
     async adminUpdateUser(uid, data, rev) {
       await F.updateDoc(F.doc(db, 'users', uid), { ...data, adminRev: (rev || 0) + 1, adminAt: Date.now() });
     },
+    // Défi de la jungle : le premier qui crée le document du créneau gagne (création unique, voir firestore.rules)
+    async claimChallenge(slot, data) {
+      const ref = F.doc(db, 'challenges', 'c' + slot);
+      try { await F.setDoc(ref, data); return { ok: true }; } catch (e) {
+        const c = (e && e.code) || '';
+        if (!c.includes('permission-denied')) throw e; // réseau : on réessaiera
+        const snap = await F.getDoc(ref);
+        if (snap.exists()) { const d = snap.data(); return { ok: false, winner: { uid: d.uid, pseudo: d.pseudo, at: d.at } }; }
+        return { ok: false, error: 'Validation refusée : vérifie que l\'heure de ton appareil est juste, et que les dernières règles Firestore sont publiées.' };
+      }
+    },
     async isAdmin(uid) {
       try { return (await F.getDoc(F.doc(db, 'admins', uid))).exists(); } catch { return false; }
     },
@@ -349,6 +360,12 @@ function createDemoBackend() {
     async fetchLogs({ before = 0, n = 40 } = {}) {
       const docs = read(K_LOGS, []).filter((e) => !before || e.at < before).sort((a, b) => b.at - a.at).slice(0, n);
       return { rows: flattenLogs(docs), cursor: docs.length ? docs[docs.length - 1].at : before, done: docs.length < n };
+    },
+    async claimChallenge(slot, data) {
+      const all = read('chibouk_demo_challenges', {});
+      if (all[slot]) return { ok: false, winner: { uid: all[slot].uid, pseudo: all[slot].pseudo, at: all[slot].at } };
+      all[slot] = data; write('chibouk_demo_challenges', all);
+      return { ok: true };
     },
     async isAdmin() { return true; }, // en démo, tout le monde voit le journal
   };
