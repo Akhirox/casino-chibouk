@@ -41,6 +41,7 @@ export function feedText(e) {
     case 'replant': return `a replanté sa ferme et gagne ${e.gain} graine${e.gain > 1 ? 's' : ''} d'or (${e.seeds} au total)`;
     case 'farm': return `a une ferme qui produit plus de ${fmt(e.n)} bananes par heure`;
     case 'feat': return `${e.txt || ''} ${FEAT_GAMES[e.game] || ''}${e.tail ? ' ' + e.tail : ''}`;
+    case 'loot': return `a ouvert une ${e.box || 'caisse'} et décroché « ${e.txt || ''} »${e.sub ? ` (${e.sub})` : ''}, lot ${e.r === 'gold' ? 'MYTHIQUE' : 'légendaire'} !`;
     case 'challenge': return `a remporté le défi de la jungle (+${fmt(e.amount)} Brundles)${e.txt ? ` : ${e.txt}` : ''}`;
     default: return e.text || '';
   }
@@ -76,6 +77,7 @@ export function feedRich(e) {
     case 'replant': t = `a replanté sa ${L('#/farm', 'ferme')} et gagne <b class="gold">${e.gain} graine${e.gain > 1 ? 's' : ''} d'or</b> (${e.seeds} au total)`; break;
     case 'farm': t = `a une ${L('#/farm', 'ferme')} qui produit plus de <b class="gold">${fmt(e.n)}</b> bananes par heure`; break;
     case 'feat': t = `${esc(e.txt || '')} ${FEAT_GAMES[e.game] ? L('#/' + e.game, FEAT_GAMES[e.game]) : ''}${e.tail ? ' ' + esc(e.tail) : ''}`; break;
+    case 'loot': t = `a ouvert une ${L('#/cases', esc(e.box || 'caisse'))} et décroché <b class="${e.r === 'gold' ? 'gold' : 'neg'}">« ${esc(e.txt || '')} »</b>${e.sub ? ` <small class="muted">(${esc(e.sub)})</small>` : ''}, lot ${e.r === 'gold' ? '<b class="gold">MYTHIQUE</b>' : 'légendaire'} !`; break;
     case 'challenge': t = `a remporté le ${L('#/lobby', 'défi de la jungle')} et touche <b class="gold">${fmt(e.amount)}</b> Brundles${e.txt ? ` <small class="muted">(${esc(e.txt)})</small>` : ''}`; break;
     default: t = esc(feedText(e));
   }
@@ -115,7 +117,7 @@ export function groupRich(g) {
   if (e.kind === 'bigwin') return feedRich(items.reduce((a, b) => ((b.amount || 0) > (a.amount || 0) ? b : a), e));
   return feedRich(e);
 }
-export const FEED_ICON = { bigwin: 'bolt', ach: 'medal', achs: 'medal', jackpot: 'trophy', vip: 'star', motus: 'motus', shop: 'shop', week: 'trophy', quests: 'check', perfect: 'quiz', wheel: 'wheel', streak: 'higher', feat: 'bulb', farm: 'banana', replant: 'banana', challenge: 'flag' };
+export const FEED_ICON = { bigwin: 'bolt', ach: 'medal', achs: 'medal', jackpot: 'trophy', vip: 'star', motus: 'motus', shop: 'shop', week: 'trophy', quests: 'check', perfect: 'quiz', wheel: 'wheel', streak: 'higher', feat: 'bulb', farm: 'banana', replant: 'banana', challenge: 'flag', loot: 'crate' };
 
 // Chance de remporter le jackpot sur un spin payant de la slot (proportionnelle à la mise, plafonnée à 1 %)
 export const JACKPOT_FACTOR = 1.5;
@@ -163,7 +165,7 @@ export function createSocial(wallet, backend) {
         const cids = new Set(add.map((e) => e.cid).filter(Boolean));
         entries = [...add, ...entries.filter((e) => !(e.cid && cids.has(e.cid) && String(e.id).startsWith('local_')))].sort((a, b) => b.at - a.at).slice(0, 80);
         // petits toasts pour les exploits des autres (pas au premier chargement)
-        if (!first) add.filter((e) => e.uid !== wallet.uid && ['jackpot', 'bigwin', 'week', 'challenge'].includes(e.kind)).slice(0, 2)
+        if (!first) add.filter((e) => e.uid !== wallet.uid && ['jackpot', 'bigwin', 'week', 'challenge', 'loot'].includes(e.kind)).slice(0, 2)
           .forEach((e) => toast(`<b>${esc(feedWho(e))}</b> ${esc(feedText(e))}`, e.kind === 'jackpot' ? 'win' : 'info', 5000));
       }
       first = false;

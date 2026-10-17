@@ -138,6 +138,10 @@ export function initFarm(wallet) {
 }
 function save(wallet, act, extra = {}) { wallet.touch({ type: 'farm', act, ...extra }); }
 
+const frN = (x) => String(Math.round(x * 1000) / 1000).replace('.', ',');
+// Prix pour finir un chantier tout de suite (dépend du temps restant et du prix du chantier)
+const rushPrice = (q) => F.rushCost(q.end - Date.now(), q.c || 0, (q.end - (q.start || q.end)) || 0);
+
 /* ------------------------------ page ------------------------------ */
 export function mount(view, { wallet, backend }) {
   let alive = true, tab = 'me', sel = -1;
@@ -168,9 +172,9 @@ export function mount(view, { wallet, backend }) {
       <div class="fm-hint" id="fm-hint"></div>
       <div class="fm-main"><div id="fm-board-wrap">${boardHTML(fm, { sel })}</div><aside class="fm-side" id="fm-side"></aside></div>`;
     $('#fm-board-wrap', view).onclick = (e) => { const t = e.target.closest('.fm-tile'); if (!t) return; sel = +t.dataset.i; sfx.click(); refreshBoard(); side(); if (window.innerWidth < 980) $('#fm-side', view).scrollIntoView({ behavior: 'smooth', block: 'nearest' }); };
-    $('#fm-hire', view).onclick = () => act(() => F.hire(f()), 'hire', 'Un singe de plus au travail !');
+    $('#fm-hire', view).onclick = () => { const c = F.hireCost(f().w); act(c, () => F.hire(f(), wallet.balance), 'hire', 'Un singe de plus au travail !'); };
     const bb = $('#fm-builder', view); if (bb) bb.onclick = buyBuilder;
-    $('#fm-sell', view).onclick = () => sell('sell');
+    $('#fm-sell', view).onclick = () => sell();
     $('#fm-replant', view).onclick = replant;
     side(); numbers();
   }
@@ -180,7 +184,7 @@ export function mount(view, { wallet, backend }) {
   // chiffres du haut + barres de chantier (chaque seconde)
   function numbers() {
     if (!alive || tab !== 'me') return;
-    const fm = f(), cap = F.capacity(fm), rate = F.productionPerHour(fm);
+    const fm = f(), cap = F.capacity(fm), bm = F.boostAt(fm), rate = F.productionPerHour(fm) * bm;
     const el = (id) => $('#' + id, view);
     if (!el('fm-b')) return;
     el('fm-b').textContent = fmt(Math.floor(fm.b));
@@ -188,7 +192,7 @@ export function mount(view, { wallet, backend }) {
     el('fm-bar').style.width = Math.min(100, (fm.b / Math.max(1, cap)) * 100) + '%';
     el('fm-bar').classList.toggle('full', fm.b >= cap - 0.5);
     el('fm-full').textContent = fm.b >= cap - 0.5 ? 'Entrepôt plein : la récolte est à l\'arrêt !' : rate > 0 ? `Plein dans ${dur(((cap - fm.b) / rate) * F.HOUR)}` : 'Aucun singe au travail';
-    el('fm-rate').innerHTML = `${fmt(Math.round(rate))} <small>/ h</small>`;
+    el('fm-rate').innerHTML = `${fmt(Math.round(rate))} <small>/ h</small>${bm > 1 ? ` <span class="fm-boost" title="Boost gagné dans une caisse">×${String(bm).replace('.', ',')} · ${dur(fm.xb.u - Date.now())}</span>` : ''}`;
     el('fm-value').textContent = `≈ ${fmt(Math.round(rate * F.sellRate(fm)))} ${CUR}/h à la vente`;
     el('fm-seeds').innerHTML = fm.seeds ? `${SEED} ${fm.seeds} graine${fm.seeds > 1 ? 's' : ''} d'or · +${Math.round(F.SEED_BONUS * fm.seeds * 100)} %` : '';
     const gain = F.seedGain(fm.life), rb = el('fm-replant');
@@ -203,13 +207,13 @@ export function mount(view, { wallet, backend }) {
       ? `${need} pour remplir les bananeraies · <b>encore ${miss}</b>${need > H ? ` <span title="Il faut plus de place dans les cabanes">(cabanes : +${need - H} places)</span>` : ''}`
       : miss < 0 ? `${need} places dans les bananeraies · <b>${-miss} en trop</b>` : `${need} / ${need} : bananeraies pleines`;
     const hb = el('fm-hire');
-    hb.innerHTML = fm.w >= H ? 'Cabanes pleines' : `Embaucher · ${ban(hc)}`;
-    hb.disabled = fm.w >= H || fm.b < hc;
+    hb.innerHTML = fm.w >= H ? 'Cabanes pleines' : `Embaucher · ${fmt(hc)} ${CUR}`;
+    hb.disabled = fm.w >= H || !wallet.canAfford(hc);
     el('fm-bu').textContent = `${fm.q.length} / ${fm.bu} au travail`;
     const now = Date.now();
     $$('.fm-work', view).forEach((w) => { const s = w.querySelector('small'), end = +s.dataset.end, q = fm.q.find((y) => y.end === end); if (!q) return; s.textContent = dur(end - now); w.querySelector('i').style.width = Math.min(100, ((now - q.start) / (q.end - q.start)) * 100) + '%'; });
     $$('[data-left]', view).forEach((s) => (s.textContent = dur(+s.dataset.left - now)));
-    $$('[data-rush]', view).forEach((b) => { const q = fm.q.find((y) => y.i === +b.dataset.rush); if (q) b.innerHTML = `Terminer maintenant · ${fmt(F.rushCost(q.end - now))} ${CUR}`; });
+    $$('[data-rush]', view).forEach((b) => { const q = fm.q.find((y) => y.i === +b.dataset.rush); if (q) b.innerHTML = `Terminer maintenant · ${fmt(rushPrice(q))} ${CUR}`; });
     hint();
   }
 
@@ -219,7 +223,7 @@ export function mount(view, { wallet, backend }) {
     const as = F.assignment(fm), free = F.totalSlots(fm) - Math.min(fm.w, F.houses(fm)), cap = F.capacity(fm);
     const emptyOwned = fm.own.filter((i) => !F.tile(fm, i) && !fm.q.some((q) => q.i === i)).length;
     let t = '';
-    if (fm.b >= cap - 0.5) t = 'Entrepôt plein ! Vends des bananes, dépense-les, ou améliore ton entrepôt.';
+    if (fm.b >= cap - 0.5) t = 'Entrepôt plein ! Vends tes bananes au marché, ou améliore ton entrepôt.';
     else if (free > 0 && fm.w < F.houses(fm)) t = `Il reste ${free} place${free > 1 ? 's' : ''} dans tes bananeraies : embauche des singes !`;
     else if (free > 0) t = 'Tes bananeraies ont des places libres mais tes cabanes sont pleines : améliore ou construis une cabane.';
     else if (as.idle > 0) t = `${as.idle} singe${as.idle > 1 ? 's' : ''} sans travail : améliore une bananeraie (plus de places) ou construis-en une nouvelle.`;
@@ -248,22 +252,22 @@ export function mount(view, { wallet, backend }) {
     if (q) {
       el.innerHTML = `<h3>${F.B[q.t].name} · ${q.l === 1 ? 'construction' : `vers le niveau ${q.l}`}</h3>
         <p>Fin dans <b data-left="${q.end}">${dur(q.end - now)}</b></p>
-        <button class="btn btn-gold wide" data-rush="${sel}">Terminer maintenant · ${fmt(F.rushCost(q.end - now))} ${CUR}</button>
+        <button class="btn btn-gold wide" data-rush="${sel}">Terminer maintenant · ${fmt(rushPrice(q))} ${CUR}</button>
         <p class="muted fm-note">Le bâtiment continue de fonctionner pendant les travaux.</p>${x ? detail(x) : ''}`;
       $('[data-rush]', el).onclick = () => rush(sel);
       return;
     }
-    if (!x) { el.innerHTML = buildMenu(); $$('[data-build]', el).forEach((b) => (b.onclick = () => act(() => F.build(f(), sel, b.dataset.build), 'build', `Construction lancée : ${F.B[b.dataset.build].name}`))); return; }
-    const d = F.B[x.t], max = x.l >= d.max, cost = max ? 0 : F.costOf(fm, x.t, x.l + 1), err = max ? null : F.canUpgrade(fm, sel);
+    if (!x) { el.innerHTML = buildMenu(); $$('[data-build]', el).forEach((b) => (b.onclick = () => { const t = b.dataset.build; act(F.costOf(f(), t, 1), () => F.build(f(), sel, t, Date.now(), wallet.balance), 'build', `Construction lancée : ${F.B[t].name}`); })); return; }
+    const d = F.B[x.t], max = x.l >= d.max, cost = max ? 0 : F.costOf(fm, x.t, x.l + 1), err = max ? null : F.canUpgrade(fm, sel, wallet.balance);
     el.innerHTML = `<div class="fm-side-head"><span class="fm-side-art">${tileArt(x.t, x.l)}</span><div><h3>${d.name}</h3><span class="tier-badge">Niveau ${x.l} / ${d.max}</span></div></div>
       <p class="muted">${d.desc}</p>${detail(x)}
-      ${max ? '<p class="gold">Niveau maximum atteint.</p>' : `<div class="fm-up"><div><small>Amélioration</small><b>${ban(cost)}</b><small>${dur(F.timeOf(x.t, x.l + 1))}</small></div>
-        <button class="btn btn-gold" id="fm-up" ${err ? 'disabled' : ''}>Améliorer</button></div>${err ? `<p class="fm-err">${err}${cost > F.capacity(fm) ? ` (il faut un entrepôt de ${fmt(cost)} : capacité actuelle ${fmt(F.capacity(fm))})` : ''}</p>` : ''}`}
+      ${max ? '<p class="gold">Niveau maximum atteint.</p>' : `<div class="fm-up"><div><small>Amélioration</small><b>${money(cost)}</b><small>${dur(F.timeOf(x.t, x.l + 1))}</small></div>
+        <button class="btn btn-gold" id="fm-up" ${err ? 'disabled' : ''}>Améliorer</button></div>${err ? `<p class="fm-err">${err}</p>` : ''}`}
       <button class="btn btn-ghost btn-sm fm-demo" id="fm-demo">Démolir</button>`;
-    const up = $('#fm-up', el); if (up) up.onclick = () => act(() => F.upgrade(f(), sel), 'upgrade', `Amélioration lancée : ${d.name} niveau ${x.l + 1}`);
+    const up = $('#fm-up', el); if (up) up.onclick = () => act(F.costOf(f(), x.t, x.l + 1), () => F.upgrade(f(), sel, Date.now(), wallet.balance), 'upgrade', `Amélioration lancée : ${d.name} niveau ${x.l + 1}`);
     $('#fm-demo', el).onclick = async () => {
-      const ok = await modal({ title: 'Démolir ?', html: `<p>Démolir ${d.name.toLowerCase()} niveau ${x.l} ? Les bananes dépensées ne sont pas remboursées.</p>`, buttons: [{ label: 'Annuler', value: false }, { label: 'Démolir', value: true, primary: true }] });
-      if (ok) act(() => F.demolish(f(), sel), 'demolish', 'Bâtiment démoli');
+      const ok = await modal({ title: 'Démolir ?', html: `<p>Démolir ${d.name.toLowerCase()} niveau ${x.l} ? Les Brundles dépensés ne sont pas remboursés.</p>`, buttons: [{ label: 'Annuler', value: false }, { label: 'Démolir', value: true, primary: true }] });
+      if (ok) act(0, () => F.demolish(f(), sel), 'demolish', 'Bâtiment démoli');
     };
   }
 
@@ -290,16 +294,16 @@ export function mount(view, { wallet, backend }) {
         ${same ? '' : `<li class="fm-gain"><span>Après amélioration</span><b>+${fmt(next - now)} bananes/h</b></li>`}
         ${row('Production de la ferme', `${fmt(now)}/h`, `${fmt(next)}/h`)}</ul>`;
     }
-    if (x.t === 'M') return `<ul class="fm-stats">${row('Prix de vente', `${(F.SELL_BASE * (1 + 0.1 * x.l)).toFixed(3).replace('.', ',')} ${CUR}`, `${(F.SELL_BASE * (1 + 0.1 * nx)).toFixed(3).replace('.', ',')} ${CUR}`)}</ul>`;
+    if (x.t === 'M') return `<ul class="fm-stats">${row('Prix de vente', `${frN(F.sellAt(x.l))} ${CUR}`, `${frN(F.sellAt(nx))} ${CUR}`)}</ul>`;
     return '';
   }
 
   function buildMenu() {
     const fm = f();
     return `<h3>Construire ici</h3><div class="fm-builds">${F.TYPES.map((t) => {
-      const d = F.B[t], c = F.costOf(fm, t, 1), err = F.canBuild(fm, sel, t);
-      const eff = t === 'F' ? `${fmt(F.perWorker(1))}/h par singe, ${F.slots(1)} places` : t === 'C' ? `${F.housing(1)} singes logés` : t === 'E' ? `+${fmt(F.storage(1))} de stockage` : t === 'P' ? `+${Math.round(F.wellBonus(1) * 100)} % aux bananeraies voisines (ici : +${fmt(prodWith(fm, sel, { t: 'P', l: 1 }) - F.productionPerHour(fm))}/h)` : `vente +10 % par niveau`;
-      return `<div class="fm-build ${err ? 'off' : ''}"><span class="fm-build-art">${tileArt(t, 1)}</span><div><b>${d.name}</b><small>${eff}</small><small>${ban(c)} · ${dur(F.timeOf(t, 1))}</small>${err && err !== 'Pas assez de bananes' ? `<small class="fm-err">${err}</small>` : ''}</div>
+      const d = F.B[t], c = F.costOf(fm, t, 1), err = F.canBuild(fm, sel, t, wallet.balance);
+      const eff = t === 'F' ? `${fmt(F.perWorker(1))}/h par singe, ${F.slots(1)} places` : t === 'C' ? `${F.housing(1)} singes logés` : t === 'E' ? `+${fmt(F.storage(1))} de stockage` : t === 'P' ? `+${Math.round(F.wellBonus(1) * 100)} % aux bananeraies voisines (ici : +${fmt(prodWith(fm, sel, { t: 'P', l: 1 }) - F.productionPerHour(fm))}/h)` : `vente à ${frN(F.sellAt(1))} ${CUR} la banane, +${frN(F.MARKET_STEP)} par niveau`;
+      return `<div class="fm-build ${err ? 'off' : ''}"><span class="fm-build-art">${tileArt(t, 1)}</span><div><b>${d.name}</b><small>${eff}</small><small>${fmt(c)} ${CUR} · ${dur(F.timeOf(t, 1))}</small>${err && err !== 'Pas assez de Brundles' ? `<small class="fm-err">${err}</small>` : ''}</div>
         <button class="btn btn-gold btn-sm" data-build="${t}" ${err ? 'disabled' : ''}>Construire</button></div>`;
     }).join('')}</div>`;
   }
@@ -323,14 +327,17 @@ export function mount(view, { wallet, backend }) {
       ${seedsHTML(fm)}
       <h4>Chantiers</h4>${q.length ? `<ul class="fm-q">${q.map((y) => `<li><span>${F.B[y.t].name} ${y.l === 1 ? '(nouveau)' : `niv. ${y.l}`}</span><b data-left="${y.end}">${dur(y.end - now)}</b></li>`).join('')}</ul>` : '<p class="muted">Aucun chantier en cours.</p>'}
       <h4>Bananeraies</h4><ul class="fm-q">${as.fields.sort((a, b) => b.w * b.per - a.w * a.per).map((x) => `<li><span>Niveau ${x.l} · ${x.w}/${x.cap} singes</span><b>${fmt(x.w * x.per)}/h</b></li>`).join('')}</ul>
-      <ul class="fm-stats"><li><span>Bananes récoltées</span><b>${fmt(Math.floor(fm.tot))}</b></li><li><span>Bananes vendues</span><b>${fmt(fm.sold)}</b></li><li><span>${CUR} gagnés au marché</span><b>${fmt(fm.earned)}</b></li><li><span>Prix de vente</span><b>${F.sellRate(fm).toFixed(3).replace('.', ',')} ${CUR} / banane</b></li></ul>`;
+      <ul class="fm-stats"><li><span>Bananes récoltées</span><b>${fmt(Math.floor(fm.tot))}</b></li><li><span>Bananes vendues</span><b>${fmt(fm.sold)}</b></li><li><span>${CUR} gagnés au marché</span><b>${fmt(fm.earned)}</b></li><li><span>Prix de vente</span><b>${frN(F.sellRate(fm))} ${CUR} / banane</b></li></ul>`;
   }
 
   /* ---------- actions ---------- */
-  function act(fn, name, okMsg) {
+  // Action payée en Brundles (cost = 0 : gratuite). Le prix est débité seulement si l'action a bien eu lieu.
+  function act(cost, fn, name, okMsg) {
     F.tick(f());
+    if (cost > 0 && !wallet.canAfford(cost)) { toast(`Pas assez de ${CUR} (il faut ${fmt(cost)})`, 'error'); sfx.lose(); return; }
     const err = fn();
     if (err) { toast(err, 'error'); sfx.lose(); return; }
+    if (cost > 0) wallet.debit('farm', cost, { what: name });
     save(wallet, name);
     sfx.coin();
     if (okMsg) toast(okMsg, 'win', 2500);
@@ -359,66 +366,43 @@ export function mount(view, { wallet, backend }) {
   function rush(i) {
     const fm = f(), q = fm.q.find((y) => y.i === i);
     if (!q) return;
-    const p = F.rushCost(q.end - Date.now());
+    const p = rushPrice(q);
     if (!wallet.debit('farm', p, { what: 'rush' })) { toast(`Pas assez de ${CUR}`, 'error'); return; }
     q.end = Date.now();
     // la minuterie globale termine le chantier dans la seconde (message + sauvegarde)
     setTimeout(() => { refreshBoard(); side(); }, 1100);
   }
-  // Marché : vendre des bananes contre des Brundles, ou en acheter (1 Brundle = 1 banane, volontairement cher)
-  async function sell(mode = 'sell') {
+  // Marché : vendre des bananes contre des Brundles
+  async function sell() {
     const fm = f();
     F.tick(fm);
     const rate = F.sellRate(fm);
-    const have = Math.floor(fm.b), room = F.buyRoom(fm), canBuy = Math.max(0, Math.min(room, Math.floor(wallet.balance / F.BUY_RATE)));
+    const have = Math.floor(fm.b);
     let amount = 0;
-    const body = (m) => mode === 'sell' ? `
-      <p>Prix de vente : <b>${rate.toFixed(3).replace('.', ',')} ${CUR}</b> la banane${F.findType(fm, 'M') ? '' : ' (construis un marché pour vendre plus cher)'}.</p>
+    const res = await modal({ title: 'Marché aux bananes', cls: 'fm-market', html: `
+      <p>Prix de vente : <b>${frN(rate)} ${CUR}</b> la banane${F.findType(fm, 'M') ? (F.findType(fm, 'M').l < F.B.M.max ? ' (améliore ton marché pour vendre plus cher, jusqu\'à 1 ' + CUR + ')' : ' (prix maximum)') : ' (construis un marché pour vendre plus cher)'}.</p>
       ${have < 10 ? '<p class="muted">Il faut au moins 10 bananes pour vendre.</p>' : `<div class="fm-sell-pick">${[25, 50, 75, 100].map((p) => `<button type="button" class="btn btn-ghost btn-sm" data-p="${p}">${p} %</button>`).join('')}</div>
       <input type="range" id="fm-sell-r" min="10" max="${have}" value="${have}" step="1">
-      <p class="fm-sell-sum"><span id="fm-sell-b"></span> → <b id="fm-sell-v"></b></p>`}
-      <p class="muted fm-note">Garde des bananes si tu veux améliorer ta ferme : elles servent à tout construire.</p>` : `
-      <p>Prix d'achat : <b>1 ${CUR}</b> la banane. C'est ${Math.round(F.BUY_RATE / rate)} fois plus cher que la vente : pratique pour débloquer une amélioration, mais la ferme se fait surtout à la sueur des singes !</p>
-      ${canBuy < 1 ? `<p class="muted">${room < 1 ? 'Ton entrepôt est plein.' : `Pas assez de ${CUR}.`}</p>` : `<div class="fm-sell-pick">${[100, 1000, 10000].filter((n) => n < canBuy).map((n) => `<button type="button" class="btn btn-ghost btn-sm" data-n="${n}">${fmt(n)}</button>`).join('')}<button type="button" class="btn btn-ghost btn-sm" data-n="${canBuy}">Max (${fmt(canBuy)})</button></div>
-      <input type="range" id="fm-sell-r" min="1" max="${canBuy}" value="${Math.min(canBuy, 100)}" step="1">
-      <p class="fm-sell-sum"><b id="fm-sell-v"></b> → <span id="fm-sell-b"></span></p>`}
-      <p class="muted fm-note">Place libre dans tes entrepôts : ${fmt(room)} bananes.</p>`;
-    const res = await modal({ title: 'Marché aux bananes', cls: 'fm-market', html: `<div class="seg fm-mtabs"><button type="button" data-m="sell" class="${mode === 'sell' ? 'on' : ''}">Vendre</button><button type="button" data-m="buy" class="${mode === 'buy' ? 'on' : ''}">Acheter</button></div><div id="fm-mbody">${body()}</div>`,
-      buttons: [{ label: 'Annuler', value: false }, { label: mode === 'sell' ? 'Vendre' : 'Acheter', value: mode, primary: true }],
+      <p class="fm-sell-sum"><span id="fm-sell-b"></span> → <b id="fm-sell-v"></b></p>`}`,
+      buttons: [{ label: 'Annuler', value: false }, { label: 'Vendre', value: 'sell', primary: true }],
       onOpen: (m) => {
-        m.querySelectorAll('[data-m]').forEach((b) => (b.onclick = () => { if (b.dataset.m !== mode) { m.querySelector('.modal-actions [data-i="0"]').click(); setTimeout(() => sell(b.dataset.m), 260); } }));
         const r = m.querySelector('#fm-sell-r');
         if (!r) return;
-        const upd = () => {
-          amount = +r.value;
-          if (mode === 'sell') { m.querySelector('#fm-sell-b').innerHTML = ban(amount); m.querySelector('#fm-sell-v').innerHTML = money(Math.floor(amount * rate)); }
-          else { m.querySelector('#fm-sell-b').innerHTML = ban(amount); m.querySelector('#fm-sell-v').innerHTML = money(amount * F.BUY_RATE); }
-        };
+        const upd = () => { amount = +r.value; m.querySelector('#fm-sell-b').innerHTML = ban(amount); m.querySelector('#fm-sell-v').innerHTML = money(Math.floor(amount * rate)); };
         r.oninput = upd;
         m.querySelectorAll('[data-p]').forEach((b) => (b.onclick = () => { r.value = Math.max(10, Math.floor((have * +b.dataset.p) / 100)); upd(); }));
-        m.querySelectorAll('[data-n]').forEach((b) => (b.onclick = () => { r.value = +b.dataset.n; upd(); }));
         upd();
       } });
-    if (!alive || !res || amount < 1) return;
+    if (!alive || res !== 'sell' || amount < 1) return;
     F.tick(fm);
-    if (res === 'sell') {
-      amount = Math.min(amount, Math.floor(fm.b));
-      const gain = Math.floor(amount * rate);
-      if (amount < 1 || gain < 1) return;
-      fm.b -= amount; fm.sold = (fm.sold || 0) + amount; fm.earned = (fm.earned || 0) + gain;
-      wallet.credit('farm', gain, { bananas: amount });
-      save(wallet, 'sell', { bananas: amount });
-      sfx.win(gain >= 1000); coinRain(Math.min(40, 8 + Math.floor(gain / 200)));
-      toast(`${fmt(amount)} bananes vendues : +${fmt(gain)} ${CUR}`, 'win');
-    } else {
-      amount = Math.min(amount, F.buyRoom(fm));
-      if (amount < 1) { toast('Ton entrepôt est plein', 'error'); return; }
-      if (!wallet.debit('farm', amount * F.BUY_RATE, { what: 'bananas' })) { toast(`Pas assez de ${CUR}`, 'error'); return; }
-      F.buyBananas(fm, amount);
-      save(wallet, 'buy', { bananas: amount });
-      sfx.coin();
-      toast(`${fmt(amount)} bananes achetées pour ${fmt(amount * F.BUY_RATE)} ${CUR}`, 'win');
-    }
+    amount = Math.min(amount, Math.floor(fm.b));
+    const gain = Math.floor(amount * rate);
+    if (amount < 1 || gain < 1) return;
+    fm.b -= amount; fm.sold = (fm.sold || 0) + amount; fm.earned = (fm.earned || 0) + gain;
+    wallet.credit('farm', gain, { bananas: amount });
+    save(wallet, 'sell', { bananas: amount });
+    sfx.win(gain >= 1000); coinRain(Math.min(40, 8 + Math.floor(gain / 200)));
+    toast(`${fmt(amount)} bananes vendues : +${fmt(gain)} ${CUR}`, 'win');
     numbers(); if (sel < 0) side();
   }
 
@@ -451,10 +435,10 @@ export function mount(view, { wallet, backend }) {
       <li>Chaque bananeraie a un nombre de <b>places</b>. Les singes logent dans les <b>cabanes</b> : embauche-en tant qu'il y a de la place et du travail.</li>
       <li>Les bananes s'entassent dans les <b>entrepôts</b>. Quand ils sont pleins, la récolte s'arrête : reviens régulièrement !</li>
       <li>Les <b>puits</b> irriguent les 8 cases autour (bonus aux bananeraies voisines), le <b>marché</b> fait monter le prix de vente.</li>
-      <li>Les bananes servent à <b>tout construire et améliorer</b>, ou se <b>vendent</b> contre des ${CUR} au marché.</li>
+      <li>Les bananes se <b>vendent</b> contre des ${CUR} au marché : ${frN(F.sellAt(0))} ${CUR} la banane, jusqu'à <b>1 ${CUR}</b> avec un marché niveau 10.</li>
+      <li>Constructions, améliorations et singes se paient directement en <b>${CUR}</b>.</li>
       <li>Les chantiers prennent du temps (de quelques secondes à plusieurs heures). Engage des <b>bâtisseurs</b> pour en mener plusieurs à la fois, ou termine-les tout de suite en payant des ${CUR}.</li>
       <li>Les <b>parcelles</b> autour de ta ferme s'achètent en ${CUR}.</li>
-      <li>Tu peux aussi <b>acheter des bananes</b> au marché, à 1 ${CUR} la banane (environ 8 fois le prix de vente) : pratique pour débloquer une amélioration.</li>
       <li><b>Graines d'or</b> : après 1 million de bananes récoltées, tu peux <b>replanter</b> ta ferme. Bâtiments, singes et bananes repartent de zéro, mais tu gardes tes parcelles et tes bâtisseurs, et chaque graine donne <b>+5 % de production pour toujours</b>. Plus tu récoltes avant de replanter, plus tu gagnes de graines.</li>
       <li>Onglet <b>Les voisins</b> : visite les fermes des autres joueurs et compare vos productions.</li></ul>`, buttons: [{ label: 'Compris', value: true, primary: true }] });
   }

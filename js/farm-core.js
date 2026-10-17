@@ -6,7 +6,7 @@ export const SIZE = 7;                       // terrain 7 × 7
 export const START = [16, 17, 18, 23, 24, 25, 30, 31, 32]; // carré 3 × 3 du centre, offert
 export const HOUR = 3600000;
 
-// Bâtiments. cost(L) = prix en bananes pour atteindre le niveau L (L = 1 : construction)
+// Bâtiments. costOf(f, t, L) = prix en Brundles pour atteindre le niveau L (L = 1 : construction) = base × PRICE × grow^(L-1)
 export const B = {
   F: { name: 'Bananeraie', short: 'Champ', max: 15, base: 32, grow: 2.03, extra: 1.72, time: 35, tgrow: 1.75,
     desc: 'Les singes ouvriers y récoltent des bananes. Plus le niveau est haut, plus chaque singe récolte, et plus il y a de places.' },
@@ -28,13 +28,17 @@ export const slots = (L) => Math.min(7, 2 + Math.floor(L / 3));        // singes
 export const housing = (L) => 2 + 2 * L;                               // singes logés par cabane
 export const storage = (L) => Math.round(250 * Math.pow(2.05, L - 1)); // capacité d'un entrepôt
 export const wellBonus = (L) => 0.1 * L;                               // +10 % par niveau aux champs voisins
-export const SELL_BASE = 0.12;                                         // Brundles par banane sans marché
-export const sellRate = (f) => { const m = findType(f, 'M'); return SELL_BASE * (1 + (m ? 0.1 * m.l : 0)); };
-export const hireCost = (n) => Math.round(16 * Math.pow(1.16, n));     // prix du (n+1)ᵉ singe, en bananes
+// V24 : tout se paie en Brundles ; les bananes servent seulement à être vendues.
+export const SELL_BASE = 0.6;                                          // Brundles par banane sans marché
+export const MARKET_STEP = 0.04;                                       // + par niveau de marché (niveau 10 : 1 banane = 1 Brundle)
+export const sellAt = (marketLevel) => Math.round((SELL_BASE + MARKET_STEP * (marketLevel || 0)) * 1000) / 1000;
+export const sellRate = (f) => { const m = findType(f, 'M'); return sellAt(m ? m.l : 0); };
+export const PRICE = 0.6;                                              // prix en Brundles = ancien prix en bananes × 0,6 (même rentabilité)
+export const hireCost = (n) => Math.round(16 * PRICE * Math.pow(1.16, n));     // prix du (n+1)ᵉ singe, en Brundles
 export const landCost = (k) => Math.round(600 * Math.pow(1.2, k));    // k-ième case achetée, en Brundles
 export const BUILDERS = [null, 0, 15000, 150000];                       // prix des bâtisseurs 2 et 3, en Brundles
-export const rushCost = (ms) => Math.max(10, Math.ceil(ms / 60000) * 12); // finir tout de suite : 12 Brundles / min
-export const BUY_RATE = 1;                                              // acheter des bananes : 1 Brundle = 1 banane (environ 8 fois plus cher que la vente)
+// Finir un chantier tout de suite : 12 Brundles / min restante + la moitié du prix du chantier au prorata du temps restant
+export const rushCost = (ms, cost = 0, total = 0) => Math.max(10, Math.ceil(ms / 60000) * 12 + (cost && total ? Math.round(0.5 * cost * Math.min(1, ms / total)) : 0));
 
 // Graines d'or (fin de partie) : replanter la ferme remet les bâtiments à zéro mais rapporte des graines,
 // chacune donnant +5 % de production pour toujours. Les parcelles, les bâtisseurs et les graines sont conservés.
@@ -62,7 +66,7 @@ const sides = (i) => { const r = Math.floor(i / SIZE), c = i % SIZE; return [[r 
 export function costOf(f, t, L) {
   const d = B[t];
   const n = L === 1 ? Math.max(0, countType(f, t) - (t === 'F' || t === 'C' || t === 'E' ? 1 : 0)) : 0;
-  return Math.round(d.base * Math.pow(d.grow, L - 1) * Math.pow(d.extra, n));
+  return Math.max(1, Math.round(d.base * PRICE * Math.pow(d.grow, L - 1) * Math.pow(d.extra, n)));
 }
 export const timeOf = (t, L) => Math.round(B[t].time * Math.pow(B[t].tgrow, L - 1)) * 1000;
 
@@ -85,6 +89,7 @@ export function normalize(raw, now = Date.now()) {
   for (const k of ['b', 'w', 'bu', 'tot', 'sold', 'earned', 't', 'life', 'seeds', 'rp', 'bought']) f[k] = Number(f[k]) || 0;
   if (!raw.life && raw.tot) f.life = Number(raw.tot) || 0; // fermes créées avant les graines d'or
   f.bu = Math.max(1, Math.min(3, f.bu));
+  f.xb = raw.xb && raw.xb.u > now && raw.xb.m > 1 ? { m: Number(raw.xb.m), u: Number(raw.xb.u) } : null;
   return f;
 }
 
@@ -102,6 +107,14 @@ export function assignment(f) {
   for (const x of fields) { x.w = Math.min(x.cap, left); left -= x.w; }
   return { fields, idle: Math.max(0, Math.min(f.w, houses(f)) - fields.reduce((a, x) => a + x.w, 0)), homeless: Math.max(0, f.w - houses(f)) };
 }
+// Boost de production gagné dans une caisse : f.xb = { m: multiplicateur, u: fin (ms) }
+export const boostAt = (f, t = Date.now()) => (f.xb && f.xb.u > t ? f.xb.m : 1);
+export function addBoost(f, m, hours, now = Date.now()) {
+  // même multiplicateur (ou plus faible) : on prolonge ; plus fort : il remplace, avec la durée restante en plus
+  const cur = f.xb && f.xb.u > now ? f.xb : null;
+  const start = cur ? cur.u : now;
+  f.xb = { m: Math.max(m, cur ? cur.m : 1), u: start + hours * HOUR };
+}
 export const productionPerHour = (f) => assignment(f).fields.reduce((a, x) => a + x.w * x.per, 0);
 export const totalSlots = (f) => built(f).filter((x) => x.t === 'F').reduce((a, x) => a + slots(x.l), 0);
 
@@ -114,14 +127,19 @@ export const landPrice = (f) => landCost(f.own.length - START.length);
 export function tick(f, now = Date.now()) {
   const done = [];
   if (!f.t || f.t > now) f.t = now;
-  const produce = (until) => {
+  const seg = (until, m) => {
     const dt = (until - f.t) / HOUR;
     if (dt > 0) {
-      const cap = capacity(f), p = productionPerHour(f) * dt;
+      const cap = capacity(f), p = productionPerHour(f) * m * dt;
       const room = Math.max(0, cap - f.b), got = Math.min(room, p);
       f.b += got; f.tot += got; f.life = (f.life || 0) + got;
     }
     f.t = until;
+  };
+  // boost de production (caisses) : multiplicateur jusqu'à f.xb.u, puis production normale
+  const produce = (until) => {
+    if (f.xb && f.xb.u > f.t && f.xb.u < until) { seg(f.xb.u, f.xb.m); seg(until, 1); }
+    else seg(until, boostAt(f, f.t));
   };
   f.q.sort((a, b) => a.end - b.end);
   while (f.q.length && f.q[0].end <= now) {
@@ -136,43 +154,41 @@ export function tick(f, now = Date.now()) {
 }
 
 /* -------- actions (renvoient un message d'erreur, ou null si c'est fait) -------- */
-export function canBuild(f, i, t) {
+// money = Brundles disponibles (les prix sont en Brundles, débités par l'appelant)
+export function canBuild(f, i, t, money = Infinity) {
   if (!f.own.includes(i)) return 'Case pas encore achetée';
   if (tile(f, i) || f.q.some((q) => q.i === i)) return 'Case occupée';
   if (B[t].unique && countType(f, t) >= 1) return `Un seul ${B[t].name.toLowerCase()} par ferme`;
   if (f.q.length >= f.bu) return 'Tous tes bâtisseurs sont occupés';
-  if (f.b < costOf(f, t, 1)) return 'Pas assez de bananes';
+  if (money < costOf(f, t, 1)) return 'Pas assez de Brundles';
   return null;
 }
-export function build(f, i, t, now = Date.now()) {
-  const err = canBuild(f, i, t);
+export function build(f, i, t, now = Date.now(), money = Infinity) {
+  const err = canBuild(f, i, t, money);
   if (err) return err;
-  f.b -= costOf(f, t, 1);
-  f.q.push({ i, t, l: 1, end: now + timeOf(t, 1), start: now });
+  f.q.push({ i, t, l: 1, end: now + timeOf(t, 1), start: now, c: costOf(f, t, 1) });
   return null;
 }
-export function canUpgrade(f, i) {
+export function canUpgrade(f, i, money = Infinity) {
   const x = tile(f, i);
   if (!x) return 'Rien à améliorer ici';
   if (x.l >= B[x.t].max) return 'Niveau maximum';
   if (f.q.some((q) => q.i === i)) return 'Déjà en travaux';
   if (f.q.length >= f.bu) return 'Tous tes bâtisseurs sont occupés';
-  if (f.b < costOf(f, x.t, x.l + 1)) return 'Pas assez de bananes';
+  if (money < costOf(f, x.t, x.l + 1)) return 'Pas assez de Brundles';
   return null;
 }
-export function upgrade(f, i, now = Date.now()) {
-  const err = canUpgrade(f, i);
+export function upgrade(f, i, now = Date.now(), money = Infinity) {
+  const err = canUpgrade(f, i, money);
   if (err) return err;
   const x = tile(f, i);
-  f.b -= costOf(f, x.t, x.l + 1);
-  f.q.push({ i, t: x.t, l: x.l + 1, end: now + timeOf(x.t, x.l + 1), start: now });
+  f.q.push({ i, t: x.t, l: x.l + 1, end: now + timeOf(x.t, x.l + 1), start: now, c: costOf(f, x.t, x.l + 1) });
   return null;
 }
-export function hire(f) {
+export function hire(f, money = Infinity) {
   if (f.w >= houses(f)) return 'Plus de place dans les cabanes';
-  const c = hireCost(f.w);
-  if (f.b < c) return 'Pas assez de bananes';
-  f.b -= c; f.w += 1;
+  if (money < hireCost(f.w)) return 'Pas assez de Brundles';
+  f.w += 1;
   return null;
 }
 export function demolish(f, i) {
@@ -184,14 +200,6 @@ export function demolish(f, i) {
   f.g[i] = null;
   f.b = Math.min(f.b, capacity(f));
   return null;
-}
-// Acheter des bananes avec des Brundles (dans la limite de la place libre). Renvoie la quantité possible.
-export const buyRoom = (f) => Math.max(0, Math.floor(capacity(f) - f.b));
-export function buyBananas(f, n) {
-  n = Math.min(Math.floor(n), buyRoom(f));
-  if (n < 1) return 0;
-  f.b += n; f.bought = (f.bought || 0) + n;
-  return n;
 }
 
 // Replanter : graines d'or gagnées, bâtiments et singes remis à zéro (parcelles, bâtisseurs et graines conservés)

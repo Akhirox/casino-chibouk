@@ -112,6 +112,8 @@ export function symbolSVG(sym) {
 // Style "duotone" : trait currentColor + remplissage léger, pour rester lisible en petit.
 const D = 'fill="currentColor" fill-opacity=".18"';
 const ICONS = {
+  seed: `<path d="M12 3c4.5 3 6.5 7 6.5 10.5A6.5 6.5 0 0 1 5.5 13.5C5.5 10 7.5 6 12 3Z" ${D}/><path d="M12 8v12M12 13l-3-2.5M12 16l3-2.5" />`,
+  crate: `<path d="M3.5 8.5 12 4l8.5 4.5v9L12 22l-8.5-4.5z" ${D}/><path d="M3.5 8.5 12 13l8.5-4.5M12 13v9" /><path d="M7.8 6.2l8.5 4.6" stroke-width="1.3"/>`,
   home: `<path d="M3 11.5 12 4l9 7.5" /><path d="M5.5 10v10h13V10" ${D}/><path d="M10 20v-5h4v5" /><path d="M16.5 4.5c1.8-.6 3.4.2 4 1.6-1.7.5-3.2 0-4-1.6Z" ${D}/>`,
   slots: `<rect x="3" y="5" width="15" height="15" rx="2.5" ${D}/><rect x="5.5" y="8.5" width="10" height="6" rx="1" /><path d="M8.8 8.5v6M12.2 8.5v6" /><path d="M18 12h2.2V7.5" /><circle cx="20.2" cy="5.8" r="1.6" ${D}/><path d="M7 17.5h7" />`,
   blackjack: `<rect x="3.5" y="6" width="10" height="14" rx="1.8" transform="rotate(-12 8.5 13)" ${D}/><rect x="10" y="4" width="10" height="14" rx="1.8" transform="rotate(10 15 11)" ${D}/><path d="M15.3 8.6c-1.4 1.3-2.6 2.2-2.6 3.3 0 .9 1.2 1.5 2.1.6l-.4 1.6h1.8l-.4-1.6c.9.9 2.1.3 2.1-.6 0-1.1-1.2-2-2.6-3.3Z" fill="currentColor" stroke="none"/>`,

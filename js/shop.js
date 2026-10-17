@@ -53,9 +53,26 @@ export const ITEMS = [
   { id: 'fx-confetti', cat: 'effect', name: 'Confettis', price: 60000 },
   { id: 'fx-stars', cat: 'effect', name: 'Étoiles filantes', price: 150000 },
   { id: 'fx-diamond', cat: 'effect', name: 'Diamants', price: 750000 },
+
+  // Exclusifs des caisses (impossibles à acheter : seulement à gagner en ouvrant des caisses)
+  { id: 'ti-ouvreur', cat: 'title', name: 'Ouvreur de caisses', loot: 'rare' },
+  { id: 'ti-veinard', cat: 'title', name: 'Sacré veinard', loot: 'rare' },
+  { id: 'ti-mystere', cat: 'title', name: 'Singe mystère', loot: 'epic' },
+  { id: 'ti-collec', cat: 'title', name: 'Collectionneur de la jungle', loot: 'legend' },
+  { id: 'ti-dieu', cat: 'title', name: 'Dieu de la jungle', loot: 'mythic' },
+  { id: 'fr-toxic', cat: 'frame', name: 'Toxique', loot: 'epic' },
+  { id: 'fr-lava', cat: 'frame', name: 'Lave', loot: 'epic' },
+  { id: 'fr-galaxy', cat: 'frame', name: 'Galaxie', loot: 'legend' },
+  { id: 'fr-king', cat: 'frame', name: 'Couronne du Roi Singe', loot: 'mythic' },
+  { id: 'cb-toxic', cat: 'cardback', name: 'Toxique', loot: 'rare' },
+  { id: 'cb-galaxy', cat: 'cardback', name: 'Galaxie', loot: 'epic' },
+  { id: 'th-galaxy', cat: 'theme', name: 'Galaxie', loot: 'legend' },
+  { id: 'fx-ruby', cat: 'effect', name: 'Pluie de rubis', loot: 'epic' },
+  { id: 'fx-monkey', cat: 'effect', name: 'Pluie de singes', loot: 'legend' },
 ];
+export const LOOT_ITEMS = ITEMS.filter((i) => i.loot);
 export const DEFAULTS = { frame: 'fr-none', title: 'ti-none', cardback: 'cb-classic', theme: 'th-classic', effect: 'fx-coins' };
-export const PAID_ITEMS = ITEMS.filter((i) => i.price > 0);
+export const PAID_ITEMS = ITEMS.filter((i) => i.price > 0 || i.loot);
 const byId = (id) => ITEMS.find((i) => i.id === id);
 
 const shopOf = (p) => (p && p.shop) || { owned: {}, eq: {} };
@@ -108,11 +125,12 @@ export function mount(view, { wallet }) {
       const own = owns(wallet.p, it.id), on = eq === it.id;
       const btn = on ? `<button class="btn btn-ghost btn-sm" disabled>${icon('check')}Équipé</button>`
         : own ? `<button class="btn btn-ghost btn-sm" data-eq="${it.id}">Équiper</button>`
-          : `<button class="btn btn-gold btn-sm" data-buy="${it.id}" ${wallet.balance < it.price ? 'disabled' : ''}>Acheter</button>`;
-      return `<div class="sh-item ${on ? 'on' : ''} ${own ? 'own' : ''}">
+          : it.loot ? `<a class="btn btn-ghost btn-sm" href="#/cases">${icon('crate')}Dans les caisses</a>`
+            : `<button class="btn btn-gold btn-sm" data-buy="${it.id}" ${wallet.balance < it.price ? 'disabled' : ''}>Acheter</button>`;
+      return `<div class="sh-item ${on ? 'on' : ''} ${own ? 'own' : ''} ${it.loot ? 'loot r-' + it.loot : ''}">
         <div class="sh-prev">${previewHTML(it, wallet)}</div>
         <b>${esc(it.name)}</b>
-        <span class="sh-price">${it.price ? (own ? 'Possédé' : money(it.price)) : 'Offert'}</span>
+        <span class="sh-price">${it.loot ? (own ? 'Possédé · exclusif caisses' : 'Exclusif caisses') : it.price ? (own ? 'Possédé' : money(it.price)) : 'Offert'}</span>
         ${btn}</div>`;
     }).join('');
   }
@@ -129,7 +147,7 @@ export function mount(view, { wallet }) {
     const ok = await modal({ title: 'Confirmer l\'achat', html: `<p>Acheter <b>${esc(it.name)}</b> (${SHOP_CATS[it.cat].name.toLowerCase()}) pour ${money(it.price)} ?</p><p class="muted">Ton solde après achat : ${money(wallet.balance - it.price)}</p>`,
       buttons: [{ label: 'Annuler', value: false }, { label: 'Acheter et équiper', value: true, primary: true }] });
     if (!ok || !alive) return;
-    if (owns(wallet.p, it.id)) return;
+    if (owns(wallet.p, it.id) || it.loot) return;
     if (!wallet.spend(it.price, it.id)) { toast(`Pas assez de ${CUR}`, 'error'); return; }
     wallet.p.shop = { owned: { ...shopOf(wallet.p).owned, [it.id]: Date.now() }, eq: { ...shopOf(wallet.p).eq } };
     equip(it.id, true);

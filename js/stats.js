@@ -30,7 +30,7 @@ export const pct = (a, b) => (b ? (a / b * 100).toFixed(1).replace('.', ',') + '
 export const signed = (n) => `<span class="${n >= 0 ? 'pos' : 'neg'}">${n >= 0 ? '+' : ''}${fmt(n)}</span>`;
 
 // Brundles distribués hors jeux (bonus, quiz, succès…), pour les chiffres globaux
-const FREE_KEYS = ['dailyTotal', 'breakerTotal', 'quizTotal', 'capitalsTotal', 'moviesTotal', 'flagsTotal', 'motusTotal', 'higherTotal', 'queensTotal', 'tangoTotal', 'pinpointTotal', 'sudokuTotal', 'demineurTotal', 'snakeTotal', 'memoryTotal', 'crosswordTotal', 'farmTotal', 'questTotal', 'achTotal', 'rakebackTotal', 'vipupTotal', 'vipfreeTotal', 'jackpotTotal', 'challengeTotal'];
+const FREE_KEYS = ['dailyTotal', 'breakerTotal', 'quizTotal', 'capitalsTotal', 'moviesTotal', 'flagsTotal', 'motusTotal', 'higherTotal', 'queensTotal', 'tangoTotal', 'pinpointTotal', 'sudokuTotal', 'demineurTotal', 'snakeTotal', 'memoryTotal', 'crosswordTotal', 'farmTotal', 'questTotal', 'achTotal', 'rakebackTotal', 'vipupTotal', 'vipfreeTotal', 'jackpotTotal', 'challengeTotal', 'lootfreeTotal'];
 
 export function globalNumbers(players) {
   const sum = (f) => players.reduce((a, p) => a + (f(p) || 0), 0);
@@ -95,6 +95,7 @@ export function mount(view, { wallet, backend }) {
       <div class="stat-card"><span>Plus gros gain</span><b>${money(s.biggestWin)}</b><small>${s.biggestWinGame ? GAME_LABEL[s.biggestWinGame] || '' : '—'}</small></div>
       <div class="stat-card"><span>Roue du jour</span><b>${fmt(s.dailyClaims)} tours</b><small>${fmt(s.dailyTotal)} ${CONFIG.CURRENCY} reçus · série : ${fmt((wallet.p.streak && wallet.p.streak.n) || 0)} j (record ${fmt((wallet.p.streak && wallet.p.streak.best) || 0)})</small></div>
       <div class="stat-card"><span>Quêtes du jour</span><b>${fmt(s.questsDone || 0)} terminées</b><small>${fmt(s.questTotal || 0)} ${CONFIG.CURRENCY} gagnés</small></div>
+      <div class="stat-card"><span>Caisses</span><b>${fmt(s.casesOpened || 0)} ouvertes</b><small>${fmt(s.lootSpent || 0)} ${CONFIG.CURRENCY} dépensés · ${fmt(s.lootTotal || 0)} gagnés · boosts : +${fmt(s.lootfreeTotal || 0)}</small></div>
       <div class="stat-card"><span>Défis de la jungle</span><b>${fmt(s.challengesWon || 0)} remportés</b><small>${fmt(s.challengeTotal || 0)} ${CONFIG.CURRENCY} gagnés</small></div>
       <div class="stat-card"><span>VIP & jackpot</span><b>${vipBadge(wallet.p)}</b><small>Multi gratuit ${xMult(vipOf(s.totalWagered).mult)} · bonus VIP sur les gains gratuits : ${fmt(s.vipfreeTotal || 0)} · rakeback : ${fmt(s.rakebackTotal || 0)} · bonus de rang : ${fmt(s.vipupTotal || 0)} · jackpots : ${fmt(s.jackpotTotal || 0)} · boutique : −${fmt(s.shopSpent || 0)}</small></div>
       <div class="stat-card"><span>Casse-briques</span><b>${fmt(s.breakerLevels)} niveaux</b><small>${fmt(s.breakerTotal)} ${CONFIG.CURRENCY} gagnés</small></div>

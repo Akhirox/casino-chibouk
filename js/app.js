@@ -40,6 +40,8 @@ import { scratchArtSVG, memoryArtSVG, crosswordArtSVG } from './art.js';
 import * as FarmCore from './farm-core.js';
 import { queensArtSVG, tangoArtSVG, pinpointArtSVG, sudokuArtSVG, snakeArtSVG, demineurArtSVG } from './art.js';
 import * as Shop from './shop.js';
+import * as Cases from './cases.js';
+import { initLoot } from './loot.js';
 import { initQuests, today, questText, vipOf, vipProgress, VIP, rakePot, claimRake, initVip, pctFmt, freeMult, xMult } from './progress.js';
 import { initChallenges, challengeRoute, MIN_BET } from './challenges.js';
 import { createSocial, feedRich, feedText, groupFeed, groupRich, FEED_ICON, jackpotChance, chanceText } from './social.js';
@@ -79,6 +81,7 @@ let vip = null;
 let farmTimer = null;
 let social = null;
 let challenges = null;
+let loot = null;
 let historyOff = null;
 let logOff = null;
 let adminP = null; // promesse : ce compte est-il admin ?
@@ -115,6 +118,7 @@ const ROUTES = {
   crossword: { label: 'Mots croisés', icon: 'crossword', mount: Crossword.mount, group: 'free', sub: 'puzzle' },
   breaker: { label: 'Casse-briques', icon: 'breaker', mount: Breaker.mount, group: 'free', sub: 'arcade' },
   farm: { label: 'Ferme', icon: 'banana', mount: Farm.mount },
+  cases: { label: 'Caisses', icon: 'crate', mount: Cases.mount },
   shop: { label: 'Boutique', icon: 'shop', mount: Shop.mount },
   achievements: { label: 'Succès', icon: 'medal', mount: AchPage.mount },
   ranking: { label: 'Classements', icon: 'trophy', mount: Ranking.mount },
@@ -141,7 +145,7 @@ function navHTML() {
     return `<div class="nav-group" data-g="${g}">${btn}<div class="nav-pop ${g}">${body}</div></div>`;
   };
   const sep = '<span class="nav-sep" aria-hidden="true"></span>';
-  return link('lobby', ROUTES.lobby) + sep + group('casino') + group('free') + link('farm', ROUTES.farm, 'nav-farm') + sep + ['shop', 'achievements', 'ranking', 'stats'].map((k) => link(k, ROUTES[k])).join('');
+  return link('lobby', ROUTES.lobby) + sep + group('casino') + group('free') + link('farm', ROUTES.farm, 'nav-farm') + link('cases', ROUTES.cases, 'nav-cases') + sep + ['shop', 'achievements', 'ranking', 'stats'].map((k) => link(k, ROUTES[k])).join('');
 }
 
 /* ============================== DÉMARRAGE ============================== */
@@ -169,6 +173,7 @@ async function boot() {
     if (vip) { vip.destroy(); vip = null; }
     if (farmTimer) { farmTimer.destroy(); farmTimer = null; }
     if (challenges) { challenges.destroy(); challenges = null; }
+    if (loot) { loot.destroy(); loot = null; }
     if (social) { social.destroy(); social = null; }
     if (historyOff) { historyOff(); historyOff = null; }
     if (logOff) { logOff(); logOff = null; }
@@ -313,7 +318,7 @@ function renderShell() {
         <div class="vol-wrap"><button class="icon-btn mute-btn" title="Son et volume" aria-haspopup="true">${icon(sfx.muted ? 'mute' : 'sound')}</button>
           <div class="vol-pop" role="dialog" aria-label="Volume"><div class="vol-head"><span>Volume</span><b class="vol-pct"></b></div>${volSliderHTML()}<button type="button" class="btn btn-ghost btn-sm wide vol-mute"></button></div></div>
         <div class="user-menu"><button class="user-btn"><span class="ub-av">${Profile.avatarHTML(wallet.p, 'av-xs')}</span><span class="ub-name">${esc(wallet.pseudo)}</span> ▾</button>
-          <div class="user-drop"><a href="#/profile">Mon profil</a><a href="#/shop">Boutique</a><a href="#/stats">Mes stats</a><a href="#/ranking">Classements</a><a href="#/achievements">Mes succès</a><a href="#/news">Nouveautés</a><a href="#/admin" class="admin-menu" hidden>Espace admin</a><div class="ud-vol"><span>${icon('sound')}</span>${volSliderHTML()}</div><button class="vault-menu">Coffre-fort</button><button class="send-menu">Envoyer des ${CUR}</button><button class="tip-menu">Un conseil du singe</button><button class="tip-toggle"></button><button class="logout">Se déconnecter</button></div></div>
+          <div class="user-drop"><a href="#/profile">Mon profil</a><a href="#/shop">Boutique</a><a href="#/cases">Caisses</a><a href="#/stats">Mes stats</a><a href="#/ranking">Classements</a><a href="#/achievements">Mes succès</a><a href="#/news">Nouveautés</a><a href="#/admin" class="admin-menu" hidden>Espace admin</a><div class="ud-vol"><span>${icon('sound')}</span>${volSliderHTML()}</div><button class="vault-menu">Coffre-fort</button><button class="send-menu">Envoyer des ${CUR}</button><button class="tip-menu">Un conseil du singe</button><button class="tip-toggle"></button><button class="logout">Se déconnecter</button></div></div>
       </div>
     </header>
     <main id="view"></main>
@@ -362,6 +367,7 @@ function renderShell() {
     sfx.bonus();
   });
   social = createSocial(wallet, backend);
+  loot = initLoot(wallet);
   challenges = initChallenges(wallet, backend, social, {
     onWin: (c, prize) => { toast(`<span class="ach-toast">${icon('flag')}<span><small>Défi de la jungle remporté !</small><b>${esc(c.text)}</b><em>+${fmt(prize)} ${CUR}</em></span></span>`, 'ach', 6000); sfx.bonus(); sfx.win(true); coinRain(50); },
     onLost: (c, w) => toast(`Défi réussi, mais <b>${esc(w.pseudo)}</b> a été plus rapide que toi !`, 'info', 5000),
@@ -719,6 +725,7 @@ function mountLobby(view, { wallet: w }) {
       <div><span>Total gagné</span><b>${money(s.totalWon)}</b></div>
       <div><span>Bilan</span><b class="${s.totalWon - s.totalWagered >= 0 ? 'pos' : 'neg'}">${s.totalWon - s.totalWagered >= 0 ? '+' : ''}${fmt(s.totalWon - s.totalWagered)}</b></div>
       <div><span>Plus gros gain</span><b>${money(s.biggestWin)}</b></div>
+      <a class="btn btn-ghost" href="#/cases">${icon('crate')}Caisses</a>
       <a class="btn btn-ghost" href="#/shop">${icon('shop')}Boutique</a>
       <a class="btn btn-ghost" href="#/ranking">${icon('trophy')}Classements</a>
       <a class="btn btn-ghost" href="#/stats">Mes stats ${icon('arrow')}</a>
@@ -781,7 +788,7 @@ function mountLobby(view, { wallet: w }) {
   const farmCard = () => {
     if (!farmBox) return;
     if (!Farm.hasFarm(w.p)) { farmBox.innerHTML = `<span class="fm-l-art">${Farm.tileArt('F', 6)}</span><div class="fm-l-txt"><b>Ta ferme à bananes t'attend</b><small>Des singes récoltent des bananes pour toi, même quand tu n'es pas là. Revends-les contre des ${CUR} !</small></div><span class="btn btn-gold">Découvrir</span>`; return; }
-    const fm = w.p.farm, cap = FarmCore.capacity(fm), rate = FarmCore.productionPerHour(fm), full = fm.b >= cap - 0.5;
+    const fm = w.p.farm, cap = FarmCore.capacity(fm), rate = FarmCore.productionPerHour(fm) * FarmCore.boostAt(fm), full = fm.b >= cap - 0.5;
     const q = fm.q.length ? [...fm.q].sort((a, b) => a.end - b.end)[0] : null;
     farmBox.classList.toggle('full', full);
     farmBox.innerHTML = `<span class="fm-l-art">${Farm.tileArt('F', Math.min(12, Math.max(1, Math.round(FarmCore.levels(fm) / 4))))}</span>

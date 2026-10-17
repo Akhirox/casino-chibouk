@@ -15,14 +15,13 @@ export const VIP = [
   { id: 'babouin', name: 'Babouin', min: 1000000, rb: 0.004, mult: 2.5, up: 25000, color: '#c0c9d0' },
   { id: 'chimpanze', name: 'Chimpanzé', min: 5000000, rb: 0.005, mult: 3, up: 100000, color: '#f5c542' },
   { id: 'mandrill', name: 'Mandrill', min: 25000000, rb: 0.006, mult: 4, up: 400000, color: '#2fb1ff' },
-  // V18.2 : rangs élevés plus durs et bonus de passage plus petits. À ces volumes le hasard s'efface et le RTP réel colle au
-  // RTP théorique : rakeback + bonus de passage doivent rester sous l'avantage du casino (1 % sur les jeux à 99 %).
-  // Pendant chaque tranche à partir d'Orang-outan, le joueur récupère au plus ~0,73 % de ses mises, et 0,70 % au rang max :
-  // un jeu à 99 % reste entre 99,5 et 99,9 % de retour effectif (voir tools/vip-rtp.mjs).
-  { id: 'orang', name: 'Orang-outan', min: 250000000, rb: 0.0062, mult: 5, up: 300000, color: '#ff8a3d' },
-  { id: 'gorille', name: 'Gorille', min: 2500000000, rb: 0.0064, mult: 6, up: 2500000, color: '#3ddc84' },
-  { id: 'argente', name: 'Gorille argenté', min: 25000000000, rb: 0.0066, mult: 8, up: 15000000, color: '#e8eef2' },
-  { id: 'roi', name: 'Roi Singe', min: 250000000000, rb: 0.007, mult: 10, up: 100000000, color: '#c77dff' },
+  // Rangs élevés : bonus de passage toujours croissants (×1,5 puis ×8 environ par rang), mais assez petits par rapport
+  // à la tranche de mises pour que rakeback + bonus restent sous l'avantage du casino : un jeu à 99 % rend entre
+  // 99,6 et 100 % au total pendant chaque tranche (voir tools/vip-rtp.mjs).
+  { id: 'orang', name: 'Orang-outan', min: 250000000, rb: 0.0062, mult: 5, up: 600000, color: '#ff8a3d' },
+  { id: 'gorille', name: 'Gorille', min: 2500000000, rb: 0.0064, mult: 6, up: 5000000, color: '#3ddc84' },
+  { id: 'argente', name: 'Gorille argenté', min: 25000000000, rb: 0.0066, mult: 8, up: 40000000, color: '#e8eef2' },
+  { id: 'roi', name: 'Roi Singe', min: 250000000000, rb: 0.007, mult: 10, up: 300000000, color: '#c77dff' },
 ];
 export const vipIndex = (id) => VIP.findIndex((v) => v.id === id);
 export function vipOf(totalWagered = 0) {
@@ -36,8 +35,10 @@ export function vipProgress(totalWagered = 0) {
   return v.next ? Math.max(0, Math.min(100, ((totalWagered - v.min) / (v.next.min - v.min)) * 100)) : 100;
 }
 export const vipBadge = (p) => { const v = vipOf((p.stats && p.stats.totalWagered) || 0); return `<span class="vip-badge vip-${v.id}" style="--vc:${v.color}" title="Rang VIP : ${v.name} (clique pour voir tous les rangs)" data-vip>${v.name}</span>`; };
-export const xMult = (m) => '×' + String(m).replace('.', ',');
-export const freeMult = (wallet) => vipOf(wallet.stats.totalWagered).mult;
+export const xMult = (m) => '×' + String(Math.round(m * 100) / 100).replace('.', ',');
+// Multiplicateur des gains gratuits : rang VIP × bonus permanent gagné dans les caisses (p.loot.perm, ex. 0,05 = +5 %)
+export const permBonus = (p) => Math.max(0, Math.min(0.5, (p && p.loot && p.loot.perm) || 0));
+export const freeMult = (wallet) => Math.round(vipOf(wallet.stats.totalWagered).mult * (1 + permBonus(wallet.p)) * 1000) / 1000;
 export const pctFmt = (x) => (x * 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' %';
 
 // Cagnotte de rakeback (alimentée à chaque mise, récupérable à tout moment)
@@ -76,7 +77,17 @@ export function initVip(wallet, onUp) {
     pay();
   });
   // rattrapage : rangs déjà atteints avant leur création (bonus versés une fois)
-  setTimeout(pay, 1500);
+  setTimeout(() => { topUp(); pay(); }, 1500); // topUp d'abord : seulement les rangs passés avant la V24
+  // V24 : bonus de passage des rangs élevés revus à la hausse ; ceux qui les ont déjà passés touchent la différence
+  const OLD_UP = { orang: 300000, gorille: 2500000, argente: 15000000, roi: 100000000 };
+  function topUp() {
+    if ((wallet.p.vipV || 0) >= 24) return;
+    const done = Number.isInteger(wallet.p.vipLevel) ? wallet.p.vipLevel : 0;
+    let diff = 0;
+    for (let i = 1; i <= done; i++) if (OLD_UP[VIP[i].id] != null) diff += Math.max(0, VIP[i].up - OLD_UP[VIP[i].id]);
+    wallet.p.vipV = 24;
+    if (diff > 0) { wallet.credit('vipup', diff, { rank: 'rattrapage', index: done }); onUp && onUp({ ...vipOf(wallet.stats.totalWagered), name: 'Rattrapage des bonus de rang' }, diff); }
+  }
   return { destroy: () => { off(); wallet.freeMult = null; } };
 }
 
@@ -86,8 +97,8 @@ export function spinDaily(wallet) {
   const seg = randInt(CONFIG.DAILY_WHEEL.length);
   const n = wallet.nextStreak();
   const mult = streakMult(n);
-  const vip = vipOf(wallet.stats.totalWagered);
-  return { seg, base: CONFIG.DAILY_WHEEL[seg], streak: n, mult, vip: vip.mult, vipName: vip.name, amount: Math.round(CONFIG.DAILY_WHEEL[seg] * mult * vip.mult) };
+  const vip = vipOf(wallet.stats.totalWagered), fm = freeMult(wallet);
+  return { seg, base: CONFIG.DAILY_WHEEL[seg], streak: n, mult, vip: fm, vipName: vip.name, amount: Math.round(CONFIG.DAILY_WHEEL[seg] * mult * fm) };
 }
 
 /* ------------------------------ Quêtes du jour ------------------------------ */

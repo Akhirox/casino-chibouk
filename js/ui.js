@@ -72,6 +72,8 @@ const FX_SVG = {
   banana: '<svg viewBox="0 0 100 100"><path d="M22 22 C18 62 50 92 88 74 C92 72 90 66 85 67 C56 76 34 56 34 22 Z" fill="#ffd93b" stroke="#b38300" stroke-width="4"/><path d="M20 24 L18 12 L32 12 L34 24 Z" fill="#6b4a1a"/></svg>',
   stars: '<svg viewBox="0 0 24 24"><path d="M12 2l2.9 6.6 7.1.6-5.4 4.7 1.6 7-6.2-3.7-6.2 3.7 1.6-7L2 9.2l7.1-.6z" fill="#ffe066" stroke="#c98a00" stroke-width="1"/></svg>',
   diamond: '<svg viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 12L2 9z" fill="#8ee8ff" stroke="#2a8db5" stroke-width="1.2"/><path d="M2 9h20M8 3l-2 6 6 12 6-12-2-6" fill="none" stroke="#2a8db5" stroke-width=".9"/></svg>',
+  ruby: '<svg viewBox="0 0 24 24"><path d="M6 3h12l4 6-10 12L2 9z" fill="#ff3b5c" stroke="#8a0020" stroke-width="1.2"/><path d="M2 9h20M8 3l-2 6 6 12 6-12-2-6" fill="none" stroke="#8a0020" stroke-width=".9"/><path d="M7 5h3l-1 3H6z" fill="#fff" opacity=".5"/></svg>',
+  monkey: '<svg viewBox="0 0 40 40"><circle cx="7" cy="18" r="6" fill="#8a5a2b"/><circle cx="33" cy="18" r="6" fill="#8a5a2b"/><circle cx="7" cy="18" r="3" fill="#f2c79b"/><circle cx="33" cy="18" r="3" fill="#f2c79b"/><circle cx="20" cy="19" r="14" fill="#8a5a2b"/><ellipse cx="20" cy="23" rx="10" ry="8.5" fill="#f2c79b"/><circle cx="15.5" cy="17" r="2.2" fill="#222"/><circle cx="24.5" cy="17" r="2.2" fill="#222"/><path d="M15 26q5 4 10 0" stroke="#5a3415" stroke-width="1.8" fill="none" stroke-linecap="round"/></svg>',
 };
 const CONFETTI = ['#ff4d5e', '#3ddc84', '#2fb1ff', '#f5c542', '#c77dff', '#ff8a3d'];
 export function coinRain(count = 30) {

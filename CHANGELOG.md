@@ -2,6 +2,29 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V24 — Les caisses (18 octobre 2026)
+
+### Nouveau : les caisses
+
+- Nouvelle page Caisses (menu du haut) : 4 caisses de 5 000 à 5 millions de Brundles, à ouvrir façon case opening. La bande défile, ralentit et s'arrête sur ton lot. Ouverture par 1, 3 ou 5, et ouverture rapide.
+- Lots en 5 raretés (Commun, Rare, Épique, Légendaire, Mythique) : des Brundles (jusqu'à 60 fois le prix de la caisse), des boosts de mini-jeux (×1,5 à ×3 sur un jeu ou sur tous, de 1 à 24 h), des boosts de production de la ferme, des graines d'or, des cosmétiques exclusifs introuvables en boutique, et en mythique un bonus permanent de +1 à +5 % sur tous les gains gratuits.
+- Les chances de chaque lot sont affichées. Plus la caisse est chère, plus elle rend en moyenne. Les lots légendaires et mythiques sont annoncés dans le fil.
+
+### Ferme à bananes
+
+- Tout se paie maintenant directement en Brundles : constructions, améliorations et singes. Les bananes servent seulement à être vendues (fini l'achat de bananes).
+- Les bananes se vendent 5 fois plus cher : 0,6 Brundle la banane, et jusqu'à 1 Brundle la banane avec un marché niveau 10.
+- Finir un chantier tout de suite coûte maintenant une part du prix du chantier (selon le temps restant).
+
+### Défis de la jungle
+
+- Récompenses : 5 000 (facile), 10 000 (moyen) et 15 000 (difficile), toujours multipliées par ton bonus VIP.
+- Défis de mini-jeux plus durs : Pinpoint demande 4 catégories en 2 indices (ou 3 dès le premier indice), sans-fautes en mode expert ou difficile, grilles moyennes ou difficiles…
+
+### Rangs VIP
+
+- Bonus de passage enfin toujours croissants : 400 000 (Mandrill), 600 000 (Orang-outan), 5 millions (Gorille), 40 millions (Gorille argenté), 300 millions (Roi Singe). Ceux qui avaient déjà passé ces rangs reçoivent la différence.
+
 ## V23 — Défis de la jungle (17 octobre 2026)
 
 ### Nouveau

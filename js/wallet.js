@@ -21,7 +21,7 @@ export function msUntilParisMidnight() {
   return Math.max(0, (86400 - secs) * 1000);
 }
 
-const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'shop', 'day', 'streak', 'week', 'lastWeek', 'rake', 'vipLevel', 'farm', 'vault', 'fair', 'adminRev', 'updatedAt', 'pseudo', 'pseudoLower', 'lastLogin'];
+const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'shop', 'day', 'streak', 'week', 'lastWeek', 'rake', 'vipLevel', 'farm', 'vault', 'fair', 'adminRev', 'updatedAt', 'pseudo', 'pseudoLower', 'lastLogin', 'vipV', 'loot'];
 
 // Semaine ISO (lundi → dimanche, heure de Paris), ex : « 2026-W42 »
 export function weekId(d = new Date()) {
@@ -305,7 +305,8 @@ export class Wallet {
     this.p.stats.breakerLevels += 1;
     this.p.stats.breakerTotal += CONFIG.BREAKER_REWARD;
     this.touch({ type: 'breaker', amount: CONFIG.BREAKER_REWARD });
-    this.vipBonus('breaker', CONFIG.BREAKER_REWARD);
+    const vx = this.vipBonus('breaker', CONFIG.BREAKER_REWARD);
+    if (this.lootBonus) this.lootBonus('breaker', CONFIG.BREAKER_REWARD + vx); // boost de caisse
     // pas d'envoi immédiat : la synchro régulière s'en charge (1 écriture par minute au lieu d'1 par partie)
   }
 
@@ -329,7 +330,8 @@ export class Wallet {
     for (const [k, v] of Object.entries(extra)) s[kind + k] = (s[kind + k] || 0) + v;
     if (amount > 0) this.p.balance += amount;
     this.touch({ type: 'free', game: kind, amount: Math.max(0, amount), extra, meta });
-    this.vipBonus(kind, amount);
+    const vx = this.vipBonus(kind, amount);
+    if (this.lootBonus) this.lootBonus(kind, amount + vx); // boost de caisse sur ce mini-jeu
     // pas d'envoi immédiat : la synchro régulière s'en charge (1 écriture par minute au lieu d'1 par partie)
   }
 
