@@ -52,12 +52,19 @@ export function mount(view, { wallet, social }) {
     $('#cs-kpis', view).innerHTML = `
       <div><span>Ton solde</span><b>${money(wallet.shownBalance)}</b></div>
       <div><span>Caisses ouvertes</span><b>${fmt(wallet.stats.casesOpened || 0)}</b></div>
-      <div><span>Bonus permanent</span><b class="gold">+${Math.round(permBonus(p) * 100)} %</b><small>gains gratuits ${xMult(freeMult(wallet))} au total (max +${L.PERM_MAX * 100} %)</small></div>
-      <div class="cs-boosts"><span>Boosts actifs</span>${boosts.length || fb ? `<ul>${boosts.map((b) => `<li><b>${xMult(b.m)}</b> ${b.g === 'all' ? 'tous les mini-jeux' : esc(L.BOOST_GAMES[b.g] ? L.BOOST_GAMES[b.g][0] : b.g)} <small data-u="${b.u}">${left(b.u - Date.now())}</small></li>`).join('')}${fb ? `<li><b>${xMult(fb.m)}</b> production de la ferme <small data-u="${fb.u}">${left(fb.u - Date.now())}</small></li>` : ''}</ul>` : '<small class="muted">Aucun pour l\'instant</small>'}</div>`;
+      <div><span>Bonus permanents</span><b class="gold">+${(permBonus(p) * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %</b><small>gains gratuits ${xMult(freeMult(wallet))} au total${p.farm && p.farm.spd ? ` · chantiers de la ferme −${Math.round(p.farm.spd * 100)} %` : ''}</small></div>
+      <div class="cs-boosts"><span>Boosts et tickets</span>${tickets(p)}${boosts.length || fb ? `<ul>${boosts.map((b) => `<li><b>${xMult(b.m)}</b> ${b.g === 'all' ? 'tous les mini-jeux' : esc(L.BOOST_GAMES[b.g] ? L.BOOST_GAMES[b.g][0] : b.g)} <small data-u="${b.u}">${left(b.u - Date.now())}</small></li>`).join('')}${fb ? `<li><b>${xMult(fb.m)}</b> production de la ferme <small data-u="${fb.u}">${left(fb.u - Date.now())}</small></li>` : ''}</ul>` : (tickets(p) ? '' : '<small class="muted">Aucun pour l\'instant</small>')}</div>`;
+  }
+  // tickets à gratter gagnés (utilisables dans les jeux à gratter)
+  function tickets(p) {
+    const tk = (p.loot && p.loot.tk) || {}, list = Object.entries(tk).filter(([, n]) => n > 0);
+    return list.length ? `<a class="cs-tk" href="#/scratch">${icon('scratch')}${list.map(([t, n]) => `<b>${n}</b> ${esc(L.TICKETS[t][0])}`).join(' · ')}</a>` : '';
   }
   function cases() {
-    $('#cs-cases', view).innerHTML = L.CASES.map((c) => `<button type="button" class="cs-case ${c.id === cur.id ? 'on' : ''}" data-c="${c.id}" style="--hue:${c.hue}">
-      ${crateSVG(c.hue)}<b>${esc(c.name)}</b><span class="cs-price">${money(c.price)}</span><small class="muted">${esc(c.desc)}</small></button>`).join('');
+    const card = (c) => `<button type="button" class="cs-case ${c.id === cur.id ? 'on' : ''}" data-c="${c.id}" style="--hue:${c.hue}">
+      ${crateSVG(c.hue)}<b>${esc(c.name)}</b><span class="cs-price">${money(c.price)}</span><small class="muted">${esc(c.desc)}</small></button>`;
+    $('#cs-cases', view).innerHTML = `<h3 class="cs-grp">Caisses classiques</h3><div class="cs-row">${L.CASES.filter((c) => c.theme === 'std').map(card).join('')}</div>
+      <h3 class="cs-grp">Caisses à thème</h3><div class="cs-row">${L.CASES.filter((c) => c.theme !== 'std').map(card).join('')}</div>`;
     $$('[data-c]', view).forEach((b) => (b.onclick = () => { if (busy) return; cur = L.caseById(b.dataset.c); try { localStorage.setItem('chibouk_case', cur.id); } catch {} sfx.click(); cases(); opener(); pool(); }));
   }
   function opener() {
@@ -82,9 +89,12 @@ export function mount(view, { wallet, social }) {
     return el.offsetLeft + el.offsetWidth / 2 + jitter - reel.clientWidth / 2;
   }
   function pool() {
-    const list = [...L.POOL].sort((a, b) => L.R_ORDER.indexOf(b.r) - L.R_ORDER.indexOf(a.r) || (b.x || 0) - (a.x || 0));
-    $('#cs-val', view).textContent = `En moyenne ${Math.round((L.valueOf(cur) / cur.price) * 100)} % du prix revient en ${CUR}, plus les boosts, graines, cosmétiques et bonus permanents`;
-    $('#cs-pool', view).innerHTML = list.map((it) => { const lb = L.poolLabel(cur, it); return `<div class="cs-it r-${it.r} cs-pool-it"><div class="cs-it-ic">${itemIcon(lb.icon)}</div><b>${esc(lb.title)}</b><small>${esc(lb.sub)}</small><span class="cs-ch">${L.RARITIES[it.r].name} · ${pctTxt(L.chanceOf(it))}</span><i class="cs-bar"></i></div>`; }).join('');
+    const list = [...L.poolOf(cur)].sort((a, b) => L.R_ORDER.indexOf(b.r) - L.R_ORDER.indexOf(a.r) || (b.x || 0) - (a.x || 0));
+    const v = Math.round((L.valueOf(cur) / cur.price) * 100);
+    $('#cs-val', view).textContent = cur.theme === 'cos' ? `Que des cosmétiques exclusifs (avec leurs bonus) ; un cosmétique déjà possédé est remboursé en ${CUR}.`
+      : cur.theme === 'farm' ? `Tout pour ta ferme : graines d'or, vitesse de construction permanente, boosts de récolte.`
+        : `En moyenne ${v} % du prix revient en ${CUR}${cur.theme === 'risk' ? ' (mais la plupart du temps, beaucoup moins : c\'est le gros lot qui fait la moyenne)' : ' (tickets à gratter compris), plus les boosts et bonus permanents'}.`;
+    $('#cs-pool', view).innerHTML = list.map((it) => { const lb = L.poolLabel(cur, it); return `<div class="cs-it r-${it.r} cs-pool-it"><div class="cs-it-ic">${itemIcon(lb.icon)}</div><b>${esc(lb.title)}</b><small>${esc(lb.sub)}</small><span class="cs-ch">${L.RARITIES[it.r].name} · ${pctTxt(L.chanceOf(cur, it))}</span><i class="cs-bar"></i></div>`; }).join('');
   }
   function history() {
     const el = $('#cs-hist', view);
@@ -156,14 +166,16 @@ export function mount(view, { wallet, social }) {
     history(); kpis();
   }
 
+  const pv = (c) => Math.round((L.valueOf(c) / c.price) * 100);
   function help() {
     modal({ title: 'Les caisses', cls: 'wide', html: `<ul class="muted fm-help">
       <li>Chaque caisse contient un lot tiré au sort : la bande défile et s'arrête sur ton lot. Les chances de chaque lot sont affichées dans « Contenu de la caisse ».</li>
       <li><b>Raretés</b> : Commun (79,9 %), Rare (16 %), Épique (3,2 %), Légendaire (0,64 %), Mythique (0,26 %).</li>
-      <li><b>Brundles</b> : de 0,3 à 60 fois le prix de la caisse (× le bonus de la caisse). Plus la caisse est chère, plus elle rend en moyenne : de ${Math.round((L.valueOf(L.CASES[0]) / L.CASES[0].price) * 100)} % à ${Math.round((L.valueOf(L.CASES[L.CASES.length - 1]) / L.CASES[L.CASES.length - 1].price) * 100)} % du prix, sans compter les autres lots.</li>
-      <li><b>Boosts de mini-jeux</b> : gains d'un mini-jeu (ou de tous) multipliés pendant 1 à 24 h, en plus du bonus VIP. Deux boosts identiques s'additionnent en durée.</li>
-      <li><b>Ferme</b> : production multipliée pendant quelques heures, ou une <b>graine d'or</b> (+5 % de bananes pour toujours).</li>
-      <li><b>Bonus permanent</b> (mythique) : +0,5 à +5 % selon la caisse, sur tous les gains gratuits, pour toujours (roue du jour, quêtes, mini-jeux, défis…), jusqu'à +${L.PERM_MAX * 100} %.</li>
+      <li><b>Caisses classiques</b> : Brundles (de 0,3 à 60 fois le prix), tickets à gratter, boosts de tous les mini-jeux (6 h ou 24 h), boosts de récolte. Plus la caisse est chère, plus elle rend en moyenne : de ${pv(L.CASES[0])} % à ${pv(L.CASES.filter((c) => c.theme === 'std').at(-1))} % du prix.</li>
+      <li>Deux boosts identiques s'additionnent en durée.</li>
+      <li><b>Bonus permanent</b> (mythique des caisses classiques) : +0,5 à +5 % selon la caisse, sur tous les gains gratuits, pour toujours (roue du jour, quêtes, mini-jeux, défis…), sans plafond.</li>
+      <li><b>Tickets à gratter</b> : à utiliser dans les jeux à gratter (bouton « Ticket gratuit »).</li>
+      <li><b>Caisses à thème</b> : Cosmétique (que des cosmétiques exclusifs, avec leurs bonus), Va-tout (souvent presque rien, parfois énorme), Fermier (graines d'or, vitesse de construction permanente, boosts de récolte).</li>
       <li><b>Cosmétiques exclusifs</b> : cadres, titres, dos de cartes, thème et effets introuvables en boutique. Un cosmétique déjà possédé est remboursé en Brundles.</li>
       <li>Le lot est enregistré dès le clic : quitter la page pendant l'animation ne fait rien perdre.</li></ul>`, buttons: [{ label: 'Compris', value: true, primary: true }] });
   }

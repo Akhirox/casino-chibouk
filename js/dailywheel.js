@@ -62,7 +62,7 @@ export function openDailyWheel(wallet, onDone) {
     clearInterval(ticks);
     reveal();
     spinning = false; done = true;
-    $('#dw-res', m).innerHTML = `<b>${fmt(r.base)}</b>${r.mult > 1 ? ` ${xfmt(r.mult)} (série de ${r.streak} jours)` : ''}${r.vip > 1 ? ` ${xMult(r.vip)} VIP` : ''} = <span class="big">+${money(r.amount)}</span>`;
+    $('#dw-res', m).innerHTML = `<b>${fmt(r.base)}</b>${r.mult > 1 ? ` ${xfmt(r.mult)} (série de ${r.streak} jours)` : ''}${r.vip > 1 ? ` ${xMult(r.vip)} VIP` : ''}${r.cos ? ` +${Math.round(r.cos * 100)} % (titre)` : ''} = <span class="big">+${money(r.amount)}</span>`;
     const btn = $('#dw-spin', m);
     btn.disabled = false; btn.textContent = 'Super !';
     $('[data-x]', m).disabled = false;

@@ -7,6 +7,7 @@
 //   (création unique garantie par les règles, qui vérifient aussi l'heure du serveur).
 // - Les autres joueurs l'apprennent par le fil d'activité (déjà relu régulièrement) : aucune lecture en plus.
 import { freeMult } from './progress.js';
+import { isIdle } from './activity.js';
 
 export const SLOT_MS = 15 * 60000;
 export const slotOf = (t = Date.now()) => Math.floor(t / SLOT_MS);
@@ -171,10 +172,23 @@ export function initChallenges(wallet, backend, social, { onWin, onLost, onNew }
   }
   const offSocial = social ? social.subscribe((s) => { entries = s.entries || []; learnFromFeed(); notify(); }) : () => {};
 
-  const tick = setInterval(roll, 1000);
+  // Vérification directe du créneau (1 lecture) quand l'accueil est affiché et qu'aucun vainqueur n'est connu :
+  // le fil peut avoir du retard, ou le message du vainqueur ne jamais partir (page fermée juste après).
+  let lastCheck = 0;
+  async function verify(minGap = 3 * 60000) {
+    if (!alive || st.winner || !backend.getChallenge || !subs.size || isIdle()) return;
+    if (Date.now() - lastCheck < minGap || Date.now() - st.slot * SLOT_MS < 45000) return;
+    lastCheck = Date.now();
+    const slot = st.slot;
+    try {
+      const d = await backend.getChallenge(slot);
+      if (d && st.slot === slot && !st.winner) { st.winner = { uid: d.uid, pseudo: d.pseudo, at: d.at }; st.lost = d.uid !== wallet.uid; save(); notify(); }
+    } catch (e) { console.warn('Défi : lecture impossible', e); }
+  }
+  const tick = setInterval(() => { roll(); verify(); }, 1000);
 
   return {
-    subscribe(cb) { subs.add(cb); cb(view()); return () => subs.delete(cb); },
+    subscribe(cb) { subs.add(cb); cb(view()); setTimeout(() => verify(60000), 300); return () => subs.delete(cb); },
     get state() { return view(); },
     destroy() { alive = false; off(); offSocial(); clearInterval(tick); subs.clear(); },
   };

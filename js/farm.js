@@ -1,4 +1,5 @@
 // Ferme à bananes : page, tuiles dessinées, marché, fermes des voisins, et minuterie globale (chantiers, stock plein).
+import { cosBonus } from './bonus.js';
 import * as F from './farm-core.js';
 import { $, $$, fmt, money, esc, toast, modal, coinRain, CUR } from './ui.js';
 import { icon } from './art.js';
@@ -261,13 +262,16 @@ export function mount(view, { wallet, backend }) {
     const d = F.B[x.t], max = x.l >= d.max, cost = max ? 0 : F.costOf(fm, x.t, x.l + 1), err = max ? null : F.canUpgrade(fm, sel, wallet.balance);
     el.innerHTML = `<div class="fm-side-head"><span class="fm-side-art">${tileArt(x.t, x.l)}</span><div><h3>${d.name}</h3><span class="tier-badge">Niveau ${x.l} / ${d.max}</span></div></div>
       <p class="muted">${d.desc}</p>${detail(x)}
-      ${max ? '<p class="gold">Niveau maximum atteint.</p>' : `<div class="fm-up"><div><small>Amélioration</small><b>${money(cost)}</b><small>${dur(F.timeOf(x.t, x.l + 1))}</small></div>
+      ${max ? '<p class="gold">Niveau maximum atteint.</p>' : `<div class="fm-up"><div><small>Amélioration</small><b>${money(cost)}</b><small>${dur(F.buildTime(fm, x.t, x.l + 1))}</small></div>
         <button class="btn btn-gold" id="fm-up" ${err ? 'disabled' : ''}>Améliorer</button></div>${err ? `<p class="fm-err">${err}</p>` : ''}`}
       <button class="btn btn-ghost btn-sm fm-demo" id="fm-demo">Démolir</button>`;
     const up = $('#fm-up', el); if (up) up.onclick = () => act(F.costOf(f(), x.t, x.l + 1), () => F.upgrade(f(), sel, Date.now(), wallet.balance), 'upgrade', `Amélioration lancée : ${d.name} niveau ${x.l + 1}`);
     $('#fm-demo', el).onclick = async () => {
-      const ok = await modal({ title: 'Démolir ?', html: `<p>Démolir ${d.name.toLowerCase()} niveau ${x.l} ? Les Brundles dépensés ne sont pas remboursés.</p>`, buttons: [{ label: 'Annuler', value: false }, { label: 'Démolir', value: true, primary: true }] });
-      if (ok) act(0, () => F.demolish(f(), sel), 'demolish', 'Bâtiment démoli');
+      const back = F.refundOf(f(), sel);
+      const ok = await modal({ title: 'Démolir ?', html: `<p>Démolir ${d.name.toLowerCase()} niveau ${x.l} ?</p><p>Tu récupères <b class="gold">${money(back)}</b> : ${Math.round(F.REFUND * 100)} % de ce que coûtent sa construction et ses améliorations (${money(F.investedIn(f(), sel))}).</p>`, buttons: [{ label: 'Annuler', value: false }, { label: `Démolir (+${fmt(back)})`, value: true, primary: true }] });
+      if (!ok) return;
+      const sel0 = sel, back2 = F.refundOf(f(), sel0);
+      act(0, () => F.demolish(f(), sel0), 'demolish', `Bâtiment démoli : +${fmt(back2)} ${CUR}`, () => { if (back2 > 0) wallet.credit('farmrefund', back2, { what: 'demolish' }); });
     };
   }
 
@@ -303,7 +307,7 @@ export function mount(view, { wallet, backend }) {
     return `<h3>Construire ici</h3><div class="fm-builds">${F.TYPES.map((t) => {
       const d = F.B[t], c = F.costOf(fm, t, 1), err = F.canBuild(fm, sel, t, wallet.balance);
       const eff = t === 'F' ? `${fmt(F.perWorker(1))}/h par singe, ${F.slots(1)} places` : t === 'C' ? `${F.housing(1)} singes logés` : t === 'E' ? `+${fmt(F.storage(1))} de stockage` : t === 'P' ? `+${Math.round(F.wellBonus(1) * 100)} % aux bananeraies voisines (ici : +${fmt(prodWith(fm, sel, { t: 'P', l: 1 }) - F.productionPerHour(fm))}/h)` : `vente à ${frN(F.sellAt(1))} ${CUR} la banane, +${frN(F.MARKET_STEP)} par niveau`;
-      return `<div class="fm-build ${err ? 'off' : ''}"><span class="fm-build-art">${tileArt(t, 1)}</span><div><b>${d.name}</b><small>${eff}</small><small>${fmt(c)} ${CUR} · ${dur(F.timeOf(t, 1))}</small>${err && err !== 'Pas assez de Brundles' ? `<small class="fm-err">${err}</small>` : ''}</div>
+      return `<div class="fm-build ${err ? 'off' : ''}"><span class="fm-build-art">${tileArt(t, 1)}</span><div><b>${d.name}</b><small>${eff}</small><small>${fmt(c)} ${CUR} · ${dur(F.buildTime(fm, t, 1))}</small>${err && err !== 'Pas assez de Brundles' ? `<small class="fm-err">${err}</small>` : ''}</div>
         <button class="btn btn-gold btn-sm" data-build="${t}" ${err ? 'disabled' : ''}>Construire</button></div>`;
     }).join('')}</div>`;
   }
@@ -332,12 +336,13 @@ export function mount(view, { wallet, backend }) {
 
   /* ---------- actions ---------- */
   // Action payée en Brundles (cost = 0 : gratuite). Le prix est débité seulement si l'action a bien eu lieu.
-  function act(cost, fn, name, okMsg) {
+  function act(cost, fn, name, okMsg, after = null) {
     F.tick(f());
     if (cost > 0 && !wallet.canAfford(cost)) { toast(`Pas assez de ${CUR} (il faut ${fmt(cost)})`, 'error'); sfx.lose(); return; }
     const err = fn();
     if (err) { toast(err, 'error'); sfx.lose(); return; }
     if (cost > 0) wallet.debit('farm', cost, { what: name });
+    if (after) after();
     save(wallet, name);
     sfx.coin();
     if (okMsg) toast(okMsg, 'win', 2500);
@@ -376,11 +381,12 @@ export function mount(view, { wallet, backend }) {
   async function sell() {
     const fm = f();
     F.tick(fm);
-    const rate = F.sellRate(fm);
+    const cb = cosBonus(wallet.p, 'farm'); // thème de slot équipé
+    const rate = F.sellRate(fm) * (1 + cb);
     const have = Math.floor(fm.b);
     let amount = 0;
     const res = await modal({ title: 'Marché aux bananes', cls: 'fm-market', html: `
-      <p>Prix de vente : <b>${frN(rate)} ${CUR}</b> la banane${F.findType(fm, 'M') ? (F.findType(fm, 'M').l < F.B.M.max ? ' (améliore ton marché pour vendre plus cher, jusqu\'à 1 ' + CUR + ')' : ' (prix maximum)') : ' (construis un marché pour vendre plus cher)'}.</p>
+      <p>Prix de vente : <b>${frN(rate)} ${CUR}</b> la banane${cb ? ` <small class="sh-bonus">dont +${Math.round(cb * 100)} % (thème équipé)</small>` : ''}${F.findType(fm, 'M') ? (F.findType(fm, 'M').l < F.B.M.max ? ' (améliore ton marché pour vendre plus cher, jusqu\'à 1 ' + CUR + ')' : ' (prix maximum)') : ' (construis un marché pour vendre plus cher)'}.</p>
       ${have < 10 ? '<p class="muted">Il faut au moins 10 bananes pour vendre.</p>' : `<div class="fm-sell-pick">${[25, 50, 75, 100].map((p) => `<button type="button" class="btn btn-ghost btn-sm" data-p="${p}">${p} %</button>`).join('')}</div>
       <input type="range" id="fm-sell-r" min="10" max="${have}" value="${have}" step="1">
       <p class="fm-sell-sum"><span id="fm-sell-b"></span> → <b id="fm-sell-v"></b></p>`}`,

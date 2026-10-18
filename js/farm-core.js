@@ -69,6 +69,22 @@ export function costOf(f, t, L) {
   return Math.max(1, Math.round(d.base * PRICE * Math.pow(d.grow, L - 1) * Math.pow(d.extra, n)));
 }
 export const timeOf = (t, L) => Math.round(B[t].time * Math.pow(B[t].tgrow, L - 1)) * 1000;
+// Vitesse de construction permanente (gagnée dans les caisses) : f.spd = part du temps en moins (0,1 = −10 %), plafonnée
+export const SPEED_MAX = 0.6;
+export const speedOf = (f) => Math.max(0, Math.min(SPEED_MAX, (f && f.spd) || 0));
+export const buildTime = (f, t, L) => Math.max(1000, Math.round(timeOf(t, L) * (1 - speedOf(f))));
+// Brundles investis dans un bâtiment (construction + toutes ses améliorations), au prix actuel
+export function investedIn(f, i) {
+  const x = tile(f, i);
+  if (!x) return 0;
+  const d = B[x.t];
+  const n = Math.max(0, countType(f, x.t) - 1 - (x.t === 'F' || x.t === 'C' || x.t === 'E' ? 1 : 0));
+  let sum = d.base * PRICE * Math.pow(d.extra, n);
+  for (let L = 2; L <= x.l; L++) sum += d.base * PRICE * Math.pow(d.grow, L - 1);
+  return Math.round(sum);
+}
+export const REFUND = 0.6; // part remboursée à la démolition
+export const refundOf = (f, i) => Math.floor(investedIn(f, i) * REFUND);
 
 export function newFarm(now = Date.now()) {
   return { v: 1, t: now, b: 200, own: [...START], w: 2, bu: 1, q: [],
@@ -90,6 +106,7 @@ export function normalize(raw, now = Date.now()) {
   if (!raw.life && raw.tot) f.life = Number(raw.tot) || 0; // fermes créées avant les graines d'or
   f.bu = Math.max(1, Math.min(3, f.bu));
   f.xb = raw.xb && raw.xb.u > now && raw.xb.m > 1 ? { m: Number(raw.xb.m), u: Number(raw.xb.u) } : null;
+  f.spd = Math.max(0, Math.min(SPEED_MAX, Number(raw.spd) || 0));
   return f;
 }
 
@@ -166,7 +183,7 @@ export function canBuild(f, i, t, money = Infinity) {
 export function build(f, i, t, now = Date.now(), money = Infinity) {
   const err = canBuild(f, i, t, money);
   if (err) return err;
-  f.q.push({ i, t, l: 1, end: now + timeOf(t, 1), start: now, c: costOf(f, t, 1) });
+  f.q.push({ i, t, l: 1, end: now + buildTime(f, t, 1), start: now, c: costOf(f, t, 1) });
   return null;
 }
 export function canUpgrade(f, i, money = Infinity) {
@@ -182,7 +199,7 @@ export function upgrade(f, i, now = Date.now(), money = Infinity) {
   const err = canUpgrade(f, i, money);
   if (err) return err;
   const x = tile(f, i);
-  f.q.push({ i, t: x.t, l: x.l + 1, end: now + timeOf(x.t, x.l + 1), start: now, c: costOf(f, x.t, x.l + 1) });
+  f.q.push({ i, t: x.t, l: x.l + 1, end: now + buildTime(f, x.t, x.l + 1), start: now, c: costOf(f, x.t, x.l + 1) });
   return null;
 }
 export function hire(f, money = Infinity) {

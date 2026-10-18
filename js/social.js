@@ -129,6 +129,9 @@ export function chanceText(p) {
 }
 
 const FEED_LS = 'chibouk_feed_v1';
+const FEED_MARGIN = 5 * 60000;
+// on garde 80 messages du fil et 60 messages de chat (les deux arrivent par la même collection « feed »)
+const capEntries = (list) => { const chat = list.filter((e) => e.kind === 'chat').slice(0, 60), rest = list.filter((e) => e.kind !== 'chat').slice(0, 80); return [...chat, ...rest].sort((a, b) => b.at - a.at); };
 export function createSocial(wallet, backend) {
   let entries = [], since = 0, jackpot = { amount: 0 }, pending = 0, timer = null, first = true, lastPost = 0, queue = [], alive = true, lastPush = Date.now(), lastPoll = 0;
   // fil gardé dans le navigateur : au rechargement de la page, on ne relit que les nouveaux messages
@@ -136,7 +139,7 @@ export function createSocial(wallet, backend) {
     const c = JSON.parse(localStorage.getItem(FEED_LS) || 'null');
     if (c && Array.isArray(c.entries) && Date.now() - (c.since || 0) < 3 * 86400000) { entries = c.entries; since = c.since || 0; if (c.jackpot) jackpot = c.jackpot; }
   } catch {}
-  const keepFeed = () => { try { localStorage.setItem(FEED_LS, JSON.stringify({ since, jackpot, entries: entries.filter((e) => !String(e.id).startsWith('local_')).slice(0, 40) })); } catch {} };
+  const keepFeed = () => { try { localStorage.setItem(FEED_LS, JSON.stringify({ since, jackpot, entries: entries.filter((e) => !String(e.id).startsWith('local_')).slice(0, 70) })); } catch {} };
   const subs = new Set();
   const notify = () => subs.forEach((cb) => { try { cb({ entries, jackpot: jackpotValue(), last: jackpot }); } catch (e) { console.error(e); } });
   const jackpotValue = () => CONFIG.JACKPOT_SEED + (jackpot.amount || 0) + Math.floor(pending);
@@ -155,7 +158,9 @@ export function createSocial(wallet, backend) {
     lastPoll = Date.now();
     try {
       await pushJackpot();
-      const [fresh, jp] = await Promise.all([backend.fetchFeed(since, since ? 25 : 40), backend.getJackpot()]);
+      // marge de 5 min : l'heure d'un message est celle de l'appareil qui l'envoie ; une horloge un peu en retard
+      // faisait passer ses messages sous « since » et ils n'étaient jamais lus (ex. vainqueur d'un défi resté inconnu)
+      const [fresh, jp] = await Promise.all([backend.fetchFeed(since ? since - FEED_MARGIN : 0, since ? 30 : 40), backend.getJackpot()]);
       jackpot = jp || { amount: 0 };
       if (fresh.length) {
         since = Math.max(since, ...fresh.map((e) => e.at || 0));
@@ -163,8 +168,9 @@ export function createSocial(wallet, backend) {
         const known = new Set(entries.map((e) => e.id));
         const add = fresh.filter((e) => !known.has(e.id));
         const cids = new Set(add.map((e) => e.cid).filter(Boolean));
-        entries = [...add, ...entries.filter((e) => !(e.cid && cids.has(e.cid) && String(e.id).startsWith('local_')))].sort((a, b) => b.at - a.at).slice(0, 80);
+        entries = capEntries([...add, ...entries.filter((e) => !(e.cid && cids.has(e.cid) && String(e.id).startsWith('local_')))].sort((a, b) => b.at - a.at));
         // petits toasts pour les exploits des autres (pas au premier chargement)
+        if (!first && add.some((e) => e.kind === 'chat' && e.uid !== wallet.uid)) window.dispatchEvent(new CustomEvent('chibouk:chat'));
         if (!first) add.filter((e) => e.uid !== wallet.uid && ['jackpot', 'bigwin', 'week', 'challenge', 'loot'].includes(e.kind)).slice(0, 2)
           .forEach((e) => toast(`<b>${esc(feedWho(e))}</b> ${esc(feedText(e))}`, e.kind === 'jackpot' ? 'win' : 'info', 5000));
       }
@@ -197,7 +203,7 @@ export function createSocial(wallet, backend) {
     lastPost = Date.now();
     const full = { ...e, uid: wallet.uid, pseudo: wallet.pseudo, cid: Math.random().toString(36).slice(2, 10) };
     try { await backend.postFeed(full); } catch (err) { console.warn('Publication impossible', err); return; }
-    entries = [{ ...full, id: 'local_' + Date.now(), at: Date.now() }, ...entries].slice(0, 80);
+    entries = capEntries([{ ...full, id: 'local_' + Date.now(), at: Date.now() }, ...entries]);
     notify();
     if (queue.length) { clearTimeout(flushTimer); flushTimer = setTimeout(flushQueue, GAP); }
   }
@@ -253,7 +259,9 @@ export function createSocial(wallet, backend) {
   const onCustom = (ev) => { const d = ev.detail || {}; if (d.type === 'motus' && d.won) post({ kind: 'motus', tries: d.tries }); if (d.type === 'week') post({ kind: 'week', winner: d.winner, profit: d.profit }); };
   window.addEventListener('chibouk:feed', onCustom);
 
-  timer = setInterval(() => poll(), CONFIG.FEED_INTERVAL_MS);
+  // relecture toutes les FEED_INTERVAL_MS, ou toutes les 45 s quand le chat est ouvert à l'écran
+  let fast = false;
+  timer = setInterval(() => { if (Date.now() - lastPoll >= (fast ? 45000 : CONFIG.FEED_INTERVAL_MS) - 500) poll(); }, 5000);
   const offWake = onWake(() => poll()); // retour sur l'onglet ou reprise après une pause
   const onLeave = () => { pushJackpot(true).catch(() => {}); };
   window.addEventListener('pagehide', onLeave);
@@ -264,6 +272,14 @@ export function createSocial(wallet, backend) {
     get jackpot() { return jackpotValue(); },
     refresh: () => poll(true),
     post,
+    set fast(v) { const was = fast; fast = !!v; if (fast && !was && Date.now() - lastPoll > 30000) poll(); },
+    // message de chat : envoyé tout de suite (1 écriture), sans passer par la file du fil d'activité
+    async say(text) {
+      const full = { kind: 'chat', text, uid: wallet.uid, pseudo: wallet.pseudo, cid: Math.random().toString(36).slice(2, 10) };
+      await backend.postFeed(full);
+      entries = capEntries([{ ...full, id: 'local_' + Date.now(), at: Date.now() }, ...entries]);
+      notify();
+    },
     destroy() {
       alive = false; clearInterval(timer); off();
       window.removeEventListener('chibouk:feed', onCustom); offWake(); window.removeEventListener('pagehide', onLeave);

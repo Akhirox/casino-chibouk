@@ -31,6 +31,7 @@ export const CONFIG = {
   JACKPOT_SEED: 10000,          // mise de départ du jackpot commun (si tu la changes, change aussi 10000 dans firestore.rules)
   JACKPOT_RATE: 0.01,           // 1 % de chaque mise à la slot part dans le jackpot (payé par le casino)
   FEED_INTERVAL_MS: 120000,     // fil d'activité + jackpot relus toutes les 2 min (2 lectures si rien de neuf)
+  VAULT_DAILY_RATE: 0.05,       // intérêts du coffre-fort : 5 % par jour, au prorata du temps
   QUEST_BONUS: 500,             // bonus quand les 3 quêtes du jour sont terminées
   FIREBASE_SDK_VERSION: '10.12.2',
 };

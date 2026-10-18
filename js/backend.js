@@ -222,6 +222,10 @@ async function createFirebaseBackend() {
       await F.updateDoc(F.doc(db, 'users', uid), { ...data, adminRev: (rev || 0) + 1, adminAt: Date.now() });
     },
     // Défi de la jungle : le premier qui crée le document du créneau gagne (création unique, voir firestore.rules)
+    async getChallenge(slot) {
+      const snap = await F.getDoc(F.doc(db, 'challenges', 'c' + slot));
+      return snap.exists() ? snap.data() : null;
+    },
     async claimChallenge(slot, data) {
       const ref = F.doc(db, 'challenges', 'c' + slot);
       try { await F.setDoc(ref, data); return { ok: true }; } catch (e) {
@@ -361,6 +365,7 @@ function createDemoBackend() {
       const docs = read(K_LOGS, []).filter((e) => !before || e.at < before).sort((a, b) => b.at - a.at).slice(0, n);
       return { rows: flattenLogs(docs), cursor: docs.length ? docs[docs.length - 1].at : before, done: docs.length < n };
     },
+    async getChallenge(slot) { return read('chibouk_demo_challenges', {})[slot] || null; },
     async claimChallenge(slot, data) {
       const all = read('chibouk_demo_challenges', {});
       if (all[slot]) return { ok: false, winner: { uid: all[slot].uid, pseudo: all[slot].pseudo, at: all[slot].at } };

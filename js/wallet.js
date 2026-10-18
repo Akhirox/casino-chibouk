@@ -2,6 +2,7 @@
 // au maximum toutes les SYNC_INTERVAL_MS (+ à la fermeture de l'onglet et aux événements importants).
 import { CONFIG } from './config.js';
 import { lazySave } from './lazysave.js';
+import { cosBonus } from './bonus.js';
 
 // Sauvegarde locale de secours signée : une copie modifiée à la main (solde gonflé dans le localStorage…) est ignorée
 const BK_SALT = 'chibouk/bk/v2/9f3a';
@@ -21,7 +22,7 @@ export function msUntilParisMidnight() {
   return Math.max(0, (86400 - secs) * 1000);
 }
 
-const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'shop', 'day', 'streak', 'week', 'lastWeek', 'rake', 'vipLevel', 'farm', 'vault', 'fair', 'adminRev', 'updatedAt', 'pseudo', 'pseudoLower', 'lastLogin', 'vipV', 'loot'];
+const SYNC_FIELDS = ['balance', 'lastDaily', 'breakerLevel', 'slotFS', 'stats', 'ach', 'shop', 'day', 'streak', 'week', 'lastWeek', 'rake', 'vipLevel', 'farm', 'vault', 'fair', 'adminRev', 'updatedAt', 'pseudo', 'pseudoLower', 'lastLogin', 'vipV', 'loot', 'vaultT'];
 
 // Semaine ISO (lundi → dimanche, heure de Paris), ex : « 2026-W42 »
 export function weekId(d = new Date()) {
@@ -270,11 +271,25 @@ export class Wallet {
   }
 
   // Coffre-fort : des Brundles mis à l'abri, qu'on ne peut pas miser par erreur. Dépôt et retrait libres.
-  get vault() { return Math.max(0, Math.floor(this.p.vault || 0)); }
+  // Intérêts : 5 % par jour (+ bonus de l'effet de victoire équipé), au prorata du temps passé dans le coffre.
+  // Calculés à la volée (aucune écriture en plus) et ajoutés au coffre à chaque dépôt, retrait ou sauvegarde.
+  get vaultRate() { return CONFIG.VAULT_DAILY_RATE * (1 + cosBonus(this.p, 'vault')); }
+  vaultPending(now = Date.now()) {
+    const v = Math.max(0, this.p.vault || 0), t = this.p.vaultT || now;
+    return v > 0 ? v * this.vaultRate * Math.max(0, now - t) / 86400000 : 0;
+  }
+  accrueVault(now = Date.now()) {
+    const x = this.vaultPending(now);
+    this.p.vaultT = now;
+    if (x > 0) { this.p.vault = (this.p.vault || 0) + x; this.p.stats.interestTotal = (this.p.stats.interestTotal || 0) + x; }
+    return x;
+  }
+  get vault() { return Math.max(0, Math.floor((this.p.vault || 0) + this.vaultPending())); }
   get fortune() { return this.p.balance + this.vault; }
   vaultDeposit(n) {
     n = Math.floor(n);
     if (!(n > 0) || n > this.p.balance) return false;
+    this.accrueVault();
     this.p.balance -= n; this.p.vault = this.vault + n;
     this.touch({ type: 'vault', amount: n });
     this.flush();
@@ -283,6 +298,7 @@ export class Wallet {
   vaultWithdraw(n) {
     n = Math.floor(n);
     if (!(n > 0) || n > this.vault) return false;
+    this.accrueVault();
     this.p.vault = this.vault - n; this.p.balance += n;
     this.touch({ type: 'vault', amount: -n });
     this.flush();
@@ -338,6 +354,7 @@ export class Wallet {
   // Amende (triche détectée sur un mini-jeu) : prise sur le solde, puis sur le coffre si besoin. Renvoie le montant pris.
   penalty(game, amount) {
     amount = Math.max(0, Math.floor(amount));
+    this.accrueVault();
     const fromBal = Math.min(amount, Math.floor(this.p.balance)), fromVault = Math.min(amount - fromBal, this.vault);
     this.p.balance -= fromBal;
     if (fromVault) this.p.vault = this.vault - fromVault;
@@ -378,6 +395,7 @@ export class Wallet {
     return this.exclusive(async () => {
       if (!this.dirty) return;
       this.emitSync('saving');
+      if ((this.p.vault || 0) > 0) this.accrueVault(); // intérêts du coffre ajoutés avec la sauvegarde
       const snapshot = this.pick();
       const stamp = this.p.updatedAt;
       try {

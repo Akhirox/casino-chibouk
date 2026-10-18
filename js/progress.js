@@ -2,6 +2,7 @@
 import { CONFIG } from './config.js';
 import { parisDate } from './wallet.js';
 import { randInt } from './games/slots-math.js';
+import { cosBonus } from './bonus.js';
 
 /* ------------------------------ VIP ------------------------------ */
 // Rang selon le total misé depuis toujours.
@@ -39,6 +40,8 @@ export const xMult = (m) => '×' + String(Math.round(m * 100) / 100).replace('.'
 // Multiplicateur des gains gratuits : rang VIP × bonus permanent gagné dans les caisses (p.loot.perm, ex. 0,05 = +5 %)
 export const permBonus = (p) => Math.max(0, Math.min(0.5, (p && p.loot && p.loot.perm) || 0));
 export const freeMult = (wallet) => Math.round(vipOf(wallet.stats.totalWagered).mult * (1 + permBonus(wallet.p)) * 1000) / 1000;
+// Quêtes et roue du jour : bonus VIP × titre équipé
+export const questMult = (wallet) => freeMult(wallet) * (1 + cosBonus(wallet.p, 'daily'));
 export const pctFmt = (x) => (x * 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' %';
 
 // Cagnotte de rakeback (alimentée à chaque mise, récupérable à tout moment)
@@ -72,7 +75,7 @@ export function initVip(wallet, onUp) {
   };
   const off = wallet.on((e) => {
     if (!e || e.type !== 'bet' || !wallet.stats.games[e.game]) return;
-    const rate = vipOf(wallet.stats.totalWagered).rb * (RAKE_WEIGHT[e.game] ?? 1);
+    const rate = vipOf(wallet.stats.totalWagered).rb * (RAKE_WEIGHT[e.game] ?? 1) * (1 + cosBonus(wallet.p, 'rake')); // dos de cartes équipé
     if (rate > 0) wallet.p.rake = { ...(wallet.p.rake || { total: 0 }), pot: rakePot(wallet) + e.amount * rate };
     pay();
   });
@@ -98,7 +101,8 @@ export function spinDaily(wallet) {
   const n = wallet.nextStreak();
   const mult = streakMult(n);
   const vip = vipOf(wallet.stats.totalWagered), fm = freeMult(wallet);
-  return { seg, base: CONFIG.DAILY_WHEEL[seg], streak: n, mult, vip: fm, vipName: vip.name, amount: Math.round(CONFIG.DAILY_WHEEL[seg] * mult * fm) };
+  const cb = cosBonus(wallet.p, 'daily'); // titre équipé
+  return { seg, base: CONFIG.DAILY_WHEEL[seg], streak: n, mult, vip: fm, vipName: vip.name, cos: cb, amount: Math.round(CONFIG.DAILY_WHEEL[seg] * mult * fm * (1 + cb)) };
 }
 
 /* ------------------------------ Quêtes du jour ------------------------------ */
@@ -176,12 +180,12 @@ export function initQuests(wallet, onDone) {
       if (t.set) { if (!q.seen.includes(v)) { q.seen.push(v); q.p = q.seen.length; changed = true; } } else { q.p = Math.min(q.n, q.p + v); changed = true; }
       if (q.p >= q.n) {
         q.done = true;
-        setTimeout(() => { wallet.p.stats.questsDone = (wallet.p.stats.questsDone || 0) + 1; wallet.credit('quest', Math.round(q.r * freeMult(wallet)), { quest: q.id }); onDone && onDone(q, false); }, 0);
+        setTimeout(() => { wallet.p.stats.questsDone = (wallet.p.stats.questsDone || 0) + 1; wallet.credit('quest', Math.round(q.r * questMult(wallet)), { quest: q.id }); onDone && onDone(q, false); }, 0);
       }
     }
     if (changed && !day.bonus && day.quests.every((q) => q.done)) {
       day.bonus = true;
-      setTimeout(() => { wallet.credit('quest', Math.round(CONFIG.QUEST_BONUS * freeMult(wallet)), { bonus: true }); onDone && onDone(null, true); }, 50);
+      setTimeout(() => { wallet.credit('quest', Math.round(CONFIG.QUEST_BONUS * questMult(wallet)), { bonus: true }); onDone && onDone(null, true); }, 50);
     }
   });
   return { destroy: off };

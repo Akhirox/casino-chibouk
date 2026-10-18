@@ -4,13 +4,14 @@ import { icon } from './art.js';
 import { $, $$, fmt, money, esc, toast, modal, coinRain, setWinFx, CUR } from './ui.js';
 import { avatarHTML } from './profile.js';
 import { sfx } from './sfx.js';
+import { bonusText, BONUS_KIND, CAT_KIND } from './bonus.js';
 
 export const SHOP_CATS = {
-  frame: { name: 'Cadres d\'avatar', icon: 'user', desc: 'Autour de ta photo, partout où elle apparaît.' },
-  title: { name: 'Titres', icon: 'medal', desc: 'Affiché sous ton pseudo dans les classements et sur ton profil.' },
-  cardback: { name: 'Dos de cartes', icon: 'blackjack', desc: 'Le dos des cartes au blackjack et au Hi-Lo.' },
-  theme: { name: 'Thèmes de la slot', icon: 'slots', desc: 'L\'habillage de la Chibouk Slot.' },
-  effect: { name: 'Effets de victoire', icon: 'bolt', desc: 'Ce qui tombe du ciel quand tu gagnes gros.' },
+  frame: { name: 'Cadres d\'avatar', icon: 'user', desc: 'Autour de ta photo, partout où elle apparaît. Bonus du cadre équipé : gains des mini-jeux.' },
+  title: { name: 'Titres', icon: 'medal', desc: 'Affiché sous ton pseudo dans les classements et sur ton profil. Bonus du titre équipé : roue du jour et quêtes.' },
+  cardback: { name: 'Dos de cartes', icon: 'blackjack', desc: 'Le dos des cartes au blackjack et au Hi-Lo. Bonus du dos équipé : rakeback.' },
+  theme: { name: 'Thèmes de la slot', icon: 'slots', desc: 'L\'habillage de la Chibouk Slot. Bonus du thème équipé : vente des bananes de la ferme.' },
+  effect: { name: 'Effets de victoire', icon: 'bolt', desc: 'Ce qui tombe du ciel quand tu gagnes gros. Bonus de l\'effet équipé : intérêts du coffre.' },
 };
 
 // price 0 = offert à tout le monde (choix par défaut)
@@ -55,6 +56,10 @@ export const ITEMS = [
   { id: 'fx-diamond', cat: 'effect', name: 'Diamants', price: 750000 },
 
   // Exclusifs des caisses (impossibles à acheter : seulement à gagner en ouvrant des caisses)
+  { id: 'ti-curieux', cat: 'title', name: 'Curieux de nature', loot: 'common' },
+  { id: 'ti-noix', cat: 'title', name: 'Casseur de noix', loot: 'common' },
+  { id: 'fr-coco', cat: 'frame', name: 'Noix de coco', loot: 'common' },
+  { id: 'cb-coco', cat: 'cardback', name: 'Noix de coco', loot: 'common' },
   { id: 'ti-ouvreur', cat: 'title', name: 'Ouvreur de caisses', loot: 'rare' },
   { id: 'ti-veinard', cat: 'title', name: 'Sacré veinard', loot: 'rare' },
   { id: 'ti-mystere', cat: 'title', name: 'Singe mystère', loot: 'epic' },
@@ -130,6 +135,7 @@ export function mount(view, { wallet }) {
       return `<div class="sh-item ${on ? 'on' : ''} ${own ? 'own' : ''} ${it.loot ? 'loot r-' + it.loot : ''}">
         <div class="sh-prev">${previewHTML(it, wallet)}</div>
         <b>${esc(it.name)}</b>
+        ${bonusText(it.id, it.cat) ? `<span class="sh-bonus">${bonusText(it.id, it.cat)}</span>` : ''}
         <span class="sh-price">${it.loot ? (own ? 'Possédé · exclusif caisses' : 'Exclusif caisses') : it.price ? (own ? 'Possédé' : money(it.price)) : 'Offert'}</span>
         ${btn}</div>`;
     }).join('');

@@ -42,7 +42,8 @@ import { queensArtSVG, tangoArtSVG, pinpointArtSVG, sudokuArtSVG, snakeArtSVG, d
 import * as Shop from './shop.js';
 import * as Cases from './cases.js';
 import { initLoot } from './loot.js';
-import { initQuests, today, questText, vipOf, vipProgress, VIP, rakePot, claimRake, initVip, pctFmt, freeMult, xMult } from './progress.js';
+import { createChat } from './chat.js';
+import { initQuests, today, questText, vipOf, vipProgress, VIP, rakePot, claimRake, initVip, pctFmt, freeMult, xMult, questMult } from './progress.js';
 import { initChallenges, challengeRoute, MIN_BET } from './challenges.js';
 import { createSocial, feedRich, feedText, groupFeed, groupRich, FEED_ICON, jackpotChance, chanceText } from './social.js';
 import { openVipModal } from './vip.js';
@@ -82,6 +83,7 @@ let farmTimer = null;
 let social = null;
 let challenges = null;
 let loot = null;
+let chat = null;
 let historyOff = null;
 let logOff = null;
 let adminP = null; // promesse : ce compte est-il admin ?
@@ -138,7 +140,7 @@ function navHTML() {
   const link = (k, r, cls = '') => `<a href="#/${k}" data-r="${k}" title="${r.label}" class="${cls}"><span class="ni">${icon(r.icon)}</span><span class="nl">${r.label}</span></a>`;
   const group = (g) => {
     const items = Object.entries(ROUTES).filter(([, r]) => r.group === g);
-    const btn = `<button type="button" class="nav-gbtn ${g === 'free' ? 'nav-free' : ''}" aria-haspopup="true"><span class="ni">${icon(GROUPS[g].icon)}</span><span class="nl">${GROUPS[g].label} <i class="chev">${icon('chev')}</i></span></button>`;
+    const btn = `<button type="button" class="nav-gbtn ${g === 'free' ? 'nav-free' : 'nav-casino'}" aria-haspopup="true"><span class="ni">${icon(GROUPS[g].icon)}</span><span class="nl">${GROUPS[g].label} <i class="chev">${icon('chev')}</i></span></button>`;
     const body = g === 'free'
       ? Object.entries(SUBS).map(([sk, sl]) => `<div class="nav-pop-title">${sl}</div><div class="nav-pop-grid">${items.filter(([, r]) => r.sub === sk).map(([k, r]) => link(k, r, 'nav-free')).join('')}</div>`).join('')
       : `<div class="nav-pop-title">Jeux de casino</div><div class="nav-pop-grid">${items.map(([k, r]) => link(k, r)).join('')}</div>`;
@@ -174,6 +176,8 @@ async function boot() {
     if (farmTimer) { farmTimer.destroy(); farmTimer = null; }
     if (challenges) { challenges.destroy(); challenges = null; }
     if (loot) { loot.destroy(); loot = null; }
+    if (dockOff) { dockOff(); dockOff = null; }
+    if (chat) { chat.destroy(); chat = null; }
     if (social) { social.destroy(); social = null; }
     if (historyOff) { historyOff(); historyOff = null; }
     if (logOff) { logOff(); logOff = null; }
@@ -322,6 +326,7 @@ function renderShell() {
       </div>
     </header>
     <main id="view"></main>
+    <aside class="dock" id="dock" aria-label="En direct de la jungle et chat"><button type="button" class="dock-toggle">${icon('chev')}<span>Direct</span></button><div class="dock-in fp"></div></aside>
     <footer class="foot">Casino Chibouk <a href="#/news">V${News.VERSION} · Nouveautés</a> · argent fictif, aucune mise réelle · sauvegarde automatique toutes les ${CONFIG.SYNC_INTERVAL_MS / 1000} s</footer>
   </div>`);
   app.append(shell);
@@ -362,12 +367,13 @@ function renderShell() {
   adminP.then((ok) => { const a = $('.admin-menu', shell); if (a) a.hidden = !ok; });
   today(wallet);
   quests = initQuests(wallet, (q, bonus) => {
-    if (bonus) { toast(`<span class="ach-toast">${icon('check')}<span><small>Quêtes du jour</small><b>Les 3 quêtes sont terminées !</b><em>+${fmt(Math.round(CONFIG.QUEST_BONUS * freeMult(wallet)))} ${CUR} de bonus</em></span></span>`, 'ach', 5000); coinRain(30); }
-    else toast(`<span class="ach-toast">${icon('check')}<span><small>Quête terminée</small><b>${esc(questText(q))}</b><em>+${fmt(Math.round(q.r * freeMult(wallet)))} ${CUR}</em></span></span>`, 'ach', 4500);
+    if (bonus) { toast(`<span class="ach-toast">${icon('check')}<span><small>Quêtes du jour</small><b>Les 3 quêtes sont terminées !</b><em>+${fmt(Math.round(CONFIG.QUEST_BONUS * questMult(wallet)))} ${CUR} de bonus</em></span></span>`, 'ach', 5000); coinRain(30); }
+    else toast(`<span class="ach-toast">${icon('check')}<span><small>Quête terminée</small><b>${esc(questText(q))}</b><em>+${fmt(Math.round(q.r * questMult(wallet)))} ${CUR}</em></span></span>`, 'ach', 4500);
     sfx.bonus();
   });
   social = createSocial(wallet, backend);
   loot = initLoot(wallet);
+  chat = createChat(wallet, social);
   challenges = initChallenges(wallet, backend, social, {
     onWin: (c, prize) => { toast(`<span class="ach-toast">${icon('flag')}<span><small>Défi de la jungle remporté !</small><b>${esc(c.text)}</b><em>+${fmt(prize)} ${CUR}</em></span></span>`, 'ach', 6000); sfx.bonus(); sfx.win(true); coinRain(50); },
     onLost: (c, w) => toast(`Défi réussi, mais <b>${esc(w.pseudo)}</b> a été plus rapide que toi !`, 'info', 5000),
@@ -390,6 +396,7 @@ function renderShell() {
   $('.vault-menu', shell).onclick = () => openVault(wallet);
   $('.send-menu', shell).onclick = openTransfer;
   startInbox();
+  mountDock();
   // son : bouton haut-parleur → petite fenêtre avec le curseur de volume (aussi dans le menu du pseudo)
   const volWrap = $('.vol-wrap', shell);
   const syncVol = () => {
@@ -586,7 +593,7 @@ function renderLobbyDaily(box) {
 function questsHTML() {
   const d = today(wallet);
   const lv = ['Facile', 'Moyenne', 'Difficile'];
-  const m = freeMult(wallet), r = (x) => fmt(Math.round(x * m));
+  const m = questMult(wallet), r = (x) => fmt(Math.round(x * m));
   return `<div class="dash-head">${icon('check')}<b>Quêtes du jour</b><small class="muted">renouvelées à minuit</small></div>
     <ul class="quests">${d.quests.map((q) => `<li class="${q.done ? 'done' : ''}"><div><span class="q-lv q${q.tier}">${lv[q.tier]}</span>${esc(questText(q))}</div>
       <div class="q-bar"><i style="width:${Math.min(100, (q.p / q.n) * 100)}%"></i></div><small>${q.done ? 'Terminée' : `${fmt(q.p)} / ${fmt(q.n)}`} · +${r(q.r)}${m > 1 ? ` <span class="vip-x">${xMult(m)}</span>` : ''}</small></li>`).join('')}</ul>
@@ -624,7 +631,7 @@ function challengeHTML(v) {
 let feedAll = false;
 const feedOpen = new Set();
 function feedHTML(st) {
-  const list = (st && st.entries) || [];
+  const list = ((st && st.entries) || []).filter((e) => e.kind !== 'chat');
   if (!list.length) return '<p class="muted">Rien pour l\'instant… Les gros gains, les succès, les quêtes et les jackpots de tout le monde apparaîtront ici.</p>';
   const ago = (t) => { const m = Math.round((Date.now() - t) / 60000); return m < 1 ? 'à l\'instant' : m < 60 ? `il y a ${m} min` : m < 1440 ? `il y a ${Math.round(m / 60)} h` : `il y a ${Math.round(m / 1440)} j`; };
   const groups = groupFeed(list);
@@ -637,6 +644,99 @@ function feedHTML(st) {
     const sub = more && !merged(g) && isOpen ? `<ul class="fd-sub">${g.items.slice(1).map((x) => `<li><span>${esc(feedText(x))}</span><small>${ago(x.at)}</small></li>`).join('')}</ul>` : '';
     return `<li class="fd-${e.kind}${more ? ' fd-group' : ''}"><span class="fd-ic">${ic(e)}</span><span class="fd-txt">${groupRich(g)} ${chip}${sub}</span><small>${ago(e.at)}</small></li>`;
   }).join('')}</ul>${groups.length > 10 ? `<button type="button" class="feed-more" data-feedmore>${feedAll ? 'Voir moins' : `Voir plus (${Math.min(30, groups.length)})`}</button>` : ''}`;
+}
+
+/* ================= PANNEAU « EN DIRECT » + CHAT (accueil et côté de l'écran) ================= */
+const hhmm = (t) => new Date(t).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
+const chatReadKey = () => 'chibouk_chat_read_' + (wallet ? wallet.uid : '');
+let chatsOpen = 0; // panneaux de chat visibles (le fil est relu plus souvent tant qu'il y en a un)
+function chatListHTML(st) {
+  const list = ((st && st.entries) || []).filter((e) => e.kind === 'chat').sort((a, b) => a.at - b.at);
+  const msgs = list.map((e) => `<li class="${e.uid === wallet.uid ? 'me' : ''}"><div class="ch-head"><button type="button" class="pl-link ch-who" data-player="${esc(e.uid)}">${esc(e.pseudo)}</button><small>${hhmm(e.at)}</small></div><span class="ch-t">${esc(e.text || '')}</span></li>`).join('');
+  const pend = chat && chat.pending ? `<li class="me pending"><div class="ch-head"><b>${esc(wallet.pseudo)}</b><small data-chwait>envoi dans ${Math.ceil(chat.waitMs / 1000)} s</small></div><span class="ch-t">${esc(chat.pending)}</span></li>` : '';
+  return msgs || pend ? msgs + pend : '<li class="muted ch-empty">Personne n\'a encore rien dit. Lance la discussion !</li>';
+}
+function panelInner() {
+  return `<div class="fp-tabs"><button type="button" data-ft="feed">${icon('bolt')}En direct</button><button type="button" data-ft="chat">${icon('send')}Chat<i class="fp-unread" hidden></i></button></div>
+    <div class="fp-body fp-feed"></div>
+    <div class="fp-body fp-chat" hidden><ul class="ch-list"></ul>
+      <form class="ch-form" autocomplete="off"><input class="bet-input ch-in" maxlength="200" placeholder="Ton message…"><button class="btn btn-gold btn-sm" type="submit">${icon('send')}</button></form>
+      <small class="ch-note muted">1 message par minute, envoyé avec la synchro du solde (pas de chat instantané : ça économise la base de données).</small></div>`;
+}
+// Remplit un panneau et le garde à jour ; renvoie la fonction de nettoyage
+function bindPanel(root) {
+  if (!root || !social) return () => {};
+  root.innerHTML = panelInner();
+  let tab = 'feed', last = null, visible = false;
+  try { tab = localStorage.getItem('chibouk_fp_tab') === 'chat' ? 'chat' : 'feed'; } catch {}
+  const feedBox = $('.fp-feed', root), list = $('.ch-list', root), unread = $('.fp-unread', root);
+  const readAt = () => { try { return +localStorage.getItem(chatReadKey()) || 0; } catch { return 0; } };
+  const markRead = () => { try { localStorage.setItem(chatReadKey(), String(Date.now())); } catch {} };
+  const isShown = () => root.offsetParent !== null && !document.hidden;
+  const setVisible = (v) => { if (v === visible) return; visible = v; chatsOpen += v ? 1 : -1; social.fast = chatsOpen > 0; };
+  function renderChat() {
+    if (!last) return;
+    const atBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 40;
+    list.innerHTML = chatListHTML(last);
+    if (atBottom || tab === 'chat') list.scrollTop = list.scrollHeight;
+    const r = readAt(), n = last.entries.filter((e) => e.kind === 'chat' && e.uid !== wallet.uid && e.at > r).length;
+    if (tab === 'chat' && isShown()) { if (n) markRead(); unread.hidden = true; } else { unread.hidden = !n; unread.textContent = n > 9 ? '9+' : n; }
+  }
+  function render() { if (!last) return; feedBox.innerHTML = feedHTML(last); renderChat(); }
+  function show() {
+    $$('[data-ft]', root).forEach((b) => b.classList.toggle('on', b.dataset.ft === tab));
+    feedBox.hidden = tab !== 'feed'; $('.fp-chat', root).hidden = tab !== 'chat';
+    setVisible(tab === 'chat' && isShown());
+    renderChat();
+  }
+  $$('[data-ft]', root).forEach((b) => (b.onclick = () => { tab = b.dataset.ft; try { localStorage.setItem('chibouk_fp_tab', tab); } catch {} sfx.click(); show(); if (tab === 'chat') { list.scrollTop = list.scrollHeight; $('.ch-in', root).focus(); } }));
+  $('.ch-form', root).onsubmit = (e) => {
+    e.preventDefault();
+    const inp = $('.ch-in', root), r = chat ? chat.send(inp.value) : 'Chat indisponible';
+    if (r === 'sent' || r === 'queued') { inp.value = ''; sfx.click(); if (r === 'queued') toast('Message envoyé avec la prochaine synchro (1 message par minute)'); renderChat(); list.scrollTop = list.scrollHeight; }
+    else toast(r, 'error');
+  };
+  // détail d'un groupe, « Voir plus », bulle des succès gardée dans le cadre
+  const onClick = (e) => {
+    const more = e.target.closest('[data-feedmore]'), fx = e.target.closest('[data-fdx]');
+    if (fx) { const k = fx.dataset.fdx; feedOpen.has(k) ? feedOpen.delete(k) : feedOpen.add(k); } else if (more) feedAll = !feedAll; else return;
+    render();
+  };
+  const onOver = (e) => {
+    const a = e.target.closest('.fd-ach'); if (!a) return;
+    const card = a.querySelector('.hover-card'); if (!card) return;
+    card.style.left = '0px';
+    const box = feedBox.getBoundingClientRect(), r = card.getBoundingClientRect();
+    let dx = 0;
+    if (r.right > box.right - 10) dx = box.right - 10 - r.right;
+    if (r.left + dx < box.left + 10) dx = box.left + 10 - r.left;
+    card.style.left = dx + 'px';
+  };
+  feedBox.addEventListener('click', onClick); feedBox.addEventListener('mouseover', onOver);
+  const offS = social.subscribe((st) => { last = st; render(); });
+  const offC = chat ? chat.subscribe(renderChat) : () => {};
+  const iv = setInterval(() => { setVisible(tab === 'chat' && isShown()); const w8 = $('[data-chwait]', root); if (w8 && chat) w8.textContent = chat.pending ? `envoi dans ${Math.ceil(chat.waitMs / 1000)} s` : ''; }, 1000);
+  const ago = setInterval(render, 60000);
+  show();
+  return () => { offS(); offC(); clearInterval(iv); clearInterval(ago); setVisible(false); };
+}
+// Panneau fixé sur le côté (ordinateur), repliable
+let dockOff = null;
+function mountDock() {
+  if (dockOff) { dockOff(); dockOff = null; }
+  const dock = $('#dock');
+  if (!dock) return;
+  let closed = false;
+  try { closed = localStorage.getItem('chibouk_dock_closed') === '1'; } catch {}
+  const apply = () => { document.body.classList.toggle('dock-closed', closed); $('.dock-toggle', dock).title = closed ? 'Afficher le direct et le chat' : 'Masquer le panneau'; };
+  $('.dock-toggle', dock).onclick = () => { closed = !closed; try { localStorage.setItem('chibouk_dock_closed', closed ? '1' : '0'); } catch {} apply(); };
+  apply();
+  // le panneau commence sous la barre du haut (qui reste collée en haut, sous le bandeau éventuel)
+  const top = () => { const tb = $('.topbar'); if (tb) document.documentElement.style.setProperty('--dock-top', Math.max(0, tb.getBoundingClientRect().bottom) + 'px'); };
+  top();
+  window.addEventListener('scroll', top, { passive: true }); window.addEventListener('resize', top);
+  const off = bindPanel($('.dock-in', dock));
+  dockOff = () => { off(); window.removeEventListener('scroll', top); window.removeEventListener('resize', top); };
 }
 
 function card(key, title, desc, tag, art) {
@@ -681,8 +781,8 @@ function mountLobby(view, { wallet: w }) {
     </section>
     <a class="fm-lobby" href="#/farm" id="fm-lobby"></a>
     <section class="lobby-sec" data-sec="feed">
-    <h2 class="lobby-cat feed-cat"><button type="button" class="lc-toggle" aria-expanded="true">${icon('bolt')}En direct de la jungle<small class="lc-count">gros gains, succès, quêtes, jackpots, boutique…</small><span class="lc-chev">${icon('arrow')}</span></button></h2>
-    <div class="lc-body"><div class="feed-box" id="feed-box"></div></div></section>
+    <h2 class="lobby-cat feed-cat"><button type="button" class="lc-toggle" aria-expanded="true">${icon('bolt')}En direct de la jungle<small class="lc-count">exploits de tout le monde et chat</small><span class="lc-chev">${icon('arrow')}</span></button></h2>
+    <div class="lc-body"><div class="feed-box fp" id="feed-box"></div></div></section>
     <section class="lobby-sec" data-sec="casino">
     <h2 class="lobby-cat"><button type="button" class="lc-toggle" aria-expanded="true">${icon('chip')}Jeux de casino<small class="lc-count">${casinoCards.length} jeux</small><span class="lc-chev">${icon('arrow')}</span></button></h2>
     <div class="lc-body"><section class="games-grid">${casinoCards.join('')}</section></div></section>
@@ -741,18 +841,14 @@ function mountLobby(view, { wallet: w }) {
     btn.onclick = () => { closed[k] = !closed[k]; try { localStorage.setItem('chibouk_lobby_closed', JSON.stringify(closed)); } catch {} sfx.click(); apply(); };
   });
   // tableau de bord
-  let lastSocial = null;
   const dash = () => {
     const q = $('#dash-quests', view), v = $('#dash-vip', view);
     if (q) q.innerHTML = questsHTML();
     if (v) { v.innerHTML = vipHTML(); const b = $('#rk-claim', v); if (b) b.onclick = () => { const a = claimRake(w); if (a) { sfx.win(true); coinRain(25); toast(`+${fmt(a)} ${CUR} de rakeback récupérés !`, 'win'); } dash(); }; }
   };
   dash();
-  const offSocial = social ? social.subscribe((st) => {
-    lastSocial = st;
-    const fb = $('#feed-box', view);
-    if (fb) fb.innerHTML = feedHTML(st);
-  }) : () => {};
+  // fil « En direct » + chat (sur ordinateur, le même panneau est aussi fixé sur le côté de l'écran)
+  const offSocial = bindPanel($('#feed-box', view));
   let chState = null;
   const offCh = challenges ? challenges.subscribe((v) => { chState = v; const el = $('#dash-ch', view); if (el) el.innerHTML = challengeHTML(v); }) : () => {};
   const chClock = setInterval(() => { if (chState) $$('#dash-ch .ch-time', view).forEach((el) => { el.textContent = mmss(chState.end - Date.now()); }); }, 1000);
@@ -761,29 +857,6 @@ function mountLobby(view, { wallet: w }) {
     const hb = $('.hero-bal', view); if (hb) hb.innerHTML = `Ton solde : ${money(w.balance)}${w.vault ? `<small class="hero-vault">${icon('vault')} ${fmt(w.vault)} au coffre</small>` : ''}`;
     if (!t) t = setTimeout(() => { t = null; dash(); }, 400);
   });
-  const ago = setInterval(() => { const fb = $('#feed-box', view); if (fb && lastSocial) fb.innerHTML = feedHTML(lastSocial); }, 60000);
-  // la bulle de description d'un succès reste toujours dans le cadre du fil
-  // (les écouteurs sont posés sur #view, qui est réutilisé d'une page à l'autre : il faut les retirer en quittant l'accueil,
-  //  sinon après N passages sur l'accueil un clic était traité N fois et « Voir plus » s'annulait lui-même)
-  const onOver = (e) => {
-    const a = e.target.closest('.fd-ach'); if (!a) return;
-    const card = a.querySelector('.hover-card'), fb = $('#feed-box', view); if (!card || !fb) return;
-    card.style.left = '0px';
-    const box = fb.getBoundingClientRect(), r = card.getBoundingClientRect();
-    let dx = 0;
-    if (r.right > box.right - 10) dx = box.right - 10 - r.right;
-    if (r.left + dx < box.left + 10) dx = box.left + 10 - r.left;
-    card.style.left = dx + 'px';
-  };
-  const onFeedClick = (e) => {
-    const more = e.target.closest('[data-feedmore]'), fx = e.target.closest('[data-fdx]');
-    if (fx) { const k = fx.dataset.fdx; feedOpen.has(k) ? feedOpen.delete(k) : feedOpen.add(k); }
-    else if (more) feedAll = !feedAll;
-    else return;
-    const fb = $('#feed-box', view); if (fb && lastSocial) fb.innerHTML = feedHTML(lastSocial);
-  };
-  view.addEventListener('mouseover', onOver);
-  view.addEventListener('click', onFeedClick);
   const farmBox = $('#fm-lobby', view);
   const farmCard = () => {
     if (!farmBox) return;
@@ -798,7 +871,7 @@ function mountLobby(view, { wallet: w }) {
   };
   farmCard();
   const farmIv = setInterval(farmCard, 5000);
-  return () => { off(); offSocial(); offCh(); clearInterval(chClock); clearTimeout(t); clearInterval(ago); clearInterval(farmIv); view.removeEventListener('mouseover', onOver); view.removeEventListener('click', onFeedClick); };
+  return () => { off(); offSocial(); offCh(); clearInterval(chClock); clearTimeout(t); clearInterval(farmIv); };
 }
 
 boot();

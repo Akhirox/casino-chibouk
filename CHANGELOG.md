@@ -2,6 +2,32 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V25 — Chat, coffre à intérêts et caisses à thème (18 octobre 2026)
+
+### Nouveautés
+
+- Chat de la jungle : onglet « Chat » à côté du direct. Pour ménager la base de données, un message par minute, envoyé avec la synchro du solde (le suivant attend son tour). Les autres le voient en moins d'une minute s'ils ont le chat ouvert.
+- Sur ordinateur, le direct et le chat sont toujours visibles dans un panneau sur la droite (repliable avec l'onglet « Direct »). Sur mobile, ils restent sur l'accueil.
+- Coffre-fort : 5 % d'intérêts par jour, au prorata du temps passé dans le coffre (même hors ligne).
+- Cosmétiques avec bonus : chaque objet équipé donne un petit bonus selon sa catégorie. Cadre : gains des mini-jeux. Titre : roue du jour et quêtes. Dos de cartes : rakeback. Thème de slot : vente des bananes. Effet de victoire : intérêts du coffre. De +1 % à +20 % selon l'objet (détails en boutique).
+
+### Caisses
+
+- Caisses à thème : Cosmétique (que des cosmétiques exclusifs, 4 nouveaux à gagner), Va-tout (souvent presque rien, jusqu'à ×127 le prix) et Fermier (graines d'or, vitesse de construction permanente, boosts de récolte, chantiers terminés).
+- Caisses classiques : plus de boosts sur un seul mini-jeu ni de graines d'or ; à la place des tickets à gratter (Noix de coco, Banane, Jungle) et des Brundles. Elles rendent un peu plus : de 76 % à 96 % du prix en moyenne.
+- Les tickets gagnés s'utilisent dans les jeux à gratter avec le bouton « Ticket gratuit ».
+- Le bonus permanent des gains gratuits n'est plus plafonné.
+
+### Ferme
+
+- Démolir un bâtiment rembourse 60 % de ce que coûtent sa construction et toutes ses améliorations.
+- Vitesse de construction permanente (Caisse du Fermier) : jusqu'à −60 % sur la durée des chantiers.
+
+### Corrections
+
+- Défi de la jungle parfois affiché comme « en cours » alors qu'il était déjà gagné : les messages d'un joueur dont l'horloge retardait un peu n'étaient jamais lus par les autres. Le fil relit maintenant les 5 dernières minutes, et l'accueil vérifie directement le défi en cours.
+- Menu : Casino en rouge, Caisses en violet.
+
 ## V24.1 — Turbo au blackjack (18 octobre 2026)
 
 ### Nouveautés

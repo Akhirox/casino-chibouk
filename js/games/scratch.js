@@ -4,6 +4,7 @@ import { TICKETS, makeTicket, RTP } from './scratch-math.js';
 import { icon } from '../art.js';
 import { $, $$, fmt, money, toast, modal, coinRain, sleep, autoHTML, bindAuto, CUR, isTurbo } from '../ui.js';
 import { sfx } from '../sfx.js';
+import { freeTickets, useTicket } from '../loot.js';
 
 const fmtM = (m) => '×' + String(m).replace('.', ',');
 
@@ -18,6 +19,7 @@ export function mount(view, { wallet }) {
       <aside class="side-panel">
         <div class="sc-pick" id="sc-pick"></div>
         <button class="btn btn-gold btn-lg wide" id="sc-buy"></button>
+        <button class="btn btn-ghost wide sc-free" id="sc-free" hidden></button>
         <button class="btn btn-ghost wide" id="sc-all" disabled>Tout gratter</button>
         ${autoHTML('sc-auto', 'Tickets automatiques')}
         <div class="plk-info"><span>Gagnant</span><b>1 ticket sur ${(1 / tk.hit).toFixed(1).replace('.', ',')}</b></div>
@@ -33,6 +35,12 @@ export function mount(view, { wallet }) {
     const buy = $('#sc-buy', view);
     buy.innerHTML = `Acheter ${money(tk.price)}`;
     buy.disabled = (cur && !cur.done) || autoOn;
+    // tickets gagnés dans les caisses
+    const fr = $('#sc-free', view), n = freeTickets(wallet.p, tk.id);
+    fr.hidden = !n;
+    fr.innerHTML = `${icon('crate')}Ticket gratuit (${n})`;
+    fr.disabled = (cur && !cur.done) || autoOn;
+    $$('.sc-opt', view).forEach((b) => { const k = freeTickets(wallet.p, b.dataset.t); let tag = b.querySelector('.sc-fn'); if (k) { if (!tag) { tag = document.createElement('i'); tag.className = 'sc-fn'; b.append(tag); } tag.textContent = `${k} gratuit${k > 1 ? 's' : ''}`; } else if (tag) tag.remove(); });
     $('#sc-all', view).disabled = !cur || cur.done || autoOn;
     const hit = view.querySelector('.side-panel .plk-info b');
     if (hit) hit.textContent = `1 ticket sur ${(1 / tk.hit).toFixed(1).replace('.', ',')}`;
@@ -52,8 +60,9 @@ export function mount(view, { wallet }) {
       <div class="sc-foot">Prix ${fmt(t.price)} ${CUR} · RTP ${Math.round(RTP * 100)} %</div></div>`;
   }
 
-  function buy() {
+  function buy(free = false) {
     if (cur && !cur.done) return false;
+    if (free && !useTicket(wallet, tk.id)) return false; // le ticket gratuit crédite son prix, puis on mise normalement
     if (!wallet.bet('scratch', tk.price)) { toast(`Solde insuffisant pour un ticket à ${fmt(tk.price)} ${CUR}`, 'error'); return false; }
     const data = makeTicket(tk), t = tk;
     // gain enregistré tout de suite, annoncé (solde, succès, fil…) quand le ticket est entièrement gratté
@@ -152,6 +161,7 @@ export function mount(view, { wallet }) {
   }
 
   $('#sc-buy', view).onclick = () => buy();
+  $('#sc-free', view).onclick = () => { buy(true); renderPick(); };
   $('#sc-all', view).onclick = () => revealAll();
   $('#sc-rules', view).onclick = () => modal({ title: 'Jeux à gratter', cls: 'wide', html: `
     <ul class="muted"><li>Choisis un ticket, achète-le, puis gratte les cases avec la souris ou le doigt. Un clic sur une case la dévoile d'un coup, « Tout gratter » dévoile tout.</li>
