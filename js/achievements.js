@@ -102,9 +102,9 @@ export const ACHIEVEMENTS = [
   { id: 'tw-first', cat: 'tower', tier: 'bronze', name: 'Faux départ', desc: 'Exploser dès le premier étage 3 fois d\'affilée.', test: (e, w, c) => (c.twFirst || 0) >= 3 },
 
   /* ------------------------------ MINES ------------------------------ */
-  { id: 'mn-20', cat: 'mines', tier: 'silver', name: 'Démineur', desc: 'Révéler 20 bananes en une seule partie.', test: (e) => isRound(e, 'mines') && !I(e).lost && I(e).picks >= 20 },
+  { id: 'mn-20', cat: 'mines', tier: 'silver', name: 'Cueilleur intrépide', desc: 'Aux Mines, révéler 20 bananes en une seule partie.', test: (e) => isRound(e, 'mines') && !I(e).lost && I(e).picks >= 20 },
   { id: 'mn-kamikaze', cat: 'mines', tier: 'gold', name: 'Kamikaze', desc: 'Gagner une partie avec 24 mines.', test: (e) => isRound(e, 'mines') && !I(e).lost && I(e).mines >= 24 },
-  { id: 'mn-first-click', cat: 'mines', tier: 'bronze', name: 'Premier pas fatal', desc: 'Tomber sur une mine dès le premier clic.', test: (e) => isRound(e, 'mines') && I(e).lost && I(e).picks === 0 },
+  { id: 'mn-first-click', cat: 'mines', tier: 'bronze', name: 'Premier pas fatal', desc: 'Aux Mines (jeu de casino, pas le Démineur), tomber sur une mine dès la première case. Astuce : avec beaucoup de mines, c\'est presque sûr.', test: (e) => isRound(e, 'mines') && I(e).lost && I(e).picks === 0 },
   { id: 'mn-x50', cat: 'mines', tier: 'silver', name: 'Nerfs d\'acier', desc: 'Encaisser à ×50 ou plus aux Mines.', test: (e) => isRound(e, 'mines') && !I(e).lost && I(e).mult >= 50 },
 
   /* ------------------------------ DICE ------------------------------ */

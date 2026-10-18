@@ -160,10 +160,10 @@ export function mount(view, { wallet, social }) {
     modal({ title: 'Les caisses', cls: 'wide', html: `<ul class="muted fm-help">
       <li>Chaque caisse contient un lot tiré au sort : la bande défile et s'arrête sur ton lot. Les chances de chaque lot sont affichées dans « Contenu de la caisse ».</li>
       <li><b>Raretés</b> : Commun (79,9 %), Rare (16 %), Épique (3,2 %), Légendaire (0,64 %), Mythique (0,26 %).</li>
-      <li><b>Brundles</b> : de 0,3 à 60 fois le prix de la caisse (× le bonus de la caisse). Plus la caisse est chère, plus elle rend en moyenne : de ${Math.round((L.valueOf(L.CASES[0]) / L.CASES[0].price) * 100)} % à ${Math.round((L.valueOf(L.CASES[3]) / L.CASES[3].price) * 100)} % du prix, sans compter les autres lots.</li>
+      <li><b>Brundles</b> : de 0,3 à 60 fois le prix de la caisse (× le bonus de la caisse). Plus la caisse est chère, plus elle rend en moyenne : de ${Math.round((L.valueOf(L.CASES[0]) / L.CASES[0].price) * 100)} % à ${Math.round((L.valueOf(L.CASES[L.CASES.length - 1]) / L.CASES[L.CASES.length - 1].price) * 100)} % du prix, sans compter les autres lots.</li>
       <li><b>Boosts de mini-jeux</b> : gains d'un mini-jeu (ou de tous) multipliés pendant 1 à 24 h, en plus du bonus VIP. Deux boosts identiques s'additionnent en durée.</li>
       <li><b>Ferme</b> : production multipliée pendant quelques heures, ou une <b>graine d'or</b> (+5 % de bananes pour toujours).</li>
-      <li><b>Bonus permanent</b> (mythique) : +1 à +5 % sur tous les gains gratuits, pour toujours (roue du jour, quêtes, mini-jeux, défis…), jusqu'à +${L.PERM_MAX * 100} %.</li>
+      <li><b>Bonus permanent</b> (mythique) : +0,5 à +5 % selon la caisse, sur tous les gains gratuits, pour toujours (roue du jour, quêtes, mini-jeux, défis…), jusqu'à +${L.PERM_MAX * 100} %.</li>
       <li><b>Cosmétiques exclusifs</b> : cadres, titres, dos de cartes, thème et effets introuvables en boutique. Un cosmétique déjà possédé est remboursé en Brundles.</li>
       <li>Le lot est enregistré dès le clic : quitter la page pendant l'animation ne fait rien perdre.</li></ul>`, buttons: [{ label: 'Compris', value: true, primary: true }] });
   }

@@ -616,7 +616,7 @@ function challengeHTML(v) {
     <div class="ch-tags"><span class="q-lv q${c.tier}">${['Facile', 'Moyen', 'Difficile'][c.tier]}</span><span class="ch-kind">${c.kind === 'casino' ? 'Casino' : 'Mini-jeu'}</span></div>
     <p class="ch-text">${esc(c.text)}${c.kind === 'casino' ? ` <small class="muted">(mise d'au moins ${fmt(MIN_BET)})</small>` : ''}</p>
     ${prog}
-    <div class="ch-prize">Récompense : <b class="gold">+${fmt(v.prize)} ${CUR}</b> <small class="muted">pour le premier qui réussit</small></div>
+    <div class="ch-prize">Récompense : <b class="gold">+${fmt(v.prize)} ${CUR}</b> <small class="muted">pour le premier qui réussit${v.prize > c.prize ? ` (bonus VIP ${xMult(Math.round((v.prize / c.prize) * 100) / 100)})` : ''}</small></div>
     ${status}
     <div class="ch-foot">${!v.winner && c.game !== 'lobby' ? `<a class="btn btn-gold btn-sm" href="${challengeRoute(c)}">Y aller ${icon('arrow')}</a>` : ''}
       <small class="muted">Un nouveau défi toutes les 15 min${hist.length ? ` · derniers vainqueurs : ${hist.map((h) => `<b>${esc(h.pseudo)}</b>`).join(', ')}` : ''}</small></div>`;

@@ -30,10 +30,11 @@ export const PERM_MAX = 0.5; // bonus permanent plafonné à +50 %
 // k = multiplicateur des gains en Brundles (valeur moyenne en Brundles = 56 % × k du prix, voir valueOf)
 // perm = bonus permanent du lot mythique ; hue = couleur de la caisse
 export const CASES = [
-  { id: 'banane', name: 'Caisse Banane', price: 5000, k: 1.2, perm: 0.01, hue: '#f5c542', desc: 'Pour découvrir : beaucoup de boosts de mini-jeux.' },
-  { id: 'jungle', name: 'Caisse Jungle', price: 50000, k: 1.4, perm: 0.02, hue: '#3ddc84', desc: 'Plus de Brundles, des boosts plus longs.' },
-  { id: 'singe', name: 'Caisse Singe d\'Or', price: 500000, k: 1.55, perm: 0.03, hue: '#ff8a3d', desc: 'Pour les gros joueurs.' },
-  { id: 'roi', name: 'Caisse du Roi', price: 5000000, k: 1.65, perm: 0.05, hue: '#c77dff', desc: 'La plus généreuse : +5 % permanent en mythique.' },
+  { id: 'coco', name: 'Caisse Noix de coco', price: 1000, k: 1.25, perm: 0.005, hue: '#b07a4a', desc: 'La moins chère, pour se faire la main.' },
+  { id: 'banane', name: 'Caisse Banane', price: 5000, k: 1.32, perm: 0.01, hue: '#f5c542', desc: 'Pour découvrir : beaucoup de boosts de mini-jeux.' },
+  { id: 'jungle', name: 'Caisse Jungle', price: 50000, k: 1.5, perm: 0.02, hue: '#3ddc84', desc: 'Plus de Brundles, des boosts plus longs.' },
+  { id: 'singe', name: 'Caisse Singe d\'Or', price: 500000, k: 1.62, perm: 0.03, hue: '#ff8a3d', desc: 'Pour les gros joueurs.' },
+  { id: 'roi', name: 'Caisse du Roi', price: 5000000, k: 1.7, perm: 0.05, hue: '#c77dff', desc: 'La plus généreuse : +5 % permanent en mythique.' },
 ];
 export const caseById = (id) => CASES.find((c) => c.id === id);
 
@@ -121,7 +122,7 @@ export function labelOf(d) {
       : { title: `${fx(d.m)} ${BOOST_GAMES[d.game][0]}`, sub: `gains du jeu · ${d.h} h`, icon: BOOST_GAMES[d.game][1] };
     case 'farm': return { title: `Ferme ${fx(d.m)}`, sub: `production · ${d.h} h`, icon: 'banana' };
     case 'seed': return { title: 'Graine d\'or', sub: '+5 % de bananes, pour toujours', icon: 'seed' };
-    case 'perm': return { title: `+${Math.round(d.perm * 100)} % permanent`, sub: 'sur tous les gains gratuits', icon: 'star' };
+    case 'perm': return { title: `+${(d.perm * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} % permanent`, sub: 'sur tous les gains gratuits', icon: 'star' };
     case 'cos': return { title: d.name, sub: d.dup ? `déjà possédé · +${Math.round(d.amount).toLocaleString('fr-FR')} Brundles` : `${COS_CAT[d.cat] || 'Cosmétique'} exclusif`, icon: { frame: 'user', title: 'medal', cardback: 'blackjack', theme: 'slots', effect: 'bolt' }[d.cat] || 'gift' };
   }
   return { title: '?', sub: '', icon: 'gift' };

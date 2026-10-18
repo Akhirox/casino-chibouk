@@ -2,7 +2,7 @@
 // Doubler sur 2 cartes, séparer jusqu'à 4 mains (As séparés : une carte chacun)
 import { randInt } from './slots-math.js';
 import { monkeySVG, icon } from '../art.js';
-import { h, $, $$, fmt, money, toast, sleep, coinRain, autoHTML, bindAuto, CUR } from '../ui.js';
+import { h, $, $$, fmt, money, toast, sleep, coinRain, autoHTML, bindAuto, CUR , isTurbo } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
@@ -64,6 +64,8 @@ function faceHTML(c) {
 const backHTML = () => `<div class="face back"><div class="back-inner">${monkeySVG({ fur: '#c98a00', face: '#ffe6a6', ear: '#ffd36b' })}</div></div>`;
 
 export function mount(view, { wallet }) {
+  // Turbo : toutes les animations et pauses du blackjack ~5 fois plus courtes (interrupteur dans « Mains automatiques »)
+  const T = (ms) => (isTurbo('blackjack') ? Math.round(ms * 0.2) : ms);
   let shoe = newShoe();
   let cut = Math.floor(shoe.length * 0.25);
   let alive = true;
@@ -257,12 +259,12 @@ export function mount(view, { wallet }) {
       { transform: `translate(${dx}px, ${dy}px) rotateZ(-70deg) scale(.7)`, opacity: 0.6 },
       { transform: `translate(${dx * 0.35}px, ${dy * 0.35 - 30}px) rotateZ(-15deg) scale(1.12)`, opacity: 1, offset: 0.6 },
       { transform: finalT },
-    ], { duration: 520, easing: 'cubic-bezier(.2,.8,.25,1)' });
+    ], { duration: T(520), easing: 'cubic-bezier(.2,.8,.25,1)' });
     inner.animate([
       { transform: 'translateZ(0) rotateY(180deg) rotateX(20deg)' },
       { transform: `translateZ(90px) rotateY(${hidden ? 180 : 90}deg) rotateX(10deg)`, offset: 0.55 },
       { transform: `translateZ(0) ${endFlip}` },
-    ], { duration: 520, easing: 'cubic-bezier(.3,.7,.3,1)' });
+    ], { duration: T(520), easing: 'cubic-bezier(.3,.7,.3,1)' });
     await anim.finished.catch(() => {});
     if (!hidden) setTimeout(() => sfx.flip(), 0);
     return el;
@@ -276,7 +278,7 @@ export function mount(view, { wallet }) {
       { transform: 'translateZ(0) rotateY(180deg)' },
       { transform: 'translateZ(70px) rotateY(90deg) scale(1.08)', offset: 0.5 },
       { transform: 'translateZ(0) rotateY(0deg)' },
-    ], { duration: 560, easing: 'ease-in-out' });
+    ], { duration: T(560), easing: 'ease-in-out' });
     inner.classList.remove('hidden');
     await a.finished.catch(() => {});
   }
@@ -320,7 +322,7 @@ export function mount(view, { wallet }) {
       const r = c.getBoundingClientRect();
       return c.animate([{ transform: getComputedStyle(c).transform === 'none' ? 'none' : getComputedStyle(c).transform, opacity: 1 },
         { transform: `translate(${d.left - r.left}px, ${d.top - r.top}px) rotateZ(80deg) scale(.6)`, opacity: 0 }],
-      { duration: 380, delay: i * 30, easing: 'ease-in', fill: 'forwards' }).finished.catch(() => {});
+      { duration: T(380), delay: T(i * 30), easing: 'ease-in', fill: 'forwards' }).finished.catch(() => {});
     }));
   }
 
@@ -372,7 +374,7 @@ export function mount(view, { wallet }) {
     const dealerBJ = isBJ(dealer);
     const playerBJ = isBJ(p.cards);
     if ((up.r === 'A' || cardValue(up) === 10) && !playerBJ) {
-      say('Le croupier vérifie…'); await sleep(800); hush();
+      say('Le croupier vérifie…'); await sleep(T(800)); hush();
     }
     if (dealerBJ || playerBJ) {
       phase = 'dealer';
@@ -431,8 +433,8 @@ export function mount(view, { wallet }) {
     hd.cards.push(draw()); await dealCard(hd.cards.at(-1), hd.cardsEl); refreshTotals();
     phase = 'play';
     const v = handValue(hd.cards).total;
-    if (v > 21) { hd.done = true; hd.el.classList.add('busted'); sfx.lose(); await sleep(350); return nextHand(); }
-    if (v === 21) { hd.done = true; await sleep(250); return nextHand(); }
+    if (v > 21) { hd.done = true; hd.el.classList.add('busted'); sfx.lose(); await sleep(T(350)); return nextHand(); }
+    if (v === 21) { hd.done = true; await sleep(T(250)); return nextHand(); }
     updateControls();
   }
   async function stand() {
@@ -452,7 +454,7 @@ export function mount(view, { wallet }) {
     phase = 'play';
     hd.done = true;
     if (handValue(hd.cards).total > 21) { hd.el.classList.add('busted'); sfx.lose(); }
-    await sleep(300);
+    await sleep(T(300));
     return nextHand();
   }
   async function split() {
@@ -485,7 +487,7 @@ export function mount(view, { wallet }) {
     const anyLive = hands.some((hd) => handValue(hd.cards).total <= 21);
     if (anyLive) {
       while (handValue(dealer).total < 17 && alive) {
-        await sleep(250);
+        await sleep(T(250));
         dealer.push(draw()); await dealCard(dealer.at(-1), dealerHandEl); refreshTotals();
       }
     }
@@ -588,20 +590,20 @@ export function mount(view, { wallet }) {
     return 'H';
   }
   const wait = (ms) => new Promise((r) => setTimeout(r, ms));
-  const auto = bindAuto(view, 'bj-auto', { wallet, game: 'blackjack', delay: 900,
+  const auto = bindAuto(view, 'bj-auto', { wallet, game: 'blackjack', delay: 900, turbo: true,
     play: async () => {
       if (!(phase === 'bet' || phase === 'done')) return false;
       if (!bet) { toast('Pose d\'abord une mise sur le tapis', 'error'); return false; }
       if (bet + side.pp + side.t3 > wallet.balance) { toast('Solde insuffisant pour continuer', 'error'); return false; }
       deal();
-      await wait(50);
+      await wait(T(50));
       while (alive && phase !== 'done') {
         if (phase === 'play') {
           const hd = hands[active];
           const a = basicStrategy(hd, dealer[0]);
           if (a === 'P') await split(); else if (a === 'D') await doubleDown(); else if (a === 'H') await hit(); else await stand();
         }
-        await wait(120);
+        await wait(T(120));
       }
       return alive;
     },

@@ -2,6 +2,22 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V24.1 — Turbo au blackjack (18 octobre 2026)
+
+### Nouveautés
+
+- Blackjack : mode Turbo (interrupteur dans « Mains automatiques »). Distribution, retournement des cartes et pauses environ 5 fois plus rapides, en manuel comme en automatique.
+- Nouvelle Caisse Noix de coco à 1 000 Brundles, la moins chère.
+
+### Équilibrage
+
+- Toutes les caisses rendent un peu plus : en moyenne de 70 % (Noix de coco) à 95 % (Caisse du Roi) du prix en Brundles, plus les boosts, graines, cosmétiques et bonus permanents.
+- Défis de la jungle : le bonus VIP est réduit à un quart du bonus des gains gratuits, et plafonné à ×2. Exemple : un défi difficile rapporte 20 600 au lieu de 37 500 avec un bonus VIP ×2,5, et 30 000 au maximum.
+
+### Corrections
+
+- Succès « Premier pas fatal » : il concerne bien les Mines (jeu de casino) et pas le Démineur, où le premier clic ne tombe jamais sur une mine. La description le précise maintenant. Le succès « Démineur » des Mines devient « Cueilleur intrépide » pour éviter la confusion.
+
 ## V24 — Les caisses (18 octobre 2026)
 
 ### Nouveau : les caisses

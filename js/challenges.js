@@ -11,7 +11,10 @@ import { freeMult } from './progress.js';
 export const SLOT_MS = 15 * 60000;
 export const slotOf = (t = Date.now()) => Math.floor(t / SLOT_MS);
 export const slotEnd = (slot) => (slot + 1) * SLOT_MS;
-export const CHALLENGE_PRIZE = [5000, 10000, 15000]; // facile, moyen, difficile (× multiplicateur VIP des gains gratuits)
+export const CHALLENGE_PRIZE = [5000, 10000, 15000]; // facile, moyen, difficile (× challengeMult : bonus VIP réduit)
+// Bonus VIP réduit sur les défis : un quart du bonus des gains gratuits, plafonné à ×2
+// (VIP ×2,5 → ×1,375 ; VIP ×5 ou plus → ×2), sinon un défi difficile rapportait près de 40 000 dès les rangs moyens.
+export const challengeMult = (wallet) => Math.min(2, 1 + (freeMult(wallet) - 1) * 0.25);
 export const MIN_BET = 100; // mise minimale pour les défis de casino (évite les parties à 1 Brundle en turbo)
 
 // Gain d'au moins ×m en une partie, avec une mise d'au moins MIN_BET
@@ -98,7 +101,7 @@ export function initChallenges(wallet, backend, social, { onWin, onLost, onNew }
   const save = () => { try { localStorage.setItem(key, JSON.stringify(st)); } catch {} };
   const current = () => challengeFor(st.slot);
   const notify = () => subs.forEach((cb) => { try { cb(view()); } catch (e) { console.error(e); } });
-  const prizeNow = (c) => Math.round(c.prize * freeMult(wallet));
+  const prizeNow = (c) => Math.round(c.prize * challengeMult(wallet));
   const view = () => { const c = current(); return { ...st, c, prize: prizeNow(c), end: slotEnd(st.slot), history }; };
   let history = [];
 
