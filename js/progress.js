@@ -75,7 +75,9 @@ export function initVip(wallet, onUp) {
   };
   const off = wallet.on((e) => {
     if (!e || e.type !== 'bet' || !wallet.stats.games[e.game]) return;
-    const rate = vipOf(wallet.stats.totalWagered).rb * (RAKE_WEIGHT[e.game] ?? 1) * (1 + cosBonus(wallet.p, 'rake')); // dos de cartes équipé
+    const wgt = RAKE_WEIGHT[e.game] ?? 1;
+    // dos de cartes équipé : seulement sur les jeux à faible marge (roulette et tickets resteraient sinon au-dessus de 100 %)
+    const rate = vipOf(wallet.stats.totalWagered).rb * wgt * (wgt <= 1 ? 1 + cosBonus(wallet.p, 'rake') : 1);
     if (rate > 0) wallet.p.rake = { ...(wallet.p.rake || { total: 0 }), pot: rakePot(wallet) + e.amount * rate };
     pay();
   });
@@ -96,9 +98,10 @@ export function initVip(wallet, onUp) {
 
 /* ------------------------------ Roue du jour ------------------------------ */
 export const streakMult = (n) => Math.min(CONFIG.STREAK_MAX, 1 + CONFIG.STREAK_STEP * Math.max(0, n - 1));
-export function spinDaily(wallet) {
+// bonus = tour de roue en plus (gagné dans une caisse) : même calcul, avec la série actuelle (qui ne bouge pas)
+export function spinDaily(wallet, bonus = false) {
   const seg = randInt(CONFIG.DAILY_WHEEL.length);
-  const n = wallet.nextStreak();
+  const n = bonus ? Math.max(1, (wallet.p.streak && wallet.p.streak.n) || 1) : wallet.nextStreak();
   const mult = streakMult(n);
   const vip = vipOf(wallet.stats.totalWagered), fm = freeMult(wallet);
   const cb = cosBonus(wallet.p, 'daily'); // titre équipé

@@ -18,12 +18,15 @@ function wheelSVG() {
   }).join('')}<circle r="100" fill="none" stroke="#f5c542" stroke-width="4"/><circle r="16" fill="#f5c542" stroke="#8a5a00" stroke-width="3"/></svg>`;
 }
 
-export function openDailyWheel(wallet, onDone) {
-  if (!wallet.dailyAvailable()) { toast('Roue déjà tournée aujourd\'hui. Reviens après minuit !'); return; }
-  const n = wallet.nextStreak(), mult = streakMult(n), vip = vipOf(wallet.stats.totalWagered);
+export const bonusSpins = (wallet) => (wallet.p.loot && wallet.p.loot.spins) || 0;
+// bonus : tour de roue en plus gagné dans une caisse (utilisable quand la roue du jour est déjà tournée)
+export function openDailyWheel(wallet, onDone, { bonus = false } = {}) {
+  if (!bonus && !wallet.dailyAvailable()) { toast('Roue déjà tournée aujourd\'hui. Reviens après minuit !'); return; }
+  if (bonus && !bonusSpins(wallet)) return;
+  const n = bonus ? Math.max(1, (wallet.p.streak && wallet.p.streak.n) || 1) : wallet.nextStreak(), mult = streakMult(n), vip = vipOf(wallet.stats.totalWagered);
   const days = Array.from({ length: 7 }, (_, i) => i + 1);
   const m = h(`<div class="modal-backdrop"><div class="modal dw-modal" role="dialog" aria-modal="true">
-    <h2 class="modal-title">Roue du jour</h2>
+    <h2 class="modal-title">${bonus ? `Tour de roue bonus <small class="muted">(${bonusSpins(wallet)} disponible${bonusSpins(wallet) > 1 ? 's' : ''})</small>` : 'Roue du jour'}</h2>
     <div class="modal-body">
       <div class="dw-streak"><b>Série : ${n} jour${n > 1 ? 's' : ''}</b> → gain ${xfmt(mult)}
         <div class="dw-days">${days.map((d) => `<i class="${d <= Math.min(n, 7) ? 'on' : ''}">${d}</i>`).join('')}<span>${n > 7 ? `+${n - 7}` : ''}</span></div>
@@ -41,14 +44,17 @@ export function openDailyWheel(wallet, onDone) {
 
   $('#dw-spin', m).onclick = async () => {
     if (done) { close(); return; }
-    if (spinning || !wallet.dailyAvailable()) return;
+    if (spinning || (bonus ? !bonusSpins(wallet) : !wallet.dailyAvailable())) return;
     spinning = true;
     $('#dw-spin', m).disabled = true; $('[data-x]', m).disabled = true;
-    const r = spinDaily(wallet);
+    const r = spinDaily(wallet, bonus);
     // le gain est enregistré tout de suite (fermer la fenêtre ne change rien)
     // … mais annoncé (solde affiché, fil, quêtes…) seulement quand la roue s'arrête
     let saved;
-    const reveal = wallet.deferEvents(() => { saved = wallet.claimDaily(r.amount, { base: r.base, mult: r.mult }); });
+    const reveal = wallet.deferEvents(() => {
+      if (bonus) { wallet.p.loot.spins = bonusSpins(wallet) - 1; wallet.credit('wheelbonus', r.amount, { base: r.base, mult: r.mult }); saved = Promise.resolve(true); }
+      else saved = wallet.claimDaily(r.amount, { base: r.base, mult: r.mult });
+    });
     await saved;
     const N = CONFIG.DAILY_WHEEL.length;
     const jitter = (Math.random() - 0.5) * (360 / N) * 0.6;
@@ -62,7 +68,7 @@ export function openDailyWheel(wallet, onDone) {
     clearInterval(ticks);
     reveal();
     spinning = false; done = true;
-    $('#dw-res', m).innerHTML = `<b>${fmt(r.base)}</b>${r.mult > 1 ? ` ${xfmt(r.mult)} (série de ${r.streak} jours)` : ''}${r.vip > 1 ? ` ${xMult(r.vip)} VIP` : ''}${r.cos ? ` +${Math.round(r.cos * 100)} % (titre)` : ''} = <span class="big">+${money(r.amount)}</span>`;
+    $('#dw-res', m).innerHTML = `<b>${fmt(r.base)}</b>${r.mult > 1 ? ` ${xfmt(r.mult)} (série de ${r.streak} jours)` : ''}${r.vip > 1 ? ` ${xMult(r.vip)} (VIP et bonus)` : ''}${r.cos ? ` +${Math.round(r.cos * 100)} % (titre)` : ''} = <span class="big">+${money(r.amount)}</span>`;
     const btn = $('#dw-spin', m);
     btn.disabled = false; btn.textContent = 'Super !';
     $('[data-x]', m).disabled = false;

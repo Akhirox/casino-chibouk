@@ -273,7 +273,8 @@ export class Wallet {
   // Coffre-fort : des Brundles mis à l'abri, qu'on ne peut pas miser par erreur. Dépôt et retrait libres.
   // Intérêts : 5 % par jour (+ bonus de l'effet de victoire équipé), au prorata du temps passé dans le coffre.
   // Calculés à la volée (aucune écriture en plus) et ajoutés au coffre à chaque dépôt, retrait ou sauvegarde.
-  get vaultRate() { return CONFIG.VAULT_DAILY_RATE * (1 + cosBonus(this.p, 'vault')); }
+  // + bonus permanent des caisses (p.loot.vault, plafonné à +100 %)
+  get vaultRate() { return CONFIG.VAULT_DAILY_RATE * (1 + cosBonus(this.p, 'vault') + Math.min(1, Math.max(0, (this.p.loot && this.p.loot.vault) || 0))); }
   vaultPending(now = Date.now()) {
     const v = Math.max(0, this.p.vault || 0), t = this.p.vaultT || now;
     return v > 0 ? v * this.vaultRate * Math.max(0, now - t) / 86400000 : 0;

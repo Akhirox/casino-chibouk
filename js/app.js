@@ -50,7 +50,7 @@ import { openVipModal } from './vip.js';
 import { openVault } from './vault.js';
 import { syncWeeks } from './weekly.js';
 import { initHistory } from './history.js';
-import { openDailyWheel } from './dailywheel.js';
+import { openDailyWheel, bonusSpins } from './dailywheel.js';
 import { mountBoard } from './gameboard.js';
 import { initAchievements, achSummary, TIERS } from './achievements.js';
 import * as AchPage from './achpage.js';
@@ -433,6 +433,7 @@ function renderShell() {
   daily.onclick = claimDaily;
   function updateDaily() {
     if (wallet.dailyAvailable()) { daily.classList.add('ready'); daily.innerHTML = `${icon('wheel')}<span>Roue du jour</span>`; }
+    else if (bonusSpins(wallet)) { daily.classList.add('ready'); daily.innerHTML = `${icon('wheel')}<span>Tour bonus ×${bonusSpins(wallet)}</span>`; }
     else { daily.classList.remove('ready'); daily.innerHTML = `${icon('hourglass')}<span>${countdown()}</span>`; }
     const lobbyDaily = $('#lobby-daily');
     if (lobbyDaily) renderLobbyDaily(lobbyDaily);
@@ -533,7 +534,10 @@ async function openTransfer() {
 }
 
 function claimDaily() {
-  if (!wallet.dailyAvailable()) { toast(`Roue déjà tournée aujourd'hui. Reviens dans ${countdown()}`); return; }
+  if (!wallet.dailyAvailable()) {
+    if (bonusSpins(wallet)) { openDailyWheel(wallet, null, { bonus: true }); return; } // tour bonus gagné dans une caisse
+    toast(`Roue déjà tournée aujourd'hui. Reviens dans ${countdown()}`); return;
+  }
   openDailyWheel(wallet);
 }
 
@@ -623,7 +627,7 @@ function challengeHTML(v) {
     <div class="ch-tags"><span class="q-lv q${c.tier}">${['Facile', 'Moyen', 'Difficile'][c.tier]}</span><span class="ch-kind">${c.kind === 'casino' ? 'Casino' : 'Mini-jeu'}</span></div>
     <p class="ch-text">${esc(c.text)}${c.kind === 'casino' ? ` <small class="muted">(mise d'au moins ${fmt(MIN_BET)})</small>` : ''}</p>
     ${prog}
-    <div class="ch-prize">Récompense : <b class="gold">+${fmt(v.prize)} ${CUR}</b> <small class="muted">pour le premier qui réussit${v.prize > c.prize ? ` (bonus VIP ${xMult(Math.round((v.prize / c.prize) * 100) / 100)})` : ''}</small></div>
+    <div class="ch-prize">Récompense : <b class="gold">+${fmt(v.prize)} ${CUR}</b> <small class="muted">pour le premier qui réussit${v.prize > c.prize ? ` (bonus ${xMult(Math.round((v.prize / c.prize) * 100) / 100)})` : ''}</small></div>
     ${status}
     <div class="ch-foot">${!v.winner && c.game !== 'lobby' ? `<a class="btn btn-gold btn-sm" href="${challengeRoute(c)}">Y aller ${icon('arrow')}</a>` : ''}
       <small class="muted">Un nouveau défi toutes les 15 min${hist.length ? ` · derniers vainqueurs : ${hist.map((h) => `<b>${esc(h.pseudo)}</b>`).join(', ')}` : ''}</small></div>`;

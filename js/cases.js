@@ -30,6 +30,7 @@ export function tileHTML(d, attrs = '') {
   return `<div class="cs-it r-${d.r}" ${attrs}><div class="cs-it-ic">${itemIcon(lb.icon)}</div><b>${esc(lb.title)}</b><small>${esc(lb.sub)}</small><i class="cs-bar"></i></div>`;
 }
 const pctTxt = (p) => (p * 100 >= 1 ? (p * 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) : (p * 100).toLocaleString('fr-FR', { maximumSignificantDigits: 2 })) + ' %';
+const pc = (x) => (x * 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' %';
 const left = (ms) => { const m = Math.max(0, Math.round(ms / 60000)); return m >= 60 ? `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, '0')}` : `${m} min`; };
 
 export function mount(view, { wallet, social }) {
@@ -52,8 +53,14 @@ export function mount(view, { wallet, social }) {
     $('#cs-kpis', view).innerHTML = `
       <div><span>Ton solde</span><b>${money(wallet.shownBalance)}</b></div>
       <div><span>Caisses ouvertes</span><b>${fmt(wallet.stats.casesOpened || 0)}</b></div>
-      <div><span>Bonus permanents</span><b class="gold">+${(permBonus(p) * 100).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %</b><small>gains gratuits ${xMult(freeMult(wallet))} au total${p.farm && p.farm.spd ? ` · chantiers de la ferme −${Math.round(p.farm.spd * 100)} %` : ''}</small></div>
-      <div class="cs-boosts"><span>Boosts et tickets</span>${tickets(p)}${boosts.length || fb ? `<ul>${boosts.map((b) => `<li><b>${xMult(b.m)}</b> ${b.g === 'all' ? 'tous les mini-jeux' : esc(L.BOOST_GAMES[b.g] ? L.BOOST_GAMES[b.g][0] : b.g)} <small data-u="${b.u}">${left(b.u - Date.now())}</small></li>`).join('')}${fb ? `<li><b>${xMult(fb.m)}</b> production de la ferme <small data-u="${fb.u}">${left(fb.u - Date.now())}</small></li>` : ''}</ul>` : (tickets(p) ? '' : '<small class="muted">Aucun pour l\'instant</small>')}</div>`;
+      <div><span>Bonus permanents</span><b class="gold">+${pc(permBonus(p))} gains gratuits</b><small>${[
+        L.lootPerm(p, 'vault') ? `coffre +${pc(L.lootPerm(p, 'vault'))} d'intérêts (${pc(wallet.vaultRate)}/jour)` : '',
+        L.lootPerm(p, 'sell') ? `bananes +${pc(L.lootPerm(p, 'sell'))} à la vente` : '',
+        p.farm && p.farm.seeds ? `${p.farm.seeds} graine${p.farm.seeds > 1 ? 's' : ''} d'or` : '',
+        p.farm && p.farm.spd ? `chantiers −${pc(p.farm.spd)}` : '',
+        p.loot && p.loot.spins ? `${p.loot.spins} tour${p.loot.spins > 1 ? 's' : ''} de roue bonus` : '',
+      ].filter(Boolean).join(' · ') || `gains gratuits ${xMult(freeMult(wallet))} au total`}</small></div>
+      <div class="cs-boosts"><span>Boosts et tickets</span>${tickets(p)}${boosts.length || fb ? `<ul>${boosts.map((b) => `<li><b>${xMult(b.m)}</b> ${b.g === 'all' ? 'tous les mini-jeux' : b.g === 'chal' ? 'récompenses des défis' : esc(L.BOOST_GAMES[b.g] ? L.BOOST_GAMES[b.g][0] : b.g)} <small data-u="${b.u}">${left(b.u - Date.now())}</small></li>`).join('')}${fb ? `<li><b>${xMult(fb.m)}</b> production de la ferme <small data-u="${fb.u}">${left(fb.u - Date.now())}</small></li>` : ''}</ul>` : (tickets(p) ? '' : '<small class="muted">Aucun pour l\'instant</small>')}</div>`;
   }
   // tickets à gratter gagnés (utilisables dans les jeux à gratter)
   function tickets(p) {
@@ -93,7 +100,8 @@ export function mount(view, { wallet, social }) {
     const v = Math.round((L.valueOf(cur) / cur.price) * 100);
     $('#cs-val', view).textContent = cur.theme === 'cos' ? `Que des cosmétiques exclusifs (avec leurs bonus) ; un cosmétique déjà possédé est remboursé en ${CUR}.`
       : cur.theme === 'farm' ? `Tout pour ta ferme : graines d'or, vitesse de construction permanente, boosts de récolte.`
-        : `En moyenne ${v} % du prix revient en ${CUR}${cur.theme === 'risk' ? ' (mais la plupart du temps, beaucoup moins : c\'est le gros lot qui fait la moyenne)' : ' (tickets à gratter compris), plus les boosts et bonus permanents'}.`;
+        : cur.grp === 'C' ? `Grande caisse : presque que des bonus permanents. ${v} % du prix revient en ${CUR} en moyenne, le reste de la valeur est dans les bonus (pour toujours).`
+          : `En moyenne ${v} % du prix revient en ${CUR}${cur.theme === 'risk' ? ' (mais la plupart du temps, beaucoup moins : c\'est le gros lot qui fait la moyenne)' : ' (tickets à gratter compris), plus de nombreux boosts temporaires'}.`;
     $('#cs-pool', view).innerHTML = list.map((it) => { const lb = L.poolLabel(cur, it); return `<div class="cs-it r-${it.r} cs-pool-it"><div class="cs-it-ic">${itemIcon(lb.icon)}</div><b>${esc(lb.title)}</b><small>${esc(lb.sub)}</small><span class="cs-ch">${L.RARITIES[it.r].name} · ${pctTxt(L.chanceOf(cur, it))}</span><i class="cs-bar"></i></div>`; }).join('');
   }
   function history() {
@@ -170,10 +178,12 @@ export function mount(view, { wallet, social }) {
   function help() {
     modal({ title: 'Les caisses', cls: 'wide', html: `<ul class="muted fm-help">
       <li>Chaque caisse contient un lot tiré au sort : la bande défile et s'arrête sur ton lot. Les chances de chaque lot sont affichées dans « Contenu de la caisse ».</li>
-      <li><b>Raretés</b> : Commun (79,9 %), Rare (16 %), Épique (3,2 %), Légendaire (0,64 %), Mythique (0,26 %).</li>
-      <li><b>Caisses classiques</b> : Brundles (de 0,3 à 60 fois le prix), tickets à gratter, boosts de tous les mini-jeux (6 h ou 24 h), boosts de récolte. Plus la caisse est chère, plus elle rend en moyenne : de ${pv(L.CASES[0])} % à ${pv(L.CASES.filter((c) => c.theme === 'std').at(-1))} % du prix.</li>
+      <li><b>Raretés</b> : à partir de la Caisse Jungle, Rare 16 %, Épique 3,2 %, Légendaire 0,64 %, Mythique 0,26 %. Les caisses moins chères ont des lots rares beaucoup plus rares (Caisse Cacahuète : Épique 1,2 %, Légendaire 0,12 %, Mythique 0,03 %) et des boosts plus courts. Les chances exactes de chaque lot sont dans « Contenu de la caisse ».</li>
+      <li><b>Petites caisses</b> (500 à 10 000) : Brundles, tickets à gratter et surtout des boosts temporaires (mini-jeux, défis, récolte de la ferme, de 1 h à 1 jour) et des tours de roue en plus.</li>
+      <li><b>Moyennes</b> (20 000 et 30 000) : boosts de 4 h à 3 jours et premiers bonus permanents.</li>
+      <li><b>Grandes</b> (50 000 et plus) : plus aucun boost temporaire, presque que des bonus permanents : gains gratuits, intérêts du coffre, prix de vente des bananes, graines d'or, vitesse de construction. Plus la caisse est chère, plus ils sont gros.</li>
       <li>Deux boosts identiques s'additionnent en durée.</li>
-      <li><b>Bonus permanent</b> (mythique des caisses classiques) : +0,5 à +5 % selon la caisse, sur tous les gains gratuits, pour toujours (roue du jour, quêtes, mini-jeux, défis…), sans plafond.</li>
+      <li><b>Plafonds</b> : intérêts du coffre et prix des bananes jusqu'à +100 %, vitesse de construction jusqu'à −60 %, gains gratuits sans plafond. Un lot qui dépasserait un plafond est remplacé par des Brundles.</li>
       <li><b>Tickets à gratter</b> : à utiliser dans les jeux à gratter (bouton « Ticket gratuit »).</li>
       <li><b>Caisses à thème</b> : Cosmétique (que des cosmétiques exclusifs, avec leurs bonus), Va-tout (souvent presque rien, parfois énorme), Fermier (graines d'or, vitesse de construction permanente, boosts de récolte).</li>
       <li><b>Cosmétiques exclusifs</b> : cadres, titres, dos de cartes, thème et effets introuvables en boutique. Un cosmétique déjà possédé est remboursé en Brundles.</li>

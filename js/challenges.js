@@ -8,6 +8,7 @@
 // - Les autres joueurs l'apprennent par le fil d'activité (déjà relu régulièrement) : aucune lecture en plus.
 import { freeMult } from './progress.js';
 import { isIdle } from './activity.js';
+import { chalBoost } from './loot.js';
 
 export const SLOT_MS = 15 * 60000;
 export const slotOf = (t = Date.now()) => Math.floor(t / SLOT_MS);
@@ -102,7 +103,7 @@ export function initChallenges(wallet, backend, social, { onWin, onLost, onNew }
   const save = () => { try { localStorage.setItem(key, JSON.stringify(st)); } catch {} };
   const current = () => challengeFor(st.slot);
   const notify = () => subs.forEach((cb) => { try { cb(view()); } catch (e) { console.error(e); } });
-  const prizeNow = (c) => Math.round(c.prize * challengeMult(wallet));
+  const prizeNow = (c) => Math.round(c.prize * challengeMult(wallet) * chalBoost(wallet.p)); // + boost « ×2 défis » des caisses
   const view = () => { const c = current(); return { ...st, c, prize: prizeNow(c), end: slotEnd(st.slot), history }; };
   let history = [];
 

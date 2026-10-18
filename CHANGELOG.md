@@ -2,6 +2,36 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V26 — Caisses repensées (19 octobre 2026)
+
+### Petites caisses (500 à 10 000)
+
+- Le plaisir tout de suite : Brundles, tickets à gratter, et beaucoup de boosts temporaires (près d'1 caisse sur 3) : tous les mini-jeux ×1,5 à ×3, récompenses des défis ×1,5 à ×2, récolte de la ferme ×1,5 à ×2, de 1 h à 1 jour selon le prix.
+- Nouveau lot : tours de roue en plus (1 ou 3), à utiliser quand la roue du jour est déjà tournée (bouton « Tour bonus » en haut).
+- Elles rendent moins de Brundles (55 à 68 %), la valeur est dans les boosts.
+
+### Moyennes caisses (Papaye, Liane)
+
+- Boosts longs (4 h à 3 jours) et premiers bonus permanents (gains gratuits, intérêts du coffre, graine d'or).
+
+### Grandes caisses (Jungle, Singe d'Or, Roi)
+
+- Plus aucun boost temporaire : presque que des bonus permanents. Gains gratuits, intérêts du coffre, prix de vente des bananes, graines d'or et vitesse de construction.
+- Les bonus grossissent avec le prix : Roi jusqu'à +40 % de gains gratuits ou +100 % d'intérêts du coffre en un seul lot, jusqu'à 32 graines d'or.
+- Plafonds : intérêts du coffre et prix des bananes +100 %, vitesse de construction −60 %. Au-delà, le lot est remplacé par des Brundles.
+
+### Divers
+
+- Le bonus de rakeback du dos de cartes ne s'applique plus à la roulette ni aux tickets à gratter (ils seraient passés au-dessus de 100 % de retour).
+
+## V25.1 — Plus de caisses (19 octobre 2026)
+
+### Caisses
+
+- 5 nouvelles caisses classiques : Cacahuète (500), Mangue (2 500), Ananas (10 000), Papaye (20 000) et Liane (30 000). Il y en a maintenant 10, de 500 à 5 millions.
+- Les lots s'adaptent au prix : moins la caisse est chère, plus les lots Épique, Légendaire et Mythique sont rares (Cacahuète : Épique 1,2 %, Légendaire 0,12 %, Mythique 0,03 % ; taux pleins à partir de la Jungle) et plus les boosts sont courts. Le bonus permanent du lot mythique va de +0,1 % (Cacahuète) à +5 % (Roi).
+- Rendement moyen en Brundles (tickets compris) de 72 % pour la Cacahuète à 96 % pour le Roi. La Noix de coco passe de 76 % à 74 %, avec des lots rares bien plus rares.
+
 ## V25 — Chat, coffre à intérêts et caisses à thème (18 octobre 2026)
 
 ### Nouveautés
