@@ -1,9 +1,37 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '26';
+export const VERSION = '27';
 
 export const CHANGELOG = [
+  {
+    v: '27', date: '19 octobre 2026', title: 'Jungle Connect et caisses par familles',
+    groups: [
+      ['Nouvelle machine à sous : Jungle Connect', [
+        'Grille de 7×7 à clusters : 5 symboles identiques ou plus reliés horizontalement ou verticalement et c\'est gagné (du Singe Doré à la Feuille de palmier).',
+        'Cascades à l\'infini : les symboles gagnants explosent, le reste tombe et de nouveaux symboles arrivent par le haut, un peu plus souvent des Singes Dorés et des Gorilles.',
+        'Multiplicateurs ×2 sur les symboles gagnants, multipliés entre eux dans un même cluster (trois ×2 = ×8), jusqu\'à ×256 par cluster.',
+        '3 Masques Tribaux = 10 tours gratuits (+5 si 3 masques retombent) avec des multiplicateurs ×2 et ×4 plus fréquents. Bonus environ 1 tour sur 127.',
+        'RTP 98,5 % (réglé sur 28 millions de tours simulés), gain max ×5 000. Mode auto, turbo, et clic sur la grille pour accélérer une cascade.',
+        '7 succès, un défi de la jungle et des quêtes du jour dédiés.',
+      ]],
+      ['Récompenses : tes bonus affichés partout', [
+        'Les gains des mini-jeux, quêtes, défis et de la roue du jour affichent le montant de base puis, en vert, ce que tu touches vraiment avec tes bonus (VIP, caisses, cosmétiques).',
+        'Survole (ou touche) le montant pour voir le détail des bonus qui s\'appliquent.',
+      ]],
+      ['Caisses : 5 familles', [
+        'Raretés revues : bleu 70 %, violet 22 %, rose 6 %, rouge 1,7 %, or 0,3 %. Plus de boosts, moins de Brundles dans les caisses de boosts, et plus aucun boost de rakeback.',
+        'Fermier (2 000, 10 000, 20 000) : boosts de récolte et de vente de quelques minutes à plusieurs jours, graines d\'or et vitesse de construction dans la Grange.',
+        'Joueur (2 000, 10 000, 20 000) : boosts des mini-jeux et des défis. Les boosts du même type se cumulent avec un rendement dégressif (deux ×3 = ×4,5, puis ×5…) jusqu\'à ×6 (×3 pour les défis).',
+        'Coffrets cosmétiques (Élégance, Prestige, Légende) : des objets de la boutique et des exclusifs, un peu plus chers en moyenne qu\'en boutique. Un doublon est remboursé à sa valeur.',
+        'Brundles : Banco, Jackpot et All-in (gros risque, jusqu\'à ×40, ×70 et ×150), et Quitte ou double (51 % rien, 49 % le double).',
+        'Coffres royaux (50 000 à 25 millions) : uniquement des bonus permanents (intérêts du coffre, roue du jour, défis, gains gratuits, vente des bananes, graines d\'or), toujours au moins quelque chose qui vaut le prix. Un bonus déjà au plafond est converti en gains gratuits.',
+      ]],
+      ['Défis de la jungle', [
+        'Défis plus durs aux mots croisés (2 grilles sans aide), Pinpoint (6 catégories en 2 indices, 5 dès le premier), Snake (40 et 65 bananes) et Tango (2 grilles moyennes ou difficiles).',
+      ]],
+    ],
+  },
   {
     v: '26', date: '19 octobre 2026', title: 'Caisses repensées',
     groups: [

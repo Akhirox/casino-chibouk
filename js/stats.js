@@ -23,8 +23,9 @@ export const GAMES = [
   { k: 'wheel', name: 'Roue du Singe' },
   { k: 'limbo', name: 'Limbo' },
   { k: 'scratch', name: 'Jeux à gratter' },
+  { k: 'jungle', name: 'Jungle Connect' },
 ];
-export const GAME_LABEL = { slots: 'à la machine à sous', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au Plinkoko', crash: 'au Crashibouk', tower: 'à la Tower', mines: 'aux Mines', dice: 'au Dice', hilo: 'au Hi-Lo', keno: 'au Keno', wheel: 'à la Roue du Singe', limbo: 'au Limbo', scratch: 'aux jeux à gratter' };
+export const GAME_LABEL = { slots: 'à la machine à sous', jungle: 'à la Jungle Connect', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au Plinkoko', crash: 'au Crashibouk', tower: 'à la Tower', mines: 'aux Mines', dice: 'au Dice', hilo: 'au Hi-Lo', keno: 'au Keno', wheel: 'à la Roue du Singe', limbo: 'au Limbo', scratch: 'aux jeux à gratter' };
 export const gname = (g) => `<span class="gname">${icon(g.k)}${g.name}</span>`;
 export const pct = (a, b) => (b ? (a / b * 100).toFixed(1).replace('.', ',') + ' %' : '—');
 export const signed = (n) => `<span class="${n >= 0 ? 'pos' : 'neg'}">${n >= 0 ? '+' : ''}${fmt(n)}</span>`;

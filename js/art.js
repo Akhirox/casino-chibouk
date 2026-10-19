@@ -159,6 +159,7 @@ const ICONS = {
   chev: `<path d="m6 9 6 6 6-6" stroke-width="2"/>`,
   fire: `<path d="M12 21c-4 0-7-2.8-7-6.6 0-3.4 2.6-5.4 3.7-8.4.5 2 1.6 3 2.6 3.5C11.6 6 13 4 15 3c-.3 3 1.5 4.6 2.8 6.6A7 7 0 0 1 19 14.4C19 18.2 16 21 12 21z" ${D}/>`,
   globe: `<circle cx="12" cy="12" r="8.5" ${D}/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5M12 3.5C9.4 5.9 8.2 8.7 8.2 12s1.2 6.1 3.8 8.5" stroke-width="1.5"/>`,
+  jungle: `<rect x="3" y="3" width="18" height="18" rx="3" ${D}/><path d="M9 3v18M15 3v18M3 9h18M3 15h18" stroke-width="1" opacity=".6"/><path d="M6 6h6v6h6v6" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`,
   scratch: `<rect x="3" y="5" width="18" height="14" rx="2" ${D}/><path d="M7 9h4M7 12.5h3M13.5 13l3.5-4M14 16l4-4.5" stroke-width="1.6"/><circle cx="17" cy="8" r="1" fill="currentColor"/>`,
   memory: `<rect x="3" y="4" width="8" height="11" rx="1.6" ${D}/><rect x="13" y="9" width="8" height="11" rx="1.6" ${D}/><path d="M7 8.2l1.2 2.3-1.2 2.3-1.2-2.3z" fill="currentColor" stroke="none"/><path d="M17 13.2l1.2 2.3-1.2 2.3-1.2-2.3z" fill="currentColor" stroke="none"/>`,
   crossword: `<rect x="3.5" y="3.5" width="17" height="17" rx="1.6" ${D}/><path d="M3.5 9.2h17M3.5 14.8h17M9.2 3.5v17M14.8 3.5v17" stroke-width="1.2"/><rect x="14.8" y="3.5" width="5.7" height="5.7" fill="currentColor" stroke="none"/><rect x="3.5" y="14.8" width="5.7" height="5.7" fill="currentColor" stroke="none"/>`,
@@ -294,6 +295,15 @@ export function limboArtSVG() {
     <path d="M20 112 Q100 112 180 24" stroke="url(#lbg)" stroke-width="5" fill="none" stroke-linecap="round"/>
     <path d="M30 70h140" stroke="#f5c542" stroke-width="2" stroke-dasharray="6 5"/><text x="168" y="64" text-anchor="end" font-family="Rubik, sans-serif" font-weight="800" font-size="11" fill="#f5c542">cible ×2,00</text>
     <text x="70" y="104" text-anchor="middle" font-family="Bungee, sans-serif" font-size="26" fill="#fff">4,87×</text></svg>`;
+}
+export function jungleArtSVG() {
+  const C = ['#ffd23f', '#b28cff', '#ff8a3d', '#5fe08a', '#36c2ff', '#9ccc65'];
+  const win = new Set([8, 9, 15, 16, 17, 23]);
+  const cells = Array.from({ length: 35 }, (_, k) => { const r = (k / 7) | 0, c = k % 7, w = win.has(k); const col = w ? '#ffd23f' : C[(k * 7 + r * 3) % C.length];
+    return `<rect x="${37 + c * 18}" y="${10 + r * 18}" width="15" height="15" rx="4" fill="${col}" fill-opacity="${w ? 1 : .35}" ${w ? 'stroke="#fff" stroke-width="1.5"' : ''}/>`; }).join('');
+  return `<svg viewBox="0 0 200 145" class="art-jungle" aria-hidden="true"><rect x="31" y="4" width="138" height="104" rx="10" fill="#0d2010" stroke="#6b4a1e" stroke-width="3"/>${cells}
+    <text x="100" y="134" text-anchor="middle" font-family="Bungee, sans-serif" font-size="20" fill="#ffd23f" stroke="#6b4400" stroke-width="1">×256</text>
+    <g transform="translate(160 96)"><rect x="-17" y="-12" width="34" height="22" rx="7" fill="#c2185b"/><text y="5" text-anchor="middle" font-family="Bungee, sans-serif" font-size="12" fill="#fff">×4</text></g></svg>`;
 }
 export function flagsArtSVG() {
   const f = (x, y, rot, colors, vertical = true) => `<g transform="translate(${x} ${y}) rotate(${rot})"><rect x="-27" y="-18" width="54" height="36" rx="3" fill="#111"/>${colors.map((c, i) => vertical ? `<rect x="${-27 + i * 18}" y="-18" width="18" height="36" fill="${c}"/>` : `<rect x="-27" y="${-18 + i * 12}" width="54" height="12" fill="${c}"/>`).join('')}<rect x="-27" y="-18" width="54" height="36" rx="3" fill="none" stroke="#0006"/></g>`;

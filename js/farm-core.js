@@ -127,10 +127,13 @@ export function assignment(f) {
 // Boost de production gagné dans une caisse : f.xb = { m: multiplicateur, u: fin (ms) }
 export const boostAt = (f, t = Date.now()) => (f.xb && f.xb.u > t ? f.xb.m : 1);
 export function addBoost(f, m, hours, now = Date.now()) {
-  // même multiplicateur (ou plus faible) : on prolonge ; plus fort : il remplace, avec la durée restante en plus
+  // pas de boost en cours : il démarre ; même force : on prolonge ; plus fort : il remplace (le reste de l'ancien est converti) ;
+  // plus faible : il prolonge le boost en cours d'une durée équivalente (même gain total)
   const cur = f.xb && f.xb.u > now ? f.xb : null;
-  const start = cur ? cur.u : now;
-  f.xb = { m: Math.max(m, cur ? cur.m : 1), u: start + hours * HOUR };
+  if (!cur) { f.xb = { m, u: now + hours * HOUR }; return; }
+  if (m === cur.m) { cur.u += hours * HOUR; return; }
+  if (m > cur.m) { const rest = ((cur.u - now) * (cur.m - 1)) / (m - 1); f.xb = { m, u: now + hours * HOUR + rest }; return; }
+  cur.u += (hours * HOUR * (m - 1)) / (cur.m - 1);
 }
 export const productionPerHour = (f) => assignment(f).fields.reduce((a, x) => a + x.w * x.per, 0);
 export const totalSlots = (f) => built(f).filter((x) => x.t === 'F').reduce((a, x) => a + slots(x.l), 0);

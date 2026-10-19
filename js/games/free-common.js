@@ -1,6 +1,7 @@
 // Petits outils communs aux jeux de réflexion gratuits (Queens, Tango, Sudoku, Démineur, Snake, Pinpoint)
 import { $, $$, money, fmt, CUR } from '../ui.js';
 import { monkeySVG } from '../art.js';
+import { withFreeBonus, gotHTML } from '../rewards.js';
 
 export const fmtTime = (sec) => { sec = Math.max(0, Math.round(sec)); const m = Math.floor(sec / 60), s = sec % 60; return `${m}:${String(s).padStart(2, '0')}`; };
 export const fmtTimeLong = (sec) => { sec = Math.max(0, Math.round(sec)); const m = Math.floor(sec / 60), s = sec % 60; return m ? `${m} min ${String(s).padStart(2, '0')}` : `${s} s`; };
@@ -29,8 +30,9 @@ export function makeTimer(el, { limit = 0, onEnd } = {}) {
 }
 
 // Boutons de choix du niveau (réutilise le style des quiz)
-export function modesHTML(levels, cur, extra = (l) => '') {
-  return `<div class="mcq-modes ${levels.length === 3 ? 'three' : ''}">${levels.map((l, i) => `<button type="button" class="mcq-mode ${i === cur ? 'on' : ''}" data-lv="${i}"><b>${l.name}</b><span>${l.desc}</span><small>${extra(l, i)}</small></button>`).join('')}</div>`;
+// game : clé du jeu, pour afficher à côté de chaque gain le montant avec les bonus du joueur (VIP, caisses, cadre)
+export function modesHTML(levels, cur, extra = (l) => '', game = '') {
+  return `<div class="mcq-modes ${levels.length === 3 ? 'three' : ''}">${levels.map((l, i) => `<button type="button" class="mcq-mode ${i === cur ? 'on' : ''}" data-lv="${i}"><b>${l.name}</b><span>${l.desc}</span><small>${withFreeBonus(extra(l, i), game)}</small></button>`).join('')}</div>`;
 }
 export function bindModes(root, onPick) { $$('.mcq-mode[data-lv]', root).forEach((b) => (b.onclick = () => onPick(+b.dataset.lv))); }
 
@@ -41,7 +43,7 @@ export function saveLevel(key, v) { try { localStorage.setItem(key, v); } catch 
 // Carte de fin de partie
 export function endCardHTML({ win, title, text, amount, again = 'Rejouer', extraBtn = '' }) {
   return `<div class="qz-card fg-end">${monkeySVG(win ? { crown: true, fur: '#c98a00', face: '#ffe6a6', ear: '#ffd36b' } : { wink: false })}
-    <h2>${title}</h2><p>${text}${amount ? `<br><b class="gold">+${money(amount)}</b> ajoutés à ton solde.` : ''}</p>
+    <h2>${title}</h2><p>${text}${amount ? `<br><b class="gold">${gotHTML(amount)}</b> ajoutés à ton solde.` : ''}</p>
     <div class="qz-end-btns"><button class="btn btn-gold btn-lg" data-again>${again}</button>${extraBtn}</div></div>`;
 }
 

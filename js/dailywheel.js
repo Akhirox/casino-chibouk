@@ -3,6 +3,7 @@ import { CONFIG } from './config.js';
 import { spinDaily, streakMult, vipOf, xMult } from './progress.js';
 import { h, $, fmt, money, toast, coinRain, sleep, CUR } from './ui.js';
 import { sfx } from './sfx.js';
+import { wheelInfo, multHTML } from './rewards.js';
 
 const COLORS = ['#2f7a35', '#1f5e8c', '#8c3a1f', '#4a2a7a', '#2a6b5e', '#7a1f2f'];
 const xfmt = (m) => '×' + m.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
@@ -23,16 +24,16 @@ export const bonusSpins = (wallet) => (wallet.p.loot && wallet.p.loot.spins) || 
 export function openDailyWheel(wallet, onDone, { bonus = false } = {}) {
   if (!bonus && !wallet.dailyAvailable()) { toast('Roue déjà tournée aujourd\'hui. Reviens après minuit !'); return; }
   if (bonus && !bonusSpins(wallet)) return;
-  const n = bonus ? Math.max(1, (wallet.p.streak && wallet.p.streak.n) || 1) : wallet.nextStreak(), mult = streakMult(n), vip = vipOf(wallet.stats.totalWagered);
+  const n = bonus ? Math.max(1, (wallet.p.streak && wallet.p.streak.n) || 1) : wallet.nextStreak(), mult = streakMult(n), wi = wheelInfo();
   const days = Array.from({ length: 7 }, (_, i) => i + 1);
   const m = h(`<div class="modal-backdrop"><div class="modal dw-modal" role="dialog" aria-modal="true">
     <h2 class="modal-title">${bonus ? `Tour de roue bonus <small class="muted">(${bonusSpins(wallet)} disponible${bonusSpins(wallet) > 1 ? 's' : ''})</small>` : 'Roue du jour'}</h2>
     <div class="modal-body">
       <div class="dw-streak"><b>Série : ${n} jour${n > 1 ? 's' : ''}</b> → gain ${xfmt(mult)}
         <div class="dw-days">${days.map((d) => `<i class="${d <= Math.min(n, 7) ? 'on' : ''}">${d}</i>`).join('')}<span>${n > 7 ? `+${n - 7}` : ''}</span></div>
-        <small class="muted">+${Math.round(CONFIG.STREAK_STEP * 100)} % par jour consécutif, jusqu'à ${xfmt(CONFIG.STREAK_MAX)}. Un jour raté et la série repart à 1.</small>${vip.mult > 1 ? `<small>Bonus VIP ${vip.name} : <b class="gold">${xMult(vip.mult)}</b></small>` : ''}</div>
+        <small class="muted">+${Math.round(CONFIG.STREAK_STEP * 100)} % par jour consécutif, jusqu'à ${xfmt(CONFIG.STREAK_MAX)}. Un jour raté et la série repart à 1.</small>${wi.mult > 1 ? `<small>Tes bonus (VIP, caisses, titre) : <b class="gold">${multHTML(wi)}</b> <span class="muted">· survole pour le détail</span></small>` : ''}</div>
       <div class="dw-box"><div class="dw-pointer"></div>${wheelSVG()}</div>
-      <p class="dw-res" id="dw-res">Tourne la roue pour gagner de ${fmt(Math.min(...CONFIG.DAILY_WHEEL))} à ${fmt(Math.max(...CONFIG.DAILY_WHEEL))} ${CUR}${mult * vip.mult > 1 ? `, multipliés par ${xfmt(Math.round(mult * vip.mult * 100) / 100)}${vip.mult > 1 ? ' (série × VIP)' : ''}` : ''} !</p>
+      <p class="dw-res" id="dw-res">Tourne la roue pour gagner de ${fmt(Math.min(...CONFIG.DAILY_WHEEL))} à ${fmt(Math.max(...CONFIG.DAILY_WHEEL))} ${CUR}${mult * wi.mult > 1 ? `, multipliés par ${xfmt(Math.round(mult * wi.mult * 100) / 100)}${wi.mult > 1 ? ' (série × bonus)' : ''}` : ''} !</p>
     </div>
     <div class="modal-actions"><button class="btn btn-ghost" data-x>Plus tard</button><button class="btn btn-gold btn-lg" id="dw-spin">Tourner !</button></div>
   </div></div>`);
@@ -68,7 +69,7 @@ export function openDailyWheel(wallet, onDone, { bonus = false } = {}) {
     clearInterval(ticks);
     reveal();
     spinning = false; done = true;
-    $('#dw-res', m).innerHTML = `<b>${fmt(r.base)}</b>${r.mult > 1 ? ` ${xfmt(r.mult)} (série de ${r.streak} jours)` : ''}${r.vip > 1 ? ` ${xMult(r.vip)} (VIP et bonus)` : ''}${r.cos ? ` +${Math.round(r.cos * 100)} % (titre)` : ''} = <span class="big">+${money(r.amount)}</span>`;
+    $('#dw-res', m).innerHTML = `<b>${fmt(r.base)}</b>${r.mult > 1 ? ` ${xfmt(r.mult)} (série de ${r.streak} jours)` : ''}${r.vip > 1 ? ` ${xMult(r.vip)} (VIP et bonus)` : ''}${r.cos ? ` +${Math.round(r.cos * 100)} % (titre, coffres)` : ''} = <span class="big">+${money(r.amount)}</span>`;
     const btn = $('#dw-spin', m);
     btn.disabled = false; btn.textContent = 'Super !';
     $('[data-x]', m).disabled = false;

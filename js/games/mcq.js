@@ -1,6 +1,7 @@
 // Moteur de quiz à choix multiples (capitales, cinéma) : 10 questions chronométrées, 4 réponses,
 // des Brundles par bonne réponse et un bonus pour un sans-faute. Même barème que le calcul mental.
 import { CONFIG } from '../config.js';
+import { gotHTML, withFreeBonus } from '../rewards.js';
 import { randInt } from './slots-math.js';
 import { monkeySVG } from '../art.js';
 import { $, $$, fmt, money, coinRain, toast, esc, CUR } from '../ui.js';
@@ -87,11 +88,11 @@ export function mountMCQ(view, { wallet }, opt) {
   function intro() {
     state = 'intro';
     const modes = opt.modes ? `<div class="mcq-modes">${opt.modes.map((m) => `<button type="button" class="mcq-mode ${m.key === mode.key ? 'on' : ''}" data-m="${m.key}">
-        <b>${m.label}</b><span>${m.desc}</span><small>${m.seconds || opt.seconds} s · +${m.perCorrect || CONFIG.QUIZ_PER_CORRECT} ${CUR} / bonne rép. · +${m.perfectBonus || CONFIG.QUIZ_PERFECT_BONUS} sans-faute</small></button>`).join('')}</div>` : '';
+        <b>${m.label}</b><span>${m.desc}</span><small>${withFreeBonus(`${m.seconds || opt.seconds} s · +${m.perCorrect || CONFIG.QUIZ_PER_CORRECT} ${CUR} / bonne rép. · +${m.perfectBonus || CONFIG.QUIZ_PERFECT_BONUS} sans-faute`, opt.kind)}</small></button>`).join('')}</div>` : '';
     body.innerHTML = `<div class="qz-card">${monkeySVG({ cap: true })}
       <h2>${typeof opt.introTitle === 'function' ? opt.introTitle(mode) : opt.introTitle}</h2>
       <p>${opt.introText}<br>
-      <b>+${PER()} ${CUR}</b> par bonne réponse, <b>+${BONUS()} ${CUR}</b> de bonus pour un sans-faute (jusqu'à ${fmt(N * PER() + BONUS())}).</p>
+      <b>${withFreeBonus(`+${PER()}`, opt.kind)} ${CUR}</b> par bonne réponse, <b>${withFreeBonus(`+${BONUS()}`, opt.kind)} ${CUR}</b> de bonus pour un sans-faute (jusqu'à ${fmt(N * PER() + BONUS())}).</p>
       ${modes}
       ${lockBannerHTML(wallet, opt.kind)}
       <button class="btn btn-gold btn-lg" id="qz-start" ${lockedUntil(wallet, opt.kind) ? 'disabled' : ''}>Commencer</button></div>`;
@@ -234,7 +235,7 @@ export function mountMCQ(view, { wallet }, opt) {
     const perfect = correct === N;
     body.innerHTML = `<div class="qz-card">${monkeySVG(perfect ? { crown: true, fur: '#c98a00', face: '#ffe6a6', ear: '#ffd36b' } : { wink: correct >= N / 2 })}
       <h2>${correct}/${N} bonnes réponses${perfect ? ' : sans-faute !' : ''}</h2>
-      <p>${amount > 0 ? `+${money(amount)} ajoutés à ton solde${perfect ? ` (dont ${BONUS()} de bonus)` : ''}.` : 'Pas de Brundles cette fois, retente ta chance !'}</p>
+      <p>${amount > 0 ? `${gotHTML(amount)} ajoutés à ton solde${perfect ? ` (dont ${BONUS()} de bonus)` : ''}.` : 'Pas de Brundles cette fois, retente ta chance !'}</p>
       <div class="qz-end-btns"><button class="btn btn-gold btn-lg" id="qz-again">Rejouer${opt.modes ? ` (${mode.label})` : ''}</button>${opt.modes ? '<button class="btn btn-ghost" id="qz-modes">Changer de mode</button>' : ''}</div></div>`;
     $('#qz-again', view).onclick = start;
     if (opt.modes) $('#qz-modes', view).onclick = intro;

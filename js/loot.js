@@ -1,283 +1,316 @@
-// Caisses (lootboxes façon « case opening ») : contenu, tirage, application des gains, boosts temporaires et permanents.
-// Tout est tiré et appliqué dans le navigateur (comme les jeux), au moment du clic ; l'animation ne fait que le montrer.
+// Caisses (V27) : contenu, tirage, application des lots, boosts temporaires (empilables) et bonus permanents.
+// Tout est tiré et appliqué dans le navigateur au moment du clic ; l'animation ne fait que le montrer.
+//
+// Familles :
+//  - Fermier (3 caisses) : boosts temporaires de la ferme (récolte, vente), chantiers, et pour la plus chère du permanent
+//  - Mini-jeux (3 caisses) : boosts « tous les mini-jeux » et « défis », EMPILABLES (dégressif, plafonné), tours de roue
+//  - Cosmétiques (3 coffrets) : les cosmétiques de la boutique ; un objet déjà possédé est remboursé à sa valeur boutique
+//  - Brundles (4 caisses) : 3 « gros risque, gros gain » + 1 quitte ou double (51 % rien / 49 % ×2)
+//  - Royales (5 coffres, dès 50 000) : uniquement des bonus permanents sur les gains (coffre, roue du jour, défis, gains
+//    gratuits, ferme), meilleurs dans les coffres plus chers.
+// Aucun lot ne touche au rakeback : on ne doit jamais pouvoir miser à l'infini et tout récupérer.
 import { randInt } from './games/slots-math.js';
 import * as F from './farm-core.js';
-import { LOOT_ITEMS } from './shop.js';
+import { ITEMS, LOOT_ITEMS } from './shop.js';
 import { cosBonus } from './bonus.js';
 
 const COS_CAT = { frame: 'Cadre', title: 'Titre', cardback: 'Dos de cartes', theme: 'Thème de slot', effect: 'Effet de victoire' };
 
-// Raretés et probabilités (mêmes proportions que les caisses de CS)
+// Raretés (le plus rare : 0,3 %)
 export const RARITIES = {
-  blue: { name: 'Commun', color: '#4b69ff', w: 79920 },
-  purple: { name: 'Rare', color: '#8847ff', w: 15980 },
-  pink: { name: 'Épique', color: '#d32ce6', w: 3200 },
-  red: { name: 'Légendaire', color: '#eb4b4b', w: 640 },
-  gold: { name: 'Mythique', color: '#e4ae39', w: 260 },
+  blue: { name: 'Commun', color: '#4b69ff', w: 70000 },
+  purple: { name: 'Rare', color: '#8847ff', w: 22000 },
+  pink: { name: 'Épique', color: '#d32ce6', w: 6000 },
+  red: { name: 'Légendaire', color: '#eb4b4b', w: 1700 },
+  gold: { name: 'Mythique', color: '#e4ae39', w: 300 },
 };
-const R_TOTAL = Object.values(RARITIES).reduce((a, r) => a + r.w, 0); // 100 000
+const R_TOTAL = 100000;
 export const R_ORDER = ['blue', 'purple', 'pink', 'red', 'gold'];
+const DEFAULT_ODDS = Object.fromEntries(R_ORDER.map((r) => [r, RARITIES[r].w]));
 
-// Mini-jeux qui peuvent recevoir un boost (clé = jeu, icône du menu)
+// anciens boosts sur un seul mini-jeu (encore affichés tant qu'ils courent)
 export const BOOST_GAMES = {
   sudoku: ['Sudoku', 'sudoku'], queens: ['Queens', 'queens'], tango: ['Tango', 'tango'], pinpoint: ['Pinpoint', 'pinpoint'],
   demineur: ['Démineur', 'demineur'], snake: ['Snake', 'snake'], memory: ['Memory', 'memory'], crossword: ['Mots croisés', 'crossword'],
   quiz: ['Calcul mental', 'quiz'], capitals: ['Quiz capitales', 'globe'], flags: ['Quiz drapeaux', 'flag'], movies: ['Quiz ciné', 'film'],
   higher: ['Plus ou moins', 'higher'], breaker: ['Casse-briques', 'breaker'], motus: ['Mot du jour', 'motus'],
 };
-export const PERM_MAX = Infinity; // bonus permanent des gains gratuits : sans plafond
-// plafonds des autres bonus permanents : intérêts du coffre (+100 % → 10 %/jour au lieu de 5 %), vente des bananes (+100 %)
-export const PERM_CAP = { vault: 1, sell: 1 };
 export const TICKETS = { banane: ['Banane Express', 10], singe: ['Singe d\'Or', 100], tresor: ['Trésor de la Jungle', 1000] };
 
-// Caisses. theme : std (classiques), cos (cosmétiques), risk (va-tout), farm (fermier)
-// k = multiplicateur des gains en Brundles ; perm = bonus permanent du lot mythique (classiques) ;
-// tk = tickets à gratter des lots communs et rares (caisses pas chères) : [ticket, nombre commun, nombre rare]
+// Plafonds des bonus permanents (gains gratuits : sans plafond)
+export const PERM_MAX = Infinity;
+export const PERM_CAP = { vault: 1, sell: 1, wheel: 3, chalp: 2 };
+export const PERM_LABEL = { perm: 'gains gratuits', vault: 'intérêts du coffre', sell: 'vente des bananes', wheel: 'roue du jour', chalp: 'défis de la jungle' };
+
+// Empilement des boosts temporaires : le plus fort compte en entier, le 2e aux 3/4, le 3e au quart, puis de moins en moins.
+// Deux ×3 → ×4,5 ; trois ×3 → ×5 ; plafonds par type.
+export const STACK_W = [1, 0.75, 0.25, 0.125, 0.0625];
+export const STACK_CAP = { all: 6, chal: 3, sell: 3 };
+export function stackMult(ms, cap = Infinity) {
+  const s = ms.filter((m) => m > 1).sort((a, b) => b - a);
+  let t = 1;
+  s.forEach((m, i) => { t += (m - 1) * (i < STACK_W.length ? STACK_W[i] : STACK_W.at(-1) / 2 ** (i - STACK_W.length + 1)); });
+  return Math.min(cap, Math.round(t * 100) / 100);
+}
+
+/* ------------------------------------------------------------------------------------------------ */
+// Valeur d'un cosmétique (prix boutique ; objets exclusifs : valeur fixe selon leur rareté)
+const LOOT_VALUE = { common: 30000, rare: 300000, epic: 1500000, legend: 6000000, mythic: 30000000 };
+export const itemValue = (it) => (it && (it.price || LOOT_VALUE[it.loot])) || 0;
+
+const H = (m) => m / 60; // minutes → heures
+// x = Brundles en multiple du prix ; h = durée (heures) ; v = bonus permanent
 export const CASES = [
-  // grp : A = petites caisses (Brundles, tickets, boosts temporaires courts), B = moyennes (boosts longs + premiers
-  // bonus permanents), C = grandes (presque que des bonus permanents, plus aucun boost temporaire).
-  // ev (A et B) = part du prix rendue en moyenne en Brundles (tickets compris)
-  // f (C) = taille des bonus permanents [gains gratuits, coffre et vente des bananes, graines d'or] par rapport à la Jungle
-  { id: 'cacahuete', grp: 'A', theme: 'std', name: 'Caisse Cacahuète', price: 500, ev: 0.55, tk: ['singe', 2, 6], hue: '#c9a26b', desc: 'Petits lots, boosts d\'une heure, gros lots très rares.' },
-  { id: 'coco', grp: 'A', theme: 'std', name: 'Caisse Noix de coco', price: 1000, ev: 0.58, tk: ['singe', 4, 12], hue: '#b07a4a', desc: 'Brundles, tickets Singe d\'Or, boosts courts.' },
-  { id: 'mangue', grp: 'A', theme: 'std', name: 'Caisse Mangue', price: 2500, ev: 0.62, tk: ['tresor', 1, 4], hue: '#ffa53d', desc: 'Premiers tickets Trésor, tours de roue bonus.' },
-  { id: 'banane', grp: 'A', theme: 'std', name: 'Caisse Banane', price: 5000, ev: 0.65, tk: ['tresor', 2, 8], hue: '#f5c542', desc: 'Boosts de mini-jeux et de défis.' },
-  { id: 'ananas', grp: 'A', theme: 'std', name: 'Caisse Ananas', price: 10000, ev: 0.68, tk: ['tresor', 5, 15], hue: '#e6d14a', desc: 'Les boosts temporaires les plus longs des petites caisses.' },
-  { id: 'papaye', grp: 'B', theme: 'std', name: 'Caisse Papaye', price: 20000, ev: 0.62, tk: ['tresor', 10, 30], hue: '#ff7a59', desc: 'Boosts d\'une journée et premiers bonus permanents.' },
-  { id: 'liane', grp: 'B', theme: 'std', name: 'Caisse Liane', price: 30000, ev: 0.62, tk: ['tresor', 15, 45], hue: '#5fc46a', desc: 'Boosts de plusieurs jours, bonus permanents plus fréquents.' },
-  { id: 'jungle', grp: 'C', theme: 'std', name: 'Caisse Jungle', price: 50000, f: [1, 1, 1], k: 1, hue: '#3ddc84', desc: 'Bonus permanents : gains gratuits, intérêts du coffre, ferme.' },
-  { id: 'singe', grp: 'C', theme: 'std', name: 'Caisse Singe d\'Or', price: 500000, f: [3, 4, 3], k: 1, hue: '#ff8a3d', desc: 'Bonus permanents 3 à 4 fois plus gros que la Jungle.' },
-  { id: 'roi', grp: 'C', theme: 'std', name: 'Caisse du Roi', price: 5000000, f: [8, 12, 8], k: 1, hue: '#c77dff', desc: 'Les plus gros bonus permanents : jusqu\'à +40 % de gains gratuits, +100 % d\'intérêts.' },
-  { id: 'cosmo', theme: 'cos', name: 'Caisse Cosmétique', price: 50000, k: 1, hue: '#ff6fb5', desc: 'Que des cosmétiques exclusifs (avec leurs bonus). Doublons remboursés.' },
-  { id: 'vatout', theme: 'risk', name: 'Caisse Va-tout', price: 250000, k: 0.85, hue: '#ff4d5e', desc: 'Souvent presque rien… mais jusqu\'à ×127 le prix.' },
-  { id: 'fermier', theme: 'farm', name: 'Caisse du Fermier', price: 100000, k: 1, hue: '#9bd34a', desc: 'Graines d\'or, vitesse de construction, boosts de récolte.' },
+  /* ---------------- Fermier ---------------- */
+  { id: 'panier', fam: 'farm', name: 'Panier du Fermier', price: 2000, hue: '#a9d65a', desc: 'Boosts de récolte de quelques minutes à 2 h.',
+    pool: [
+      { r: 'blue', w: 2, kind: 'br', x: 0.35 }, { r: 'blue', w: 2, kind: 'br', x: 0.6 }, { r: 'blue', w: 3, kind: 'farm', m: 1.5, h: H(15) }, { r: 'blue', w: 2, kind: 'boost', game: 'sell', m: 1.25, h: H(30) },
+      { r: 'purple', w: 1, kind: 'br', x: 1.3 }, { r: 'purple', w: 2, kind: 'farm', m: 2, h: H(30) }, { r: 'purple', w: 2, kind: 'farm', m: 1.5, h: 1 }, { r: 'purple', w: 1, kind: 'boost', game: 'sell', m: 1.5, h: 1 },
+      { r: 'pink', w: 1, kind: 'br', x: 3 }, { r: 'pink', w: 2, kind: 'farm', m: 2, h: 2 }, { r: 'pink', w: 1, kind: 'rush' },
+      { r: 'red', w: 1, kind: 'br', x: 8 }, { r: 'red', w: 1, kind: 'farm', m: 3, h: 1 }, { r: 'red', w: 1, kind: 'farm', m: 2, h: 4 },
+      { r: 'gold', w: 1, kind: 'br', x: 30 }, { r: 'gold', w: 1, kind: 'farm', m: 3, h: 4 },
+    ] },
+  { id: 'brouette', fam: 'farm', name: 'Brouette du Fermier', price: 10000, hue: '#7fbf3f', desc: 'Boosts de récolte et de vente de quelques heures à 12 h.',
+    pool: [
+      { r: 'blue', w: 2, kind: 'br', x: 0.35 }, { r: 'blue', w: 2, kind: 'br', x: 0.6 }, { r: 'blue', w: 3, kind: 'farm', m: 1.5, h: 1 }, { r: 'blue', w: 2, kind: 'boost', game: 'sell', m: 1.25, h: 2 },
+      { r: 'purple', w: 1, kind: 'br', x: 1.3 }, { r: 'purple', w: 2, kind: 'farm', m: 2, h: 2 }, { r: 'purple', w: 2, kind: 'farm', m: 1.5, h: 4 }, { r: 'purple', w: 1, kind: 'boost', game: 'sell', m: 1.5, h: 4 }, { r: 'purple', w: 1, kind: 'rush' },
+      { r: 'pink', w: 1, kind: 'br', x: 3 }, { r: 'pink', w: 2, kind: 'farm', m: 2, h: 6 }, { r: 'pink', w: 1, kind: 'farm', m: 3, h: 2 }, { r: 'pink', w: 1, kind: 'boost', game: 'sell', m: 2, h: 6 },
+      { r: 'red', w: 1, kind: 'br', x: 8 }, { r: 'red', w: 1, kind: 'farm', m: 2, h: 12 }, { r: 'red', w: 1, kind: 'farm', m: 3, h: 6 },
+      { r: 'gold', w: 1, kind: 'br', x: 30 }, { r: 'gold', w: 1, kind: 'farm', m: 3, h: 12 }, { r: 'gold', w: 1, kind: 'seed', n: 1 },
+    ] },
+  { id: 'grange', fam: 'farm', name: 'Grange du Fermier', price: 20000, hue: '#4f9d2a', desc: 'Boosts longs, graines d\'or, vitesse de construction.',
+    pool: [
+      { r: 'blue', w: 2, kind: 'br', x: 0.35 }, { r: 'blue', w: 2, kind: 'br', x: 0.6 }, { r: 'blue', w: 3, kind: 'farm', m: 1.5, h: 6 }, { r: 'blue', w: 2, kind: 'boost', game: 'sell', m: 1.5, h: 6 },
+      { r: 'purple', w: 1, kind: 'br', x: 1.3 }, { r: 'purple', w: 2, kind: 'farm', m: 2, h: 12 }, { r: 'purple', w: 1, kind: 'boost', game: 'sell', m: 1.5, h: 24 }, { r: 'purple', w: 1, kind: 'speed', s: 0.01 }, { r: 'purple', w: 1, kind: 'rush' },
+      { r: 'pink', w: 2, kind: 'farm', m: 2, h: 48 }, { r: 'pink', w: 1, kind: 'farm', m: 3, h: 12 }, { r: 'pink', w: 1, kind: 'seed', n: 1 }, { r: 'pink', w: 1, kind: 'sell', v: 0.02 },
+      { r: 'red', w: 1, kind: 'farm', m: 3, h: 48 }, { r: 'red', w: 1, kind: 'seed', n: 2 }, { r: 'red', w: 1, kind: 'speed', s: 0.05 },
+      { r: 'gold', w: 1, kind: 'seed', n: 5 }, { r: 'gold', w: 1, kind: 'farm', m: 3, h: 168 }, { r: 'gold', w: 1, kind: 'speed', s: 0.1 },
+    ] },
+  /* ---------------- Mini-jeux (boosts empilables) ---------------- */
+  { id: 'sachet', fam: 'mini', name: 'Sachet du Joueur', price: 2000, hue: '#5fd0ff', desc: 'Boosts de mini-jeux et de défis de 15 min à 3 h.',
+    pool: [
+      { r: 'blue', w: 2, kind: 'br', x: 0.35 }, { r: 'blue', w: 2, kind: 'br', x: 0.6 }, { r: 'blue', w: 3, kind: 'boost', game: 'all', m: 1.5, h: H(15) }, { r: 'blue', w: 2, kind: 'boost', game: 'chal', m: 1.5, h: H(30) },
+      { r: 'purple', w: 1, kind: 'br', x: 1.3 }, { r: 'purple', w: 2, kind: 'boost', game: 'all', m: 2, h: H(15) }, { r: 'purple', w: 2, kind: 'boost', game: 'all', m: 1.5, h: 1 }, { r: 'purple', w: 1, kind: 'spin', n: 1 },
+      { r: 'pink', w: 1, kind: 'br', x: 3 }, { r: 'pink', w: 2, kind: 'boost', game: 'all', m: 2, h: 1 }, { r: 'pink', w: 1, kind: 'boost', game: 'all', m: 3, h: H(15) }, { r: 'pink', w: 1, kind: 'boost', game: 'chal', m: 2, h: 1 },
+      { r: 'red', w: 1, kind: 'br', x: 8 }, { r: 'red', w: 1, kind: 'boost', game: 'all', m: 3, h: 1 }, { r: 'red', w: 1, kind: 'spin', n: 2 },
+      { r: 'gold', w: 1, kind: 'br', x: 30 }, { r: 'gold', w: 1, kind: 'boost', game: 'all', m: 3, h: 3 },
+    ] },
+  { id: 'boite', fam: 'mini', name: 'Boîte du Joueur', price: 10000, hue: '#2fb1ff', desc: 'Boosts de mini-jeux et de défis de 1 h à 12 h, tours de roue.',
+    pool: [
+      { r: 'blue', w: 2, kind: 'br', x: 0.35 }, { r: 'blue', w: 2, kind: 'br', x: 0.6 }, { r: 'blue', w: 3, kind: 'boost', game: 'all', m: 1.5, h: 1 }, { r: 'blue', w: 2, kind: 'boost', game: 'chal', m: 1.5, h: 2 },
+      { r: 'purple', w: 1, kind: 'br', x: 1.3 }, { r: 'purple', w: 2, kind: 'boost', game: 'all', m: 2, h: 2 }, { r: 'purple', w: 2, kind: 'boost', game: 'all', m: 1.5, h: 6 }, { r: 'purple', w: 1, kind: 'spin', n: 1 },
+      { r: 'pink', w: 1, kind: 'br', x: 3 }, { r: 'pink', w: 2, kind: 'boost', game: 'all', m: 2, h: 6 }, { r: 'pink', w: 1, kind: 'boost', game: 'all', m: 3, h: 2 }, { r: 'pink', w: 1, kind: 'boost', game: 'chal', m: 2, h: 6 }, { r: 'pink', w: 1, kind: 'spin', n: 2 },
+      { r: 'red', w: 1, kind: 'br', x: 8 }, { r: 'red', w: 1, kind: 'boost', game: 'all', m: 3, h: 6 }, { r: 'red', w: 1, kind: 'boost', game: 'all', m: 2, h: 12 }, { r: 'red', w: 1, kind: 'spin', n: 3 },
+      { r: 'gold', w: 1, kind: 'br', x: 30 }, { r: 'gold', w: 1, kind: 'boost', game: 'all', m: 3, h: 12 }, { r: 'gold', w: 1, kind: 'perm', v: 0.01 },
+    ] },
+  { id: 'malle', fam: 'mini', name: 'Malle du Joueur', price: 20000, hue: '#1f6fd6', desc: 'Boosts longs (jusqu\'à 7 jours) et bonus permanents.',
+    pool: [
+      { r: 'blue', w: 2, kind: 'br', x: 0.35 }, { r: 'blue', w: 2, kind: 'br', x: 0.6 }, { r: 'blue', w: 3, kind: 'boost', game: 'all', m: 1.5, h: 6 }, { r: 'blue', w: 2, kind: 'boost', game: 'chal', m: 1.5, h: 6 },
+      { r: 'purple', w: 1, kind: 'br', x: 1.3 }, { r: 'purple', w: 2, kind: 'boost', game: 'all', m: 2, h: 12 }, { r: 'purple', w: 1, kind: 'boost', game: 'chal', m: 2, h: 12 }, { r: 'purple', w: 1, kind: 'spin', n: 2 },
+      { r: 'pink', w: 2, kind: 'boost', game: 'all', m: 3, h: 12 }, { r: 'pink', w: 1, kind: 'boost', game: 'all', m: 2, h: 48 }, { r: 'pink', w: 1, kind: 'perm', v: 0.005 },
+      { r: 'red', w: 1, kind: 'boost', game: 'all', m: 3, h: 48 }, { r: 'red', w: 1, kind: 'perm', v: 0.015 }, { r: 'red', w: 1, kind: 'spin', n: 5 },
+      { r: 'gold', w: 1, kind: 'boost', game: 'all', m: 3, h: 168 }, { r: 'gold', w: 1, kind: 'perm', v: 0.04 },
+    ] },
+  /* ---------------- Cosmétiques (contenu calculé plus bas) ---------------- */
+  { id: 'elegance', fam: 'cos', name: 'Coffret Élégance', min: 1, max: 100000, hue: '#ff9ad5', desc: 'Les cosmétiques jusqu\'à 100 000.' },
+  { id: 'prestige', fam: 'cos', name: 'Coffret Prestige', min: 100001, max: 2000000, hue: '#ff6fb5', desc: 'De 100 000 à 2 millions, et des exclusifs.' },
+  { id: 'legende', fam: 'cos', name: 'Coffret Légende', min: 1500000, max: Infinity, hue: '#d4357f', desc: 'Les plus chers et les exclusifs les plus rares.' },
+  /* ---------------- Brundles ---------------- */
+  { id: 'banco', fam: 'br', name: 'Caisse Banco', price: 10000, ev: 0.95, hue: '#ffb03d', desc: 'Gros risque : jusqu\'à ×40.',
+    pool: [
+      { r: 'blue', w: 3, kind: 'br', x: 0.15 }, { r: 'blue', w: 3, kind: 'br', x: 0.3 }, { r: 'blue', w: 2, kind: 'br', x: 0.45 },
+      { r: 'purple', w: 2, kind: 'br', x: 1 }, { r: 'purple', w: 1, kind: 'br', x: 1.8 }, { r: 'pink', w: 1, kind: 'br', x: 3.5 }, { r: 'red', w: 1, kind: 'br', x: 8 }, { r: 'gold', w: 1, kind: 'br', x: 40 },
+    ] },
+  { id: 'jackpot', fam: 'br', name: 'Caisse Jackpot', price: 100000, ev: 0.95, hue: '#ff7a3d', desc: 'Très gros risque : jusqu\'à ×70.',
+    pool: [
+      { r: 'blue', w: 3, kind: 'br', x: 0.05 }, { r: 'blue', w: 3, kind: 'br', x: 0.1 }, { r: 'blue', w: 2, kind: 'br', x: 0.2 },
+      { r: 'purple', w: 1, kind: 'br', x: 0.8 }, { r: 'pink', w: 1, kind: 'br', x: 4 }, { r: 'red', w: 1, kind: 'br', x: 15 }, { r: 'gold', w: 1, kind: 'br', x: 70 },
+    ] },
+  { id: 'allin', fam: 'br', name: 'Caisse All-in', price: 1000000, ev: 0.95, hue: '#ff4d5e', desc: 'Presque toujours perdu… jusqu\'à ×150.',
+    pool: [
+      { r: 'blue', w: 3, kind: 'br', x: 0 }, { r: 'blue', w: 3, kind: 'br', x: 0.03 }, { r: 'blue', w: 2, kind: 'br', x: 0.08 },
+      { r: 'purple', w: 1, kind: 'br', x: 0.4 }, { r: 'pink', w: 1, kind: 'br', x: 2.5 }, { r: 'red', w: 1, kind: 'br', x: 15 }, { r: 'gold', w: 1, kind: 'br', x: 150 },
+    ] },
+  { id: 'qod', fam: 'br', name: 'Quitte ou double', price: 50000, k: 1, hue: '#c0c9d0', desc: '51 % : rien. 49 % : le double.', odds: { blue: 51000, red: 49000 },
+    pool: [{ r: 'blue', w: 1, kind: 'br', x: 0 }, { r: 'red', w: 1, kind: 'br', x: 2 }] },
+  /* ---------------- Royales : uniquement des bonus permanents ---------------- */
+  { id: 'baron', fam: 'royal', name: 'Coffre du Baron', price: 50000, f: 1, hue: '#c9a227', desc: 'Bonus permanents sur tes gains.' },
+  { id: 'comte', fam: 'royal', name: 'Coffre du Comte', price: 200000, f: 3, hue: '#d4a017', desc: 'Bonus permanents 3 fois plus gros.' },
+  { id: 'duc', fam: 'royal', name: 'Coffre du Duc', price: 1000000, f: 10, hue: '#e8b923', desc: 'Bonus permanents 10 fois plus gros.' },
+  { id: 'prince', fam: 'royal', name: 'Coffre du Prince', price: 5000000, f: 35, hue: '#f5c542', desc: 'Bonus permanents 35 fois plus gros.' },
+  { id: 'roisinge', fam: 'royal', name: 'Coffre du Roi Singe', price: 25000000, f: 120, hue: '#fff0a8', desc: 'Les plus gros bonus permanents du casino.' },
+];
+export const FAMILIES = [
+  ['farm', 'Caisses du Fermier', 'Boosts temporaires de la ferme (récolte et vente), chantiers terminés ; graines d\'or et vitesse de construction dans la Grange.'],
+  ['mini', 'Caisses Mini-jeux', 'Boosts de tous les mini-jeux et des défis. Ils s\'empilent : deux ×3 donnent ×4,5, trois ×5, jusqu\'à ×6.'],
+  ['cos', 'Coffrets Cosmétiques', 'Les cosmétiques de la boutique (un peu plus cher en moyenne que de les acheter, mais avec une chance de gros lot). Déjà possédé : remboursé à sa valeur boutique.'],
+  ['br', 'Caisses Brundles', 'Que des Brundles : gros risque, gros gain. Et le quitte ou double.'],
+  ['royal', 'Coffres Royaux', 'Uniquement des bonus permanents : intérêts du coffre, roue du jour, défis, gains gratuits, vente des bananes, graines d\'or. Toujours un bonus à la clé.'],
 ];
 export const caseById = (id) => CASES.find((c) => c.id === id);
 
-// Échelle de prix des caisses classiques : 0 à 500 Brundles, 1 à partir de 50 000 (échelle logarithmique).
-// Plus la caisse est bon marché, plus les lots Épique / Légendaire / Mythique sont rares et plus les boosts sont modestes.
-export const scaleOf = (c) => (c.theme === 'std' ? Math.max(0, Math.min(1, (Math.log10(c.price) - Math.log10(500)) / 2)) : 1);
-const lerp = (a, b, t) => Math.round(a + (b - a) * t);
-// Poids des raretés (sur 100 000) d'une caisse
-export function oddsOf(c) {
-  const t = scaleOf(c);
-  const o = { purple: lerp(12000, RARITIES.purple.w, t), pink: lerp(1200, RARITIES.pink.w, t), red: lerp(120, RARITIES.red.w, t), gold: lerp(30, RARITIES.gold.w, t) };
-  o.blue = R_TOTAL - o.purple - o.pink - o.red - o.gold;
-  return o;
+// Coffres royaux : bonus de base (×f selon le coffre)
+const ROYAL = {
+  blue: [['vault', 0.01], ['wheel', 0.05], ['chalp', 0.03], ['perm', 0.003], ['sell', 0.02]],
+  purple: [['vault', 0.025], ['wheel', 0.12], ['chalp', 0.08], ['perm', 0.008], ['sell', 0.05], ['seed', 1]],
+  pink: [['vault', 0.06], ['wheel', 0.3], ['chalp', 0.2], ['perm', 0.02], ['seed', 2]],
+  red: [['vault', 0.15], ['wheel', 0.75], ['chalp', 0.5], ['perm', 0.05], ['seed', 5]],
+  gold: [['vault', 0.4], ['wheel', 2], ['chalp', 1.2], ['perm', 0.12], ['seed', 12]],
+};
+const r4 = (x) => Math.round(x * 10000) / 10000;
+function buildRoyal(c) {
+  const seedF = Math.ceil(c.f ** 0.6);
+  return R_ORDER.flatMap((r) => ROYAL[r].map(([kind, v]) => (kind === 'seed' ? { r, w: 1, kind, n: v * seedF } : { r, w: 1, kind, v: r4(Math.min(PERM_CAP[kind] ?? Infinity, v * c.f)) })));
 }
-export const CASE_GROUPS = [['std', 'Caisses classiques'], ['theme', 'Caisses à thème']];
-
-// Contenu de chaque caisse. kind : br (Brundles, x × prix × k), scratch (tickets à gratter), boost (tous les mini-jeux ×m),
-// farm (production ×m pendant h heures), seed (graines d'or), speed (vitesse de construction permanente), rush (chantiers finis),
-// perm (bonus permanent des gains gratuits), cos (cosmétique exclusif de la rareté)
+// Coffrets cosmétiques : chaque objet de la gamme de prix, avec une chance inversement proportionnelle à sa valeur.
+// Prix du coffret = valeur moyenne d'un tirage ÷ 0,88 (un peu plus cher en moyenne que d'acheter en boutique).
+function buildCos(c) {
+  const items = ITEMS.filter((it) => { const v = itemValue(it); return v >= c.min && v <= c.max; });
+  const inv = items.reduce((a, it) => a + 1 / itemValue(it), 0);
+  const ev = items.length / inv;
+  c.price = c.price || Math.round(ev / 0.88 / 1000) * 1000;
+  c.k = 1;
+  return items.map((it) => {
+    const p = (1 / itemValue(it)) / inv;
+    const r = p >= 0.1 ? 'blue' : p >= 0.03 ? 'purple' : p >= 0.01 ? 'pink' : p >= 0.003 ? 'red' : 'gold';
+    return { r, w: Math.round(1e9 * p), kind: 'cos', id: it.id };
+  });
+}
+// Contenu d'une caisse
+const POOLS = new Map();
 export function poolOf(c) {
-  if (c.theme === 'cos') return [
-    { r: 'blue', w: 3, kind: 'cos' }, { r: 'blue', w: 1, kind: 'br', x: 0.25 }, { r: 'blue', w: 1, kind: 'br', x: 0.45 },
-    { r: 'purple', w: 1, kind: 'cos' }, { r: 'pink', w: 1, kind: 'cos' }, { r: 'red', w: 1, kind: 'cos' }, { r: 'gold', w: 1, kind: 'cos' },
-  ];
-  if (c.theme === 'risk') return [
-    { r: 'blue', w: 3, kind: 'br', x: 0.05 }, { r: 'blue', w: 3, kind: 'br', x: 0.15 }, { r: 'blue', w: 2, kind: 'br', x: 0.3 },
-    { r: 'purple', w: 2, kind: 'br', x: 1 }, { r: 'purple', w: 1, kind: 'br', x: 2 },
-    { r: 'pink', w: 2, kind: 'br', x: 6 }, { r: 'pink', w: 1, kind: 'br', x: 10 },
-    { r: 'red', w: 1, kind: 'br', x: 25 },
-    { r: 'gold', w: 1, kind: 'br', x: 150 },
-  ];
-  if (c.theme === 'farm') return [
-    { r: 'blue', w: 2, kind: 'br', x: 0.4 }, { r: 'blue', w: 2, kind: 'farm', m: 1.5, h: 6 }, { r: 'blue', w: 1, kind: 'speed', s: 0.01 },
-    { r: 'purple', w: 2, kind: 'farm', m: 2, h: 8 }, { r: 'purple', w: 1, kind: 'speed', s: 0.02 }, { r: 'purple', w: 1, kind: 'br', x: 1.5 },
-    { r: 'pink', w: 1, kind: 'farm', m: 2, h: 24 }, { r: 'pink', w: 1, kind: 'rush' }, { r: 'pink', w: 1, kind: 'speed', s: 0.05 },
-    { r: 'red', w: 2, kind: 'seed', n: 1 }, { r: 'red', w: 1, kind: 'farm', m: 3, h: 24 },
-    { r: 'gold', w: 1, kind: 'seed', n: 3 }, { r: 'gold', w: 1, kind: 'speed', s: 0.15 },
-  ];
-  const tk = c.tk, t = scaleOf(c), [fP, fV, fN] = c.f || [1, 1, 1];
-  if (c.grp === 'A') {
-    // petites caisses : de quoi profiter tout de suite (Brundles, tickets, boosts de quelques heures, tours de roue)
-    const ta = Math.max(0, Math.min(1, (Math.log10(c.price) - Math.log10(500)) / Math.log10(20))); // 0 à 500, 1 à 10 000
-    return [
-      { r: 'blue', w: 3, kind: 'br', x: 0.3 }, { r: 'blue', w: 3, kind: 'br', x: 0.5 }, { r: 'blue', w: 2, kind: 'br', x: 0.7 },
-      { r: 'blue', w: 2, kind: 'scratch', t: tk[0], n: tk[1] },
-      { r: 'blue', w: 2, kind: 'boost', game: 'all', m: 1.5, h: 1 }, { r: 'blue', w: 1, kind: 'farm', m: 1.5, h: 1 }, { r: 'blue', w: 1, kind: 'boost', game: 'chal', m: 1.5, h: 1 },
-      { r: 'purple', w: 3, kind: 'br', x: 1.2 }, { r: 'purple', w: 2, kind: 'scratch', t: tk[0], n: tk[2] },
-      { r: 'purple', w: 2, kind: 'boost', game: 'all', m: 1.5, h: Math.round(1 + 2 * ta) }, { r: 'purple', w: 1, kind: 'farm', m: 1.5, h: Math.round(1 + 3 * ta) },
-      { r: 'pink', w: 2, kind: 'br', x: 4 }, { r: 'pink', w: 1, kind: 'boost', game: 'all', m: 2, h: Math.round(2 + 4 * ta) },
-      { r: 'pink', w: 1, kind: 'boost', game: 'chal', m: 2, h: Math.round(2 + 10 * ta) }, { r: 'pink', w: 1, kind: 'spin', n: 1 },
-      { r: 'red', w: 2, kind: 'br', x: 12 }, { r: 'red', w: 1, kind: 'boost', game: 'all', m: 3, h: Math.round(6 + 18 * ta) }, { r: 'red', w: 1, kind: 'spin', n: 3 },
-      { r: 'gold', w: 1, kind: 'br', x: 50 }, { r: 'gold', w: 1, kind: 'perm', v: Math.round((0.001 + 0.004 * ta) * 1000) / 1000 },
-    ];
-  }
-  if (c.grp === 'B') {
-    // moyennes : boosts longs (1 à 3 jours) et premiers bonus permanents
-    return [
-      { r: 'blue', w: 3, kind: 'br', x: 0.3 }, { r: 'blue', w: 3, kind: 'br', x: 0.5 }, { r: 'blue', w: 2, kind: 'br', x: 0.7 },
-      { r: 'blue', w: 2, kind: 'scratch', t: tk[0], n: tk[1] },
-      { r: 'blue', w: 2, kind: 'boost', game: 'all', m: 1.5, h: 4 }, { r: 'blue', w: 1, kind: 'farm', m: 1.5, h: 6 },
-      { r: 'purple', w: 2, kind: 'br', x: 1.5 }, { r: 'purple', w: 2, kind: 'boost', game: 'all', m: 2, h: 12 }, { r: 'purple', w: 1, kind: 'farm', m: 2, h: 12 },
-      { r: 'purple', w: 1, kind: 'boost', game: 'chal', m: 2, h: 24 }, { r: 'purple', w: 1, kind: 'scratch', t: tk[0], n: tk[2] },
-      { r: 'pink', w: 1, kind: 'boost', game: 'all', m: 3, h: 24 }, { r: 'pink', w: 1, kind: 'farm', m: 2, h: 48 }, { r: 'pink', w: 1, kind: 'spin', n: 3 },
-      { r: 'pink', w: 1, kind: 'perm', v: 0.002 }, { r: 'pink', w: 1, kind: 'vault', v: 0.01 },
-      { r: 'red', w: 1, kind: 'boost', game: 'all', m: 3, h: 72 }, { r: 'red', w: 1, kind: 'perm', v: 0.005 }, { r: 'red', w: 1, kind: 'vault', v: 0.02 }, { r: 'red', w: 1, kind: 'seed', n: 1 },
-      { r: 'gold', w: 1, kind: 'br', x: 50 }, { r: 'gold', w: 1, kind: 'perm', v: 0.015 }, { r: 'gold', w: 1, kind: 'vault', v: 0.05 },
-    ];
-  }
-  // grandes caisses : bonus permanents (aucun boost temporaire). Les communs restent surtout des Brundles.
-  const P = (x) => Math.round(x * fP * 10000) / 10000, V = (x) => Math.round(x * fV * 10000) / 10000;
-  return [
-    { r: 'blue', w: 3, kind: 'br', x: 0.4 }, { r: 'blue', w: 3, kind: 'br', x: 0.6 },
-    { r: 'blue', w: 1, kind: 'perm', v: P(0.001) }, { r: 'blue', w: 1, kind: 'vault', v: V(0.005) }, { r: 'blue', w: 1, kind: 'sell', v: V(0.01) },
-    { r: 'purple', w: 2, kind: 'perm', v: P(0.003) }, { r: 'purple', w: 2, kind: 'vault', v: V(0.01) }, { r: 'purple', w: 1, kind: 'sell', v: V(0.03) },
-    { r: 'purple', w: 1, kind: 'seed', n: fN }, { r: 'purple', w: 1, kind: 'br', x: 1.5 },
-    { r: 'pink', w: 2, kind: 'perm', v: P(0.008) }, { r: 'pink', w: 1, kind: 'vault', v: V(0.03) }, { r: 'pink', w: 1, kind: 'seed', n: 2 * fN }, { r: 'pink', w: 1, kind: 'speed', s: Math.min(0.2, 0.02 * fN) },
-    { r: 'red', w: 2, kind: 'perm', v: P(0.02) }, { r: 'red', w: 1, kind: 'vault', v: V(0.06) }, { r: 'red', w: 1, kind: 'seed', n: 4 * fN },
-    { r: 'gold', w: 1, kind: 'perm', v: P(0.05) }, { r: 'gold', w: 1, kind: 'vault', v: Math.min(1, V(0.15)) }, { r: 'gold', w: 1, kind: 'br', x: 60 },
-  ];
+  if (!POOLS.has(c.id)) POOLS.set(c.id, c.fam === 'cos' ? buildCos(c) : c.fam === 'royal' ? buildRoyal(c) : c.pool);
+  return POOLS.get(c.id);
 }
-const DUP_X = { blue: 0.5, purple: 1.5, pink: 5, red: 15, gold: 60 }; // cosmétique déjà possédé → Brundles
-const COS_TIER = { common: 'blue', rare: 'purple', epic: 'pink', legend: 'red', mythic: 'gold' };
-export const brAmount = (c, x) => Math.round(c.price * c.k * x);
-// Caisses classiques : k calculé pour que la caisse rende « ev » du prix en moyenne (Brundles + tickets à 98 %)
-for (const c of CASES) {
-  if (c.theme !== 'std' || !c.ev) continue;
-  const pool = poolOf(c), odds = oddsOf(c), ws = (r) => pool.filter((it) => it.r === r).reduce((a, it) => a + it.w, 0);
-  let br = 0, tick = 0;
-  for (const it of pool) {
-    const ch = (odds[it.r] / R_TOTAL) * (it.w / ws(it.r));
-    if (it.kind === 'br') br += ch * it.x * c.price;
-    else if (it.kind === 'scratch') tick += ch * TICKETS[it.t][1] * it.n * 0.98;
-  }
-  c.k = Math.round(((c.ev * c.price - tick) / br) * 1000) / 1000;
-}
-const tierItems = (c, r) => poolOf(c).filter((it) => it.r === r);
+export const oddsOf = (c) => c.odds || DEFAULT_ODDS;
 const wsum = (list) => list.reduce((a, it) => a + it.w, 0);
-// Probabilité d'un lot du contenu
-export const chanceOf = (c, it) => (oddsOf(c)[it.r] / R_TOTAL) * (it.w / wsum(tierItems(c, it.r)));
-// Valeur moyenne en Brundles (tickets à gratter comptés à leur valeur de jeu, 98 %), hors boosts, cosmétiques, graines…
-export const valueOf = (c) => poolOf(c).reduce((a, it) => a + chanceOf(c, it) * (it.kind === 'br' ? brAmount(c, it.x) : it.kind === 'scratch' ? TICKETS[it.t][1] * it.n * 0.98 : 0), 0);
+const tierItems = (c, r) => poolOf(c).filter((it) => it.r === r);
+// Probabilité d'un lot
+export function chanceOf(c, it) {
+  if (c.fam === 'cos') return it.w / wsum(poolOf(c));
+  return (oddsOf(c)[it.r] / R_TOTAL) * (it.w / wsum(tierItems(c, it.r)));
+}
+export const brAmount = (c, x) => Math.round(c.price * (c.k ?? 1) * x);
+// Valeur moyenne en Brundles d'un tirage (Brundles + valeur boutique des cosmétiques)
+export const valueOf = (c) => poolOf(c).reduce((a, it) => a + chanceOf(c, it) * (it.kind === 'br' ? brAmount(c, it.x) : it.kind === 'cos' ? itemValue(ITEMS.find((x) => x.id === it.id)) : 0), 0);
+// k des caisses Brundles calculé pour rendre « ev » du prix en moyenne
+for (const c of CASES) {
+  if (c.fam === 'cos') poolOf(c);
+  if (c.ev) { c.k = 1; c.k = Math.round((c.ev * c.price / valueOf(c)) * 10000) / 10000; }
+}
 
 function pickWeighted(list, rnd = randInt) {
   let n = rnd(wsum(list));
   for (const it of list) { if (n < it.w) return it; n -= it.w; }
   return list[list.length - 1];
 }
-function rollRarity(c, rnd = randInt) {
+function rollItem(c, rnd = randInt) {
+  if (c.fam === 'cos') return pickWeighted(poolOf(c), rnd);
   const o = oddsOf(c);
-  let n = rnd(R_TOTAL);
-  for (const r of R_ORDER) { if (n < o[r]) return r; n -= o[r]; }
-  return 'blue';
+  let n = rnd(R_TOTAL), r = 'blue';
+  for (const k of R_ORDER) { if (n < (o[k] || 0)) { r = k; break; } n -= o[k] || 0; }
+  return pickWeighted(tierItems(c, r), rnd);
 }
-
-// Tirage d'un lot concret. p = profil (pour les doublons de cosmétiques et le plafond du bonus permanent) ;
-// sans p (remplissage de la bande animée), on tire simplement un lot plausible.
-export function draw(c, p = null, rnd = randInt) {
-  const r = rollRarity(c, rnd);
-  return concrete(c, pickWeighted(tierItems(c, r), rnd), p, rnd);
+// Tirage d'un lot concret. p = profil (doublons de cosmétiques, plafonds) ; sans p : lot plausible pour la bande animée.
+export const draw = (c, p = null, rnd = randInt) => concrete(c, rollItem(c, rnd), p);
+export function drawTier(c, r, rnd = randInt) {
+  const list = c.fam === 'cos' ? poolOf(c).filter((it) => it.r === r) : tierItems(c, r);
+  return list.length ? concrete(c, pickWeighted(list, rnd), null) : draw(c, null, rnd);
 }
-// Lot d'une rareté donnée (décor de la bande animée)
-export const drawTier = (c, r, rnd = randInt) => concrete(c, pickWeighted(tierItems(c, r), rnd), null, rnd);
-function concrete(c, it, p, rnd = randInt) {
+function concrete(c, it, p) {
   const d = { r: it.r, kind: it.kind };
   if (it.kind === 'br') d.amount = brAmount(c, it.x);
-  else if (it.kind === 'scratch') { d.t = it.t; d.n = it.n; }
   else if (it.kind === 'boost') { d.game = it.game; d.m = it.m; d.h = it.h; }
   else if (it.kind === 'farm') { d.m = it.m; d.h = it.h; }
-  else if (it.kind === 'seed') d.n = it.n || 1;
+  else if (it.kind === 'seed' || it.kind === 'spin') d.n = it.n;
   else if (it.kind === 'speed') {
     d.s = it.s;
-    const cur = (p && p.farm && p.farm.spd) || 0;
-    if (p && cur >= F.SPEED_MAX - 1e-9) { d.kind = 'br'; d.amount = brAmount(c, { blue: 0.5, purple: 1.5, pink: 5, gold: 60 }[it.r] || 1); d.capped = 'speed'; }
-  } else if (it.kind === 'perm') d.perm = it.v || c.perm;
-  else if (it.kind === 'vault' || it.kind === 'sell') {
+    if (p && ((p.farm && p.farm.spd) || 0) >= F.SPEED_MAX - 1e-9) { d.kind = 'perm'; d.v = r4(0.002 * (R_ORDER.indexOf(it.r) + 1)); d.capped = 'speed'; }
+  } else if (PERM_LABEL[it.kind]) {
     d.v = it.v;
-    const cur = (p && p.loot && p.loot[it.kind]) || 0;
-    if (p && cur >= PERM_CAP[it.kind] - 1e-9) { d.kind = 'br'; d.amount = brAmount(c, { blue: 0.6, purple: 1.5, pink: 5, red: 15, gold: 60 }[it.r]); d.capped = it.kind; }
-  } else if (it.kind === 'spin') d.n = it.n;
-  else if (it.kind === 'cos') {
-    const list = LOOT_ITEMS.filter((x) => COS_TIER[x.loot] === it.r);
-    const pick = list[rnd(list.length)];
-    d.cos = pick.id; d.name = pick.name; d.cat = pick.cat;
-    if (p && p.shop && p.shop.owned && p.shop.owned[pick.id]) { d.dup = true; d.amount = brAmount(c, DUP_X[it.r]); }
+    // bonus déjà au plafond : remplacé par un bonus de gains gratuits (sans plafond) de même rareté
+    if (p && PERM_CAP[it.kind] && ((p.loot && p.loot[it.kind]) || 0) >= PERM_CAP[it.kind] - 1e-9) {
+      const base = c.fam === 'royal' ? ROYAL[it.r].find((x) => x[0] === 'perm')[1] * c.f : 0.003 * (R_ORDER.indexOf(it.r) + 1);
+      d.kind = 'perm'; d.v = r4(base); d.capped = it.kind;
+    }
+  } else if (it.kind === 'cos') {
+    const item = ITEMS.find((x) => x.id === it.id);
+    d.cos = item.id; d.name = item.name; d.cat = item.cat; d.val = itemValue(item);
+    if (p && p.shop && p.shop.owned && p.shop.owned[item.id]) { d.dup = true; d.amount = d.val; }
   }
   return d;
 }
 
+/* ------------------------------------------------------------------------------------------------ */
+const fx = (m) => '×' + String(m).replace('.', ',');
+const pc = (x) => (x * 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' %';
+export const durTxt = (h) => (h < 1 ? `${Math.round(h * 60)} min` : h >= 48 && h % 24 === 0 ? `${h / 24} jours` : `${h} h`);
 // Texte d'un lot : { title, sub, icon }
 export function labelOf(d) {
-  const fx = (m) => '×' + String(m).replace('.', ',');
-  const pc = (x) => (x * 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' %';
-  const dh = (h) => (h >= 48 && h % 24 === 0 ? `${h / 24} jours` : `${h} h`);
   switch (d.kind) {
-    case 'br': return { title: Math.round(d.amount).toLocaleString('fr-FR'), sub: d.capped ? `Brundles (${{ speed: 'vitesse de construction', vault: 'bonus du coffre', sell: 'bonus de vente' }[d.capped]} au maximum)` : 'Brundles', icon: 'coin' };
+    case 'br': return { title: Math.round(d.amount).toLocaleString('fr-FR'), sub: d.amount ? 'Brundles' : 'Rien du tout', icon: 'coin' };
+    case 'scratch': return { title: `${d.n} ticket${d.n > 1 ? 's' : ''} à gratter`, sub: TICKETS[d.t][0], icon: 'scratch' };
+    case 'boost':
+      if (d.game === 'all') return { title: `${fx(d.m)} mini-jeux`, sub: `tous les mini-jeux · ${durTxt(d.h)}`, icon: 'gift' };
+      if (d.game === 'chal') return { title: `${fx(d.m)} défis`, sub: `récompenses des défis · ${durTxt(d.h)}`, icon: 'flag' };
+      if (d.game === 'sell') return { title: `Vente ${fx(d.m)}`, sub: `prix des bananes · ${durTxt(d.h)}`, icon: 'banana' };
+      return { title: `${fx(d.m)} ${BOOST_GAMES[d.game] ? BOOST_GAMES[d.game][0] : d.game}`, sub: durTxt(d.h), icon: BOOST_GAMES[d.game] ? BOOST_GAMES[d.game][1] : 'gift' };
+    case 'farm': return { title: `Récolte ${fx(d.m)}`, sub: `ferme · ${durTxt(d.h)}`, icon: 'banana' };
+    case 'rush': return { title: 'Chantiers terminés', sub: 'tous tes chantiers en cours', icon: 'bolt' };
+    case 'seed': return { title: d.n > 1 ? `${d.n} graines d'or` : 'Graine d\'or', sub: `+${5 * d.n} % de récolte, pour toujours`, icon: 'seed' };
+    case 'speed': return { title: `Chantiers −${pc(d.s)}`, sub: 'durée de construction, pour toujours', icon: 'hourglass' };
+    case 'spin': return { title: d.n > 1 ? `${d.n} tours de roue` : 'Tour de roue', sub: 'roue du jour en plus', icon: 'wheel' };
+    case 'perm': return { title: `Gains gratuits +${pc(d.v)}`, sub: d.capped ? 'pour toujours (à la place d\'un bonus au maximum)' : 'pour toujours', icon: 'star' };
     case 'vault': return { title: `Coffre +${pc(d.v)}`, sub: 'd\'intérêts, pour toujours', icon: 'vault' };
     case 'sell': return { title: `Bananes +${pc(d.v)}`, sub: 'prix de vente, pour toujours', icon: 'banana' };
-    case 'spin': return { title: d.n > 1 ? `${d.n} tours de roue` : 'Tour de roue', sub: 'roue du jour en plus', icon: 'wheel' };
-    case 'scratch': return { title: `${d.n} ticket${d.n > 1 ? 's' : ''} à gratter`, sub: `${TICKETS[d.t][0]} (${TICKETS[d.t][1].toLocaleString('fr-FR')} ${d.n > 1 ? 'chacun' : ''})`, icon: 'scratch' };
-    case 'boost': return d.game === 'all'
-      ? { title: `${fx(d.m)} mini-jeux`, sub: `tous les mini-jeux · ${dh(d.h)}`, icon: 'gift' }
-      : d.game === 'chal' ? { title: `${fx(d.m)} défis`, sub: `récompenses des défis · ${dh(d.h)}`, icon: 'flag' }
-      : { title: `${fx(d.m)} ${BOOST_GAMES[d.game] ? BOOST_GAMES[d.game][0] : d.game}`, sub: `gains du jeu · ${d.h} h`, icon: BOOST_GAMES[d.game] ? BOOST_GAMES[d.game][1] : 'gift' };
-    case 'farm': return { title: `Ferme ${fx(d.m)}`, sub: `production · ${dh(d.h)}`, icon: 'banana' };
-    case 'seed': return { title: d.n > 1 ? `${d.n} graines d'or` : 'Graine d\'or', sub: `+${5 * d.n} % de bananes, pour toujours`, icon: 'seed' };
-    case 'speed': return { title: `Chantiers −${pc(d.s)}`, sub: 'temps de construction, pour toujours', icon: 'hourglass' };
-    case 'rush': return { title: 'Chantiers terminés', sub: 'tous tes chantiers en cours, tout de suite', icon: 'bolt' };
-    case 'perm': return { title: `+${pc(d.perm)} permanent`, sub: 'sur tous les gains gratuits', icon: 'star' };
-    case 'cos': return { title: d.name, sub: d.dup ? `déjà possédé · +${Math.round(d.amount).toLocaleString('fr-FR')} Brundles` : `${COS_CAT[d.cat] || 'Cosmétique'} exclusif`, icon: { frame: 'user', title: 'medal', cardback: 'blackjack', theme: 'slots', effect: 'bolt' }[d.cat] || 'gift' };
+    case 'wheel': return { title: `Roue du jour +${pc(d.v)}`, sub: 'gains de la roue, pour toujours', icon: 'wheel' };
+    case 'chalp': return { title: `Défis +${pc(d.v)}`, sub: 'récompenses des défis, pour toujours', icon: 'flag' };
+    case 'cos': return { title: d.name, sub: d.dup ? `déjà possédé · remboursé ${Math.round(d.amount).toLocaleString('fr-FR')}` : `${COS_CAT[d.cat] || 'Cosmétique'} · valeur ${Math.round(d.val).toLocaleString('fr-FR')}`, icon: { frame: 'user', title: 'medal', cardback: 'blackjack', theme: 'slots', effect: 'bolt' }[d.cat] || 'gift' };
   }
   return { title: '?', sub: '', icon: 'gift' };
 }
-// Texte générique d'une ligne du contenu
-export function poolLabel(c, it) {
-  if (it.kind === 'cos') {
-    const list = LOOT_ITEMS.filter((x) => COS_TIER[x.loot] === it.r);
-    return { title: 'Cosmétique exclusif', sub: list.map((x) => `${x.name} (${(COS_CAT[x.cat] || '').toLowerCase()})`).join(', '), icon: 'medal' };
-  }
-  return labelOf(concrete(c, it, null));
-}
+export const poolLabel = (c, it) => labelOf(concrete(c, it, null));
 
-/* ---------- application ---------- */
+/* ------------------------------------------------------------------------------------------------ */
 const lootOf = (p) => (p.loot = p.loot && typeof p.loot === 'object' ? p.loot : { boosts: [], perm: 0 });
 export function activeBoosts(p, now = Date.now()) {
-  const l = p.loot;
+  const l = p && p.loot;
   return l && Array.isArray(l.boosts) ? l.boosts.filter((b) => b.u > now) : [];
 }
-// Multiplicateur actif pour un mini-jeu : meilleur boost du jeu × meilleur boost « tous les mini-jeux »
-// Boost temporaire des récompenses des défis (lot « ×2 défis »)
-export function chalBoost(p, now = Date.now()) { return Math.max(1, ...activeBoosts(p, now).filter((b) => b.g === 'chal').map((b) => b.m)); }
-export const lootPerm = (p, k) => Math.max(0, Math.min(PERM_CAP[k] ?? Infinity, (p && p.loot && p.loot[k]) || 0));
+const stackOf = (p, g, now) => stackMult(activeBoosts(p, now).filter((b) => b.g === g).map((b) => b.m), STACK_CAP[g] ?? 3);
+// Mini-jeux : boosts « tous les mini-jeux » empilés (× anciens boosts sur un seul jeu, encore actifs)
 export function boostMult(p, game, now = Date.now()) {
-  const list = activeBoosts(p, now);
-  const g = Math.max(1, ...list.filter((b) => b.g === game).map((b) => b.m));
-  const all = Math.max(1, ...list.filter((b) => b.g === 'all').map((b) => b.m));
-  return g * all;
+  const single = Math.max(1, ...activeBoosts(p, now).filter((b) => b.g === game).map((b) => b.m));
+  return Math.round(stackOf(p, 'all', now) * single * 100) / 100;
 }
+export const chalBoost = (p, now = Date.now()) => stackOf(p, 'chal', now);
+export const sellBoost = (p, now = Date.now()) => stackOf(p, 'sell', now);
+export const lootPerm = (p, k) => Math.max(0, Math.min(PERM_CAP[k] ?? Infinity, (p && p.loot && p.loot[k]) || 0));
 
-// Applique un lot au profil (à appeler dans wallet.deferEvents pour ne révéler qu'après l'animation)
+// Applique un lot (à appeler dans wallet.deferEvents pour ne le révéler qu'après l'animation)
 export function applyDrop(wallet, c, d) {
   const p = wallet.p, l = lootOf(p), now = Date.now();
   l.opened = (l.opened || 0) + 1;
   if (R_ORDER.indexOf(d.r) > R_ORDER.indexOf(l.best || 'blue')) l.best = d.r;
-  if (d.kind === 'br' || d.dup) wallet.credit('loot', d.amount, { case: c.id, r: d.r });
-  else if (d.kind === 'scratch') { l.tk = { ...(l.tk || {}) }; l.tk[d.t] = (l.tk[d.t] || 0) + d.n; }
-  else if (d.kind === 'boost') {
-    l.boosts = activeBoosts(p, now);
-    const same = l.boosts.find((b) => b.g === d.game && b.m === d.m);
-    if (same) same.u += d.h * 3600000; else l.boosts.push({ g: d.game, m: d.m, u: now + d.h * 3600000 });
-  } else if (['farm', 'seed', 'speed', 'rush'].includes(d.kind)) {
+  if (d.kind === 'br' || d.dup) { if (d.amount > 0) wallet.credit('loot', d.amount, { case: c.id, r: d.r }); }
+  else if (d.kind === 'boost') { l.boosts = activeBoosts(p, now); l.boosts.push({ g: d.game, m: d.m, u: now + d.h * 3600000 }); }
+  else if (['farm', 'seed', 'speed', 'rush'].includes(d.kind)) {
     p.farm = F.normalize(p.farm);
     F.tick(p.farm);
     if (d.kind === 'farm') F.addBoost(p.farm, d.m, d.h);
     else if (d.kind === 'seed') p.farm.seeds = (p.farm.seeds || 0) + d.n;
-    else if (d.kind === 'speed') p.farm.spd = Math.min(F.SPEED_MAX, Math.round(((p.farm.spd || 0) + d.s) * 1000) / 1000);
+    else if (d.kind === 'speed') p.farm.spd = Math.min(F.SPEED_MAX, r4((p.farm.spd || 0) + d.s));
     else p.farm.q.forEach((q) => { q.end = Math.min(q.end, now); });
-  } else if (d.kind === 'perm') l.perm = Math.round(((l.perm || 0) + d.perm) * 10000) / 10000;
-  else if (d.kind === 'vault' || d.kind === 'sell') {
-    if (d.kind === 'vault' && wallet.accrueVault) wallet.accrueVault(); // les intérêts déjà courus restent au taux d'avant
-    l[d.kind] = Math.min(PERM_CAP[d.kind], Math.round(((l[d.kind] || 0) + d.v) * 10000) / 10000);
   } else if (d.kind === 'spin') l.spins = (l.spins || 0) + d.n;
-  else if (d.kind === 'cos') p.shop = { owned: { ...((p.shop && p.shop.owned) || {}), [d.cos]: now }, eq: { ...((p.shop && p.shop.eq) || {}) } };
+  else if (PERM_LABEL[d.kind]) {
+    if (d.kind === 'vault' && wallet.accrueVault) wallet.accrueVault(); // les intérêts déjà courus restent au taux d'avant
+    l[d.kind] = Math.min(PERM_CAP[d.kind] ?? Infinity, r4((l[d.kind] || 0) + d.v));
+  } else if (d.kind === 'cos') p.shop = { owned: { ...((p.shop && p.shop.owned) || {}), [d.cos]: now }, eq: { ...((p.shop && p.shop.eq) || {}) } };
   p.stats.casesOpened = (p.stats.casesOpened || 0) + 1;
   wallet.touch({ type: 'loot', case: c.id, r: d.r, kind: d.kind, amount: d.amount || 0 });
 }
 
-// Tickets à gratter gagnés dans les caisses
+// Tickets à gratter gagnés dans les anciennes caisses
 export const freeTickets = (p, t) => (p && p.loot && p.loot.tk && p.loot.tk[t]) || 0;
 export function useTicket(wallet, t) {
   const l = wallet.p.loot;
@@ -287,8 +320,8 @@ export function useTicket(wallet, t) {
   return true;
 }
 
-// Branché sur le portefeuille, après chaque gain de mini-jeu : boost « tous les mini-jeux » des caisses
-// (stats.lootfreeTotal) et bonus du cadre équipé (stats.cosmeticTotal), versés à part
+// Branché sur le portefeuille, après chaque gain de mini-jeu : boosts des caisses (stats.lootfreeTotal)
+// et bonus du cadre équipé (stats.cosmeticTotal), versés à part
 export function initLoot(wallet) {
   wallet.lootBonus = (game, amount) => {
     if (!(amount > 0)) return 0;

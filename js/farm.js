@@ -1,6 +1,6 @@
 // Ferme à bananes : page, tuiles dessinées, marché, fermes des voisins, et minuterie globale (chantiers, stock plein).
 import { cosBonus } from './bonus.js';
-import { lootPerm } from './loot.js';
+import { lootPerm, sellBoost } from './loot.js';
 import * as F from './farm-core.js';
 import { $, $$, fmt, money, esc, toast, modal, coinRain, CUR } from './ui.js';
 import { icon } from './art.js';
@@ -382,12 +382,12 @@ export function mount(view, { wallet, backend }) {
   async function sell() {
     const fm = f();
     F.tick(fm);
-    const cb = cosBonus(wallet.p, 'farm') + lootPerm(wallet.p, 'sell'); // thème de slot équipé + bonus permanent des caisses
-    const rate = F.sellRate(fm) * (1 + cb);
+    const cb = cosBonus(wallet.p, 'farm') + lootPerm(wallet.p, 'sell'), sb = sellBoost(wallet.p); // thème équipé + bonus permanent + boost de vente
+    const rate = F.sellRate(fm) * (1 + cb) * sb;
     const have = Math.floor(fm.b);
     let amount = 0;
     const res = await modal({ title: 'Marché aux bananes', cls: 'fm-market', html: `
-      <p>Prix de vente : <b>${frN(rate)} ${CUR}</b> la banane${cb ? ` <small class="sh-bonus">dont +${Math.round(cb * 100)} % (thème équipé et bonus des caisses)</small>` : ''}${F.findType(fm, 'M') ? (F.findType(fm, 'M').l < F.B.M.max ? ' (améliore ton marché pour vendre plus cher, jusqu\'à 1 ' + CUR + ')' : ' (prix maximum)') : ' (construis un marché pour vendre plus cher)'}.</p>
+      <p>Prix de vente : <b>${frN(rate)} ${CUR}</b> la banane${cb || sb > 1 ? ` <small class="sh-bonus">bonus +${Math.round(cb * 100)} %${sb > 1 ? ` et boost ×${String(sb).replace('.', ',')}` : ''}</small>` : ''}${F.findType(fm, 'M') ? (F.findType(fm, 'M').l < F.B.M.max ? ' (améliore ton marché pour vendre plus cher, jusqu\'à 1 ' + CUR + ')' : ' (prix maximum)') : ' (construis un marché pour vendre plus cher)'}.</p>
       ${have < 10 ? '<p class="muted">Il faut au moins 10 bananes pour vendre.</p>' : `<div class="fm-sell-pick">${[25, 50, 75, 100].map((p) => `<button type="button" class="btn btn-ghost btn-sm" data-p="${p}">${p} %</button>`).join('')}</div>
       <input type="range" id="fm-sell-r" min="10" max="${have}" value="${have}" step="1">
       <p class="fm-sell-sum"><span id="fm-sell-b"></span> → <b id="fm-sell-v"></b></p>`}`,

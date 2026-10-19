@@ -8,7 +8,7 @@
 // - Les autres joueurs l'apprennent par le fil d'activité (déjà relu régulièrement) : aucune lecture en plus.
 import { freeMult } from './progress.js';
 import { isIdle } from './activity.js';
-import { chalBoost } from './loot.js';
+import { chalBoost, lootPerm } from './loot.js';
 
 export const SLOT_MS = 15 * 60000;
 export const slotOf = (t = Date.now()) => Math.floor(t / SLOT_MS);
@@ -28,6 +28,7 @@ const CASINO = [
   { id: 'plinko25', tier: 1, game: 'plinko', text: 'Obtiens ×25 ou plus au Plinkoko', ev: multWin('plinko', 25) },
   { id: 'plinko100', tier: 2, game: 'plinko', text: 'Obtiens ×100 ou plus au Plinkoko', ev: multWin('plinko', 100) },
   { id: 'slots20', tier: 1, game: 'slots', text: 'Gagne ×20 ta mise en un spin à la Chibouk Slot', ev: multWin('slots', 20) },
+  { id: 'jungle30', tier: 1, game: 'jungle', text: 'Gagne ×30 ta mise en un tour à la Jungle Connect', ev: multWin('jungle', 30) },
   { id: 'slots50', tier: 2, game: 'slots', text: 'Gagne ×50 ta mise en un spin à la Chibouk Slot', ev: multWin('slots', 50) },
   { id: 'crash20', tier: 1, game: 'crash', text: 'Encaisse à ×20 ou plus au Crashibouk', ev: multWin('crash', 20) },
   { id: 'crash100', tier: 2, game: 'crash', text: 'Encaisse à ×100 ou plus au Crashibouk', ev: multWin('crash', 100) },
@@ -48,27 +49,28 @@ const CASINO = [
 // Mini-jeux (V24 : plus durs, ils ne coûtent rien à tenter)
 const MINI = [
   { id: 'queens8', tier: 0, game: 'queens', text: 'Résous une grille de Queens en 8 × 8 ou 9 × 9', ev: free('queens', (x) => x.Won8 || x.Won9) },
-  { id: 'tangoMed', tier: 0, game: 'tango', text: 'Résous une grille de Tango moyenne ou difficile', ev: free('tango', (x) => x.Won1 || x.Won2) },
+  { id: 'tangoMed2', tier: 1, game: 'tango', n: 2, text: 'Résous 2 grilles de Tango moyennes ou difficiles', ev: free('tango', (x) => x.Won1 || x.Won2) },
+  { id: 'tangoHard2', tier: 2, game: 'tango', n: 2, text: 'Résous 2 grilles de Tango difficiles', ev: free('tango', (x) => x.Won2) },
   { id: 'memoryMed', tier: 0, game: 'memory', text: 'Gagne une partie de Memory moyenne ou difficile', ev: free('memory', (x) => x.Won1 || x.Won2) },
-  { id: 'snake30', tier: 0, game: 'snake', text: 'Mange 30 bananes en une partie de Snake', ev: free('snake', (x) => x.Bananas >= 30) },
+  { id: 'snake40', tier: 1, game: 'snake', text: 'Mange 40 bananes en une partie de Snake', ev: free('snake', (x) => x.Bananas >= 40) },
   { id: 'breaker3', tier: 0, game: 'breaker', n: 3, text: 'Termine 3 niveaux de casse-briques', ev: (e) => (e.type === 'breaker' ? 1 : 0) },
   { id: 'quizMed', tier: 0, game: 'quiz', text: 'Fais un sans-faute au calcul mental en moyen ou difficile', ev: free('quiz', (x) => x.MediumPerfect || x.HardPerfect) },
   { id: 'sudoku', tier: 0, game: 'sudoku', text: 'Résous un sudoku', ev: free('sudoku', (x) => x.Won) },
-  { id: 'pinpoint2', tier: 1, game: 'pinpoint', n: 4, text: 'Trouve 4 catégories Pinpoint en 2 indices ou moins', ev: free('pinpoint', (x) => x.Clue1 || x.Clue2) },
+  { id: 'pinpoint2', tier: 1, game: 'pinpoint', n: 6, text: 'Trouve 6 catégories Pinpoint en 2 indices ou moins', ev: free('pinpoint', (x) => x.Clue1 || x.Clue2) },
   { id: 'capitalsX8', tier: 1, game: 'capitals', text: 'Fais au moins 8/10 au quiz capitales en mode expert', ev: free('capitals', (x) => x.ExpertCorrect >= 8) },
   { id: 'flagsX8', tier: 1, game: 'flags', text: 'Fais au moins 8/10 au quiz drapeaux en mode expert', ev: free('flags', (x) => x.ExpertCorrect >= 8) },
   { id: 'movies9', tier: 1, game: 'movies', text: 'Fais au moins 9/10 au quiz ciné', ev: free('movies', (x) => x.Correct >= 9) },
   { id: 'higher12', tier: 1, game: 'higher', text: 'Fais une série de 12 au Plus ou moins', ev: free('higher', (x) => x.Correct >= 12) },
   { id: 'msMid', tier: 1, game: 'demineur', text: 'Gagne au démineur en moyen ou difficile', ev: free('demineur', (x) => x.Won1 || x.Won2) },
-  { id: 'cwClean', tier: 1, game: 'crossword', text: 'Termine une grille de mots croisés moyenne ou difficile sans révéler de lettre', ev: free('crossword', (x) => x.Clean && (x.Won1 || x.Won2)) },
+  { id: 'cwClean2', tier: 1, game: 'crossword', n: 2, text: 'Termine 2 grilles de mots croisés moyennes ou difficiles sans révéler de lettre', ev: free('crossword', (x) => x.Clean && (x.Won1 || x.Won2)) },
   { id: 'sudokuMed', tier: 1, game: 'sudoku', text: 'Résous un sudoku moyen ou difficile', ev: free('sudoku', (x) => x.Won1 || x.Won2) },
   { id: 'queens9', tier: 1, game: 'queens', text: 'Résous une grille de Queens en 9 × 9', ev: free('queens', (x) => x.Won9) },
-  { id: 'pinpoint1', tier: 2, game: 'pinpoint', n: 3, text: 'Trouve 3 catégories Pinpoint dès le premier indice', ev: free('pinpoint', (x) => x.Clue1) },
+  { id: 'pinpoint1', tier: 2, game: 'pinpoint', n: 5, text: 'Trouve 5 catégories Pinpoint dès le premier indice', ev: free('pinpoint', (x) => x.Clue1) },
   { id: 'sudokuHard', tier: 2, game: 'sudoku', text: 'Résous un sudoku difficile', ev: free('sudoku', (x) => x.Won2) },
   { id: 'msHard', tier: 2, game: 'demineur', text: 'Gagne au démineur en difficile', ev: free('demineur', (x) => x.Won2) },
   { id: 'queens9x2', tier: 2, game: 'queens', n: 2, text: 'Résous 2 grilles de Queens en 9 × 9', ev: free('queens', (x) => x.Won9) },
-  { id: 'cwHard', tier: 2, game: 'crossword', text: 'Termine une grille de mots croisés difficile sans révéler de lettre', ev: free('crossword', (x) => x.CleanHard) },
-  { id: 'snake50', tier: 2, game: 'snake', text: 'Mange 50 bananes en une partie de Snake', ev: free('snake', (x) => x.Bananas >= 50) },
+  { id: 'cwHard2', tier: 2, game: 'crossword', n: 2, text: 'Termine 2 grilles de mots croisés difficiles sans révéler de lettre', ev: free('crossword', (x) => x.CleanHard) },
+  { id: 'snake65', tier: 2, game: 'snake', text: 'Mange 65 bananes en une partie de Snake', ev: free('snake', (x) => x.Bananas >= 65) },
   { id: 'quizHard', tier: 2, game: 'quiz', text: 'Fais un sans-faute au calcul mental en difficile', ev: free('quiz', (x) => x.HardPerfect) },
   { id: 'flagsX10', tier: 2, game: 'flags', text: 'Fais un sans-faute au quiz drapeaux en mode expert', ev: free('flags', (x) => x.ExpertPerfect) },
   { id: 'capitalsX10', tier: 2, game: 'capitals', text: 'Fais un sans-faute au quiz capitales en mode expert', ev: free('capitals', (x) => x.ExpertPerfect) },
@@ -103,7 +105,8 @@ export function initChallenges(wallet, backend, social, { onWin, onLost, onNew }
   const save = () => { try { localStorage.setItem(key, JSON.stringify(st)); } catch {} };
   const current = () => challengeFor(st.slot);
   const notify = () => subs.forEach((cb) => { try { cb(view()); } catch (e) { console.error(e); } });
-  const prizeNow = (c) => Math.round(c.prize * challengeMult(wallet) * chalBoost(wallet.p)); // + boost « ×2 défis » des caisses
+  // bonus VIP réduit × bonus permanent « défis » des coffres royaux × boosts « défis » des caisses (empilés)
+  const prizeNow = (c) => Math.round(c.prize * challengeMult(wallet) * (1 + lootPerm(wallet.p, 'chalp')) * chalBoost(wallet.p));
   const view = () => { const c = current(); return { ...st, c, prize: prizeNow(c), end: slotEnd(st.slot), history }; };
   let history = [];
 

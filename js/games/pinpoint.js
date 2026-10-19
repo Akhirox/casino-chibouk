@@ -1,6 +1,7 @@
 // Pinpoint — jeu gratuit : trouver la catégorie commune à des indices dévoilés un par un (5 au maximum).
 // Moins il faut d'indices, plus ça rapporte.
 import { PINPOINT } from './pinpoint-data.js';
+import { gotHTML, withFreeBonus } from '../rewards.js';
 import { $, esc, fmt, coinRain, CUR } from '../ui.js';
 import { monkeySVG } from '../art.js';
 import { sfx } from '../sfx.js';
@@ -62,7 +63,7 @@ export function mount(view, { wallet }) {
     stage.innerHTML = `<div class="qz-card">${monkeySVG({ cap: true })}
       <h2>Quel est le point commun ?</h2>
       <p>Un indice est dévoilé, devine la <b>catégorie</b> qui relie les mots. Raté ? Un nouvel indice apparaît (5 au maximum).<br>
-      Gain selon le nombre d'indices : ${PP_REWARDS.map((r, i) => `<b>${i + 1}</b> → +${r}`).join(' · ')} ${CUR}.</p>
+      Gain selon le nombre d'indices : ${PP_REWARDS.map((r, i) => `<b>${i + 1}</b> : ${withFreeBonus(`+${r}`, 'pinpoint')}`).join(' · ')} ${CUR}.</p>
       <p class="muted pp-count">${PINPOINT.length} catégories à découvrir. Pas besoin de la formulation exacte : « planètes » suffit pour « Planètes du système solaire ».</p>
       ${lockBannerHTML(wallet, 'pinpoint')}
       <button class="btn btn-gold btn-lg" id="fg-start" ${lockedUntil(wallet, 'pinpoint') ? 'disabled' : ''}>Jouer</button></div>`;
@@ -91,7 +92,7 @@ export function mount(view, { wallet }) {
     if (!alive || !cur) return;
     $('#pp-clues', stage).innerHTML = cur.i.map((t, k) => `<div class="pp-clue ${k < shown ? 'on' : ''} ${k === shown - 1 && state === 'play' ? 'new' : ''}"><small>Indice ${k + 1}</small><b>${k < shown ? esc(t) : '?'}</b></div>`).join('');
     $('#pp-guesses', stage).innerHTML = guesses.map((g) => `<span class="${g.ok ? 'ok' : ''}">${g.text ? esc(g.text) : '<i>passé</i>'}</span>`).join('');
-    $('#pp-gain', stage).innerHTML = state === 'play' ? `Si tu trouves maintenant : <b class="gold">+${PP_REWARDS[shown - 1]} ${CUR}</b>` : '';
+    $('#pp-gain', stage).innerHTML = state === 'play' ? `Si tu trouves maintenant : <b class="gold">${withFreeBonus(`+${PP_REWARDS[shown - 1]}`, 'pinpoint')} ${CUR}</b>` : '';
   }
 
   function guess(text) {

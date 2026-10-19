@@ -1,6 +1,7 @@
 // Mot du jour — façon Motus : le même mot pour tout le monde, 6 essais, la première lettre est donnée.
 // Rouge = bonne lettre bien placée, jaune = lettre présente mais mal placée.
 import { CONFIG } from '../config.js';
+import { gotHTML, withFreeBonus } from '../rewards.js';
 import { parisDate, yesterday } from '../wallet.js';
 import { today } from '../progress.js';
 import { monkeySVG } from '../art.js';
@@ -101,7 +102,7 @@ export function mount(view, { wallet }) {
     const n = state.guesses.length;
     return `<div class="qz-card mo-end">${monkeySVG(state.won ? { crown: n <= 2, wink: true } : { wink: false })}
       <h2>${state.won ? `Trouvé en ${n} essai${n > 1 ? 's' : ''} !` : `Raté… le mot était ${word}`}</h2>
-      <p>${state.won ? `+${money(state.reward || 0)} gagnés.` : 'Pas de Brundles aujourd\'hui.'} Reviens demain pour un nouveau mot${state.won && (wallet.stats.motusStreak || 0) > 1 ? ` (série de <b>${wallet.stats.motusStreak} jours</b>)` : ''}.</p>
+      <p>${state.won ? `${gotHTML(state.reward || 0, 'motus')} gagnés.` : 'Pas de Brundles aujourd\'hui.'} Reviens demain pour un nouveau mot${state.won && (wallet.stats.motusStreak || 0) > 1 ? ` (série de <b>${wallet.stats.motusStreak} jours</b>)` : ''}.</p>
       <button class="btn btn-ghost" id="mo-share">Copier mon résultat</button></div>`;
   }
   function copyShare() {

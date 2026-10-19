@@ -27,6 +27,7 @@ export function emptyStats() {
       keno: { ...g() },
       wheel: { ...g() },
       limbo: { ...g() },
+      jungle: { ...g(), bonuses: 0 },
     },
   };
 }

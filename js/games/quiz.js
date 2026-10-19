@@ -1,5 +1,6 @@
 // Calcul mental — jeu gratuit : 10 problèmes, 10 secondes chacun, des Brundles par bonne réponse
 import { CONFIG } from '../config.js';
+import { gotHTML, withFreeBonus } from '../rewards.js';
 import { randInt } from './slots-math.js';
 import { icon, monkeySVG } from '../art.js';
 import { $, $$, fmt, money, coinRain, CUR } from '../ui.js';
@@ -80,8 +81,8 @@ export function mount(view, { wallet }) {
     body.innerHTML = `<div class="qz-card">${monkeySVG({ cap: true })}
       <h2>${N} calculs, ${SECS} secondes chacun</h2>
       <p>${M().desc}<br>
-      <b>+${M().per} ${CUR}</b> par bonne réponse, <b>+${M().bonus} ${CUR}</b> de bonus pour un sans-faute (jusqu'à ${fmt(N * M().per + M().bonus)}).</p>
-      <div class="mcq-modes three">${Object.entries(QUIZ_MODES).map(([k, m]) => `<button type="button" class="mcq-mode ${k === modeKey ? 'on' : ''}" data-m="${k}"><b>${m.label}</b><span>${m.desc}</span><small>${m.seconds} s · +${m.per} ${CUR} / bonne rép. · +${m.bonus} sans-faute</small></button>`).join('')}</div>
+      <b>${withFreeBonus(`+${M().per}`, 'quiz')} ${CUR}</b> par bonne réponse, <b>${withFreeBonus(`+${M().bonus}`, 'quiz')} ${CUR}</b> de bonus pour un sans-faute (jusqu'à ${fmt(N * M().per + M().bonus)}).</p>
+      <div class="mcq-modes three">${Object.entries(QUIZ_MODES).map(([k, m]) => `<button type="button" class="mcq-mode ${k === modeKey ? 'on' : ''}" data-m="${k}"><b>${m.label}</b><span>${m.desc}</span><small>${withFreeBonus(`${m.seconds} s · +${m.per} ${CUR} / bonne rép. · +${m.bonus} sans-faute`, 'quiz')}</small></button>`).join('')}</div>
       ${lockBannerHTML(wallet, 'quiz')}
       <button class="btn btn-gold btn-lg" id="qz-start" ${lockedUntil(wallet, 'quiz') ? 'disabled' : ''}>Commencer</button></div>`;
     $('#qz-start', view).onclick = start;
@@ -188,7 +189,7 @@ export function mount(view, { wallet }) {
     const amount = res.amount, perfect = correct === N;
     body.innerHTML = `<div class="qz-card">${monkeySVG(perfect ? { crown: true, fur: '#c98a00', face: '#ffe6a6', ear: '#ffd36b' } : { wink: correct >= N / 2 })}
       <h2>${correct}/${N} bonnes réponses${perfect ? ' : sans-faute !' : ''}</h2>
-      <p>${amount > 0 ? `+${money(amount)} ajoutés à ton solde${perfect ? ` (dont ${M().bonus} de bonus)` : ''}.` : 'Pas de Brundles cette fois, retente ta chance !'}</p>
+      <p>${amount > 0 ? `${gotHTML(amount)} ajoutés à ton solde${perfect ? ` (dont ${M().bonus} de bonus)` : ''}.` : 'Pas de Brundles cette fois, retente ta chance !'}</p>
       <div class="qz-end-btns"><button class="btn btn-gold btn-lg" id="qz-again">Rejouer (${M().label})</button><button class="btn btn-ghost" id="qz-modes">Changer de mode</button></div></div>`;
     $('#qz-again', view).onclick = start;
     $('#qz-modes', view).onclick = intro;

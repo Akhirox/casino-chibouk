@@ -25,7 +25,7 @@ export function mount(view, { wallet }) {
     stage.innerHTML = `<div class="qz-card">${monkeySVG({ cap: true })}
       <h2>Le serpent de la jungle a faim</h2>
       <p>Mange un max de bananes sans te mordre la queue. Chaque banane rapporte selon le niveau.</p>
-      ${modesHTML(SNAKE_LEVELS, lv, (l, i) => `+${l.per} ${CUR} par banane${wallet.stats['snakeBest' + i] ? ` · record ${wallet.stats['snakeBest' + i]}` : ''}`)}
+      ${modesHTML(SNAKE_LEVELS, lv, (l, i) => `+${l.per} ${CUR} par banane${wallet.stats['snakeBest' + i] ? ` · record ${wallet.stats['snakeBest' + i]}` : ''}`, 'snake')}
       <button class="btn btn-gold btn-lg" id="fg-start">Jouer</button></div>`;
     bindModes(stage, (i) => { lv = i; saveLevel('chibouk_snake_lv', i); sfx.click(); intro(); });
     $('#fg-start', stage).onclick = start;

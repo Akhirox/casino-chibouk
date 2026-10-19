@@ -40,6 +40,8 @@ export const xMult = (m) => '×' + String(Math.round(m * 100) / 100).replace('.'
 // Multiplicateur des gains gratuits : rang VIP × bonus permanent gagné dans les caisses (p.loot.perm, ex. 0,05 = +5 %)
 export const permBonus = (p) => Math.max(0, Math.min(0.5, (p && p.loot && p.loot.perm) || 0));
 export const freeMult = (wallet) => Math.round(vipOf(wallet.stats.totalWagered).mult * (1 + permBonus(wallet.p)) * 1000) / 1000;
+// bonus permanent « roue du jour » des coffres royaux (plafonné à +300 %)
+export const wheelPerm = (p) => Math.max(0, Math.min(3, (p && p.loot && p.loot.wheel) || 0));
 // Quêtes et roue du jour : bonus VIP × titre équipé
 export const questMult = (wallet) => freeMult(wallet) * (1 + cosBonus(wallet.p, 'daily'));
 export const pctFmt = (x) => (x * 100).toLocaleString('fr-FR', { maximumFractionDigits: 2 }) + ' %';
@@ -104,13 +106,13 @@ export function spinDaily(wallet, bonus = false) {
   const n = bonus ? Math.max(1, (wallet.p.streak && wallet.p.streak.n) || 1) : wallet.nextStreak();
   const mult = streakMult(n);
   const vip = vipOf(wallet.stats.totalWagered), fm = freeMult(wallet);
-  const cb = cosBonus(wallet.p, 'daily'); // titre équipé
+  const cb = cosBonus(wallet.p, 'daily') + wheelPerm(wallet.p); // titre équipé + bonus permanent « roue du jour » des coffres royaux
   return { seg, base: CONFIG.DAILY_WHEEL[seg], streak: n, mult, vip: fm, vipName: vip.name, cos: cb, amount: Math.round(CONFIG.DAILY_WHEEL[seg] * mult * fm * (1 + cb)) };
 }
 
 /* ------------------------------ Quêtes du jour ------------------------------ */
-const CASINO = { slots: 'à la Chibouk Slot', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au Plinkoko', crash: 'au Crashibouk', tower: 'à la Tower', mines: 'aux Mines', dice: 'au Dice', hilo: 'au Hi-Lo', keno: 'au Keno', wheel: 'à la Roue', limbo: 'au Limbo', scratch: 'aux jeux à gratter' };
-const ROUNDS = { slots: 40, blackjack: 12, roulette: 15, plinko: 40, crash: 15, tower: 10, mines: 10, dice: 40, hilo: 10, keno: 20, wheel: 30, limbo: 30, scratch: 15 };
+const CASINO = { slots: 'à la Chibouk Slot', jungle: 'à la Jungle Connect', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au Plinkoko', crash: 'au Crashibouk', tower: 'à la Tower', mines: 'aux Mines', dice: 'au Dice', hilo: 'au Hi-Lo', keno: 'au Keno', wheel: 'à la Roue', limbo: 'au Limbo', scratch: 'aux jeux à gratter' };
+const ROUNDS = { slots: 40, jungle: 30, blackjack: 12, roulette: 15, plinko: 40, crash: 15, tower: 10, mines: 10, dice: 40, hilo: 10, keno: 20, wheel: 30, limbo: 30, scratch: 15 };
 const QUIZ = { quiz: 'au calcul mental', capitals: 'au quiz capitales', movies: 'au quiz ciné', flags: 'au quiz drapeaux' };
 
 // Modèles : tier 0 = facile, 1 = moyen, 2 = difficile. n = objectif, ev(e, q) = progression apportée par l'événement

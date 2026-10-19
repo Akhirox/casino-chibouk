@@ -34,9 +34,10 @@ import * as Snake from './games/snake.js';
 import * as Demineur from './games/demineur.js';
 import * as Farm from './farm.js';
 import * as Scratch from './games/scratch.js';
+import * as Jungle from './games/jungle.js';
 import * as Memory from './games/memory.js';
 import * as Crossword from './games/crossword.js';
-import { scratchArtSVG, memoryArtSVG, crosswordArtSVG } from './art.js';
+import { scratchArtSVG, memoryArtSVG, crosswordArtSVG, jungleArtSVG } from './art.js';
 import * as FarmCore from './farm-core.js';
 import { queensArtSVG, tangoArtSVG, pinpointArtSVG, sudokuArtSVG, snakeArtSVG, demineurArtSVG } from './art.js';
 import * as Shop from './shop.js';
@@ -44,7 +45,7 @@ import * as Cases from './cases.js';
 import { initLoot } from './loot.js';
 import { createChat } from './chat.js';
 import { initQuests, today, questText, vipOf, vipProgress, VIP, rakePot, claimRake, initVip, pctFmt, freeMult, xMult, questMult } from './progress.js';
-import { initChallenges, challengeRoute, MIN_BET } from './challenges.js';
+import { initChallenges, challengeRoute, challengeMult, MIN_BET } from './challenges.js';
 import { createSocial, feedRich, feedText, groupFeed, groupRich, FEED_ICON, jackpotChance, chanceText } from './social.js';
 import { openVipModal } from './vip.js';
 import { openVault } from './vault.js';
@@ -64,6 +65,7 @@ import { createTracker } from './tracker.js';
 import { getPlayers } from './players.js';
 import * as Profile from './profile.js';
 import { createTips } from './tips.js';
+import { setRewardWallet, bonusHTML, questInfo, challengeInfo } from './rewards.js';
 
 const app = $('#app');
 let backend = null;
@@ -92,6 +94,7 @@ let weeksTimer = null;
 const ROUTES = {
   lobby: { label: 'Accueil', icon: 'home', mount: mountLobby },
   slots: { label: 'Chibouk Slot', icon: 'slots', mount: Slots.mount, group: 'casino' },
+  jungle: { label: 'Jungle Connect', icon: 'jungle', mount: Jungle.mount, group: 'casino' },
   blackjack: { label: 'Blackjack', icon: 'blackjack', mount: Blackjack.mount, group: 'casino' },
   roulette: { label: 'Roulette', icon: 'roulette', mount: Roulette.mount, group: 'casino' },
   plinko: { label: 'Plinkoko', icon: 'plinko', mount: Plinko.mount, group: 'casino' },
@@ -133,7 +136,7 @@ const GROUPS = { casino: { label: 'Casino', icon: 'chip' }, free: { label: 'Mini
 const SUBS = { puzzle: 'Puzzle', quiz: 'Quiz', arcade: 'Adresse' };
 
 // Jeux qui affichent leur classement à côté (clé de stats -> nom affiché)
-const BOARD_GAMES = { slots: 'Chibouk Slot', blackjack: 'Blackjack', roulette: 'Roulette', plinko: 'Plinkoko', crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice', hilo: 'Hi-Lo', keno: 'Keno', wheel: 'Roue du Singe', limbo: 'Limbo', scratch: 'Jeux à gratter' };
+const BOARD_GAMES = { slots: 'Chibouk Slot', jungle: 'Jungle Connect', blackjack: 'Blackjack', roulette: 'Roulette', plinko: 'Plinkoko', crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice', hilo: 'Hi-Lo', keno: 'Keno', wheel: 'Roue du Singe', limbo: 'Limbo', scratch: 'Jeux à gratter' };
 
 // Menu : Accueil | Casino ▾ · Mini-jeux ▾ · Ferme | Boutique · Succès · Classements · Stats
 function navHTML() {
@@ -373,6 +376,7 @@ function renderShell() {
   });
   social = createSocial(wallet, backend);
   loot = initLoot(wallet);
+  setRewardWallet(wallet);
   chat = createChat(wallet, social);
   challenges = initChallenges(wallet, backend, social, {
     onWin: (c, prize) => { toast(`<span class="ach-toast">${icon('flag')}<span><small>Défi de la jungle remporté !</small><b>${esc(c.text)}</b><em>+${fmt(prize)} ${CUR}</em></span></span>`, 'ach', 6000); sfx.bonus(); sfx.win(true); coinRain(50); },
@@ -597,11 +601,11 @@ function renderLobbyDaily(box) {
 function questsHTML() {
   const d = today(wallet);
   const lv = ['Facile', 'Moyenne', 'Difficile'];
-  const m = questMult(wallet), r = (x) => fmt(Math.round(x * m));
+  const qi = questInfo(), r = (x) => bonusHTML(x, qi);
   return `<div class="dash-head">${icon('check')}<b>Quêtes du jour</b><small class="muted">renouvelées à minuit</small></div>
     <ul class="quests">${d.quests.map((q) => `<li class="${q.done ? 'done' : ''}"><div><span class="q-lv q${q.tier}">${lv[q.tier]}</span>${esc(questText(q))}</div>
-      <div class="q-bar"><i style="width:${Math.min(100, (q.p / q.n) * 100)}%"></i></div><small>${q.done ? 'Terminée' : `${fmt(q.p)} / ${fmt(q.n)}`} · +${r(q.r)}${m > 1 ? ` <span class="vip-x">${xMult(m)}</span>` : ''}</small></li>`).join('')}</ul>
-    <p class="muted q-bonus">${d.bonus ? 'Bonus de la journée récupéré !' : `Les 3 terminées : +${r(CONFIG.QUEST_BONUS)} ${CUR} de bonus`}</p>`;
+      <div class="q-bar"><i style="width:${Math.min(100, (q.p / q.n) * 100)}%"></i></div><small>${q.done ? 'Terminée' : `${fmt(q.p)} / ${fmt(q.n)}`} · ${r(q.r)}</small></li>`).join('')}</ul>
+    <p class="muted q-bonus">${d.bonus ? 'Bonus de la journée récupéré !' : `Les 3 terminées : ${r(CONFIG.QUEST_BONUS)} ${CUR} de bonus`}</p>`;
 }
 function vipHTML() {
   const v = vipOf(wallet.stats.totalWagered);
@@ -627,7 +631,7 @@ function challengeHTML(v) {
     <div class="ch-tags"><span class="q-lv q${c.tier}">${['Facile', 'Moyen', 'Difficile'][c.tier]}</span><span class="ch-kind">${c.kind === 'casino' ? 'Casino' : 'Mini-jeu'}</span></div>
     <p class="ch-text">${esc(c.text)}${c.kind === 'casino' ? ` <small class="muted">(mise d'au moins ${fmt(MIN_BET)})</small>` : ''}</p>
     ${prog}
-    <div class="ch-prize">Récompense : <b class="gold">+${fmt(v.prize)} ${CUR}</b> <small class="muted">pour le premier qui réussit${v.prize > c.prize ? ` (bonus ${xMult(Math.round((v.prize / c.prize) * 100) / 100)})` : ''}</small></div>
+    <div class="ch-prize">Récompense : <b class="gold">${bonusHTML(c.prize, challengeInfo(challengeMult(wallet)), { total: v.prize })} ${CUR}</b> <small class="muted">pour le premier qui réussit</small></div>
     ${status}
     <div class="ch-foot">${!v.winner && c.game !== 'lobby' ? `<a class="btn btn-gold btn-sm" href="${challengeRoute(c)}">Y aller ${icon('arrow')}</a>` : ''}
       <small class="muted">Un nouveau défi toutes les 15 min${hist.length ? ` · derniers vainqueurs : ${hist.map((h) => `<b>${esc(h.pseudo)}</b>`).join(', ')}` : ''}</small></div>`;
@@ -755,6 +759,7 @@ function mountLobby(view, { wallet: w }) {
   const casinoCards = [
     card('slots', 'Chibouk Slot', 'Machine à sous 5×3, 99 lignes, WILD ×2. 3 SCATTER = tours gratuits ×2. Jackpot commun !', 'RTP ≈ 100 %',
       `<div class="mini-reels">${['S', 'F', 'S'].map((x) => `<div>${symbolSVG(x)}</div>`).join('')}</div>`),
+    card('jungle', 'Jungle Connect', 'Nouveau ! Grille 7×7 : 5 symboles reliés = gain, cascades à l\'infini, multiplicateurs jusqu\'à ×256 et tours gratuits du Masque Tribal.', 'RTP 98,5 %', jungleArtSVG()),
     card('blackjack', 'Blackjack du Singe', 'Blackjack 6 jeux, paie 3:2, mises annexes Perfect Pairs et 21+3, cartes en 3D.', 'RTP ≈ 99,5 %',
       `<div class="mini-cards"><div class="mc mc1">A<span>♠</span></div><div class="mc mc2 red">K<span>♥</span></div></div>`),
     card('roulette', 'Roulette Banane', 'Roulette européenne à un zéro, roue et bille animées.', 'RTP 97,3 %', `<div class="mini-wheel"></div>`),

@@ -30,7 +30,7 @@ export function mount(view, { wallet }) {
     stage.innerHTML = `<div class="qz-card">${monkeySVG({ cap: true })}
       <h2>Déminer avant la fin du chrono</h2>
       <p>Découvre toutes les cases sans mine avant la fin du temps. Plus tu finis vite, plus le gain grimpe : <b>jusqu'à ×2</b> si tu finis tout de suite.</p>
-      ${modesHTML(MS_LEVELS, lv, (l, i) => `+${l.reward} à +${l.reward * 2} ${CUR}${bestTxt(i)}`)}
+      ${modesHTML(MS_LEVELS, lv, (l, i) => `+${l.reward} à +${l.reward * 2} ${CUR}${bestTxt(i)}`, 'demineur')}
       ${lockBannerHTML(wallet, 'demineur')}
       <button class="btn btn-gold btn-lg" id="fg-start" ${lockedUntil(wallet, 'demineur') ? 'disabled' : ''}>Nouvelle partie</button></div>`;
     bindModes(stage, (i) => { lv = i; saveLevel('chibouk_ms_lv', i); sfx.click(); intro(); });

@@ -3,7 +3,7 @@ import { CONFIG } from './config.js';
 import { monkeySVG } from './art.js';
 import { $, esc } from './ui.js';
 
-const CASINO = ['slots', 'blackjack', 'roulette', 'plinko', 'crash', 'tower', 'mines', 'dice', 'hilo', 'keno', 'wheel', 'limbo'];
+const CASINO = ['slots', 'jungle', 'blackjack', 'roulette', 'plinko', 'crash', 'tower', 'mines', 'dice', 'hilo', 'keno', 'wheel', 'limbo'];
 const CUR = CONFIG.CURRENCY;
 
 // route : page où l'astuce a du sens ('*' = partout) ; when : condition facultative ; go : bouton vers une page
@@ -59,6 +59,7 @@ export const TIPS = [
   { id: 'ms-tip', route: ['demineur'], text: 'Démineur : clique sur un chiffre déjà entouré de ses drapeaux pour découvrir toutes ses voisines d\'un coup. Sur téléphone, appui long pour un drapeau.' },
   { id: 'sn-tip', route: ['snake'], text: 'Snake : Espace pour faire une pause. Sur téléphone, glisse sur le terrain ou utilise les flèches en dessous.' },
   { id: 'cr-ff', route: ['crash'], text: 'Une fois ta mise encaissée, la fusée accélère pour finir la manche plus vite : pas besoin d\'attendre pour rejouer.' },
+  { id: 'jc-tip', route: ['jungle'], text: 'Jungle Connect : clique sur la grille (ou appuie sur Espace) pendant une cascade pour accélérer l\'animation. Le gain est déjà décidé dès le clic sur « Tourner ».' },
   { id: 'sc-tip', route: ['scratch'], text: 'Jeux à gratter : 3 montants identiques et c\'est gagné. Gratte avec la souris ou le doigt, clique sur une case pour l\'ouvrir, ou « Tout gratter » pour aller vite.' },
   { id: 'sc-auto', route: ['scratch'], text: 'Le mode Auto achète et gratte les tickets à la chaîne. Les gains sont garantis dès l\'achat, l\'animation ne change rien au résultat.' },
   { id: 'mm-tip', route: ['memory'], text: 'Memory : termine avec peu d\'erreurs pour toucher le bonus de précision de +50 %.' },

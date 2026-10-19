@@ -35,7 +35,7 @@ export function mount(view, { wallet }) {
     stage.innerHTML = `<div class="qz-card">${monkeySVG({ cap: true })}
       <h2>Une reine par ligne, colonne et couleur</h2>
       <p>Et jamais deux reines côte à côte, même en diagonale. Gain selon la taille, <b>+50 %</b> si tu bats le temps de référence.</p>
-      ${modesHTML(QUEENS_LEVELS, lv, (l, i) => `+${l.reward} ${CUR} · bonus sous ${Math.round(l.par / 60)} min${bestTxt(i)}`)}
+      ${modesHTML(QUEENS_LEVELS, lv, (l, i) => `+${l.reward} ${CUR} · bonus sous ${Math.round(l.par / 60)} min${bestTxt(i)}`, 'queens')}
       ${lockBannerHTML(wallet, 'queens')}
       <button class="btn btn-gold btn-lg" id="fg-start" ${lockedUntil(wallet, 'queens') ? 'disabled' : ''}>Nouvelle grille</button></div>`;
     bindModes(stage, (i) => { lv = i; saveLevel('chibouk_queens_lv', i); sfx.click(); intro(); });

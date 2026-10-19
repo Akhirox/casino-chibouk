@@ -36,7 +36,7 @@ export function mount(view, { wallet }) {
     stage.innerHTML = `<div class="qz-card"><div class="tg-intro">${SUN}${MOON}${SUN}${MOON}</div>
       <h2>Soleils et lunes, à parts égales</h2>
       <p>3 de chaque par ligne et par colonne, jamais 3 pareils d'affilée, et respecte les signes <b>=</b> et <b>×</b>. <b>+50 %</b> si tu bats le temps de référence.</p>
-      ${modesHTML(TANGO_LEVELS, lv, (l, i) => `+${l.reward} ${CUR} · bonus sous ${fmtTimeLong(l.par)}${bestTxt(i)}`)}
+      ${modesHTML(TANGO_LEVELS, lv, (l, i) => `+${l.reward} ${CUR} · bonus sous ${fmtTimeLong(l.par)}${bestTxt(i)}`, 'tango')}
       ${lockBannerHTML(wallet, 'tango')}
       <button class="btn btn-gold btn-lg" id="fg-start" ${lockedUntil(wallet, 'tango') ? 'disabled' : ''}>Nouvelle grille</button></div>`;
     bindModes(stage, (i) => { lv = i; saveLevel('chibouk_tango_lv', i); sfx.click(); intro(); });

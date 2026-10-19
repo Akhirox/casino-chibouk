@@ -1,6 +1,7 @@
 // Plus ou moins — jeu gratuit : le film de droite a-t-il eu un plus gros ou un plus petit budget que celui de gauche ?
 // Série jusqu'à la première erreur (15 au maximum), +10 Brundles par bonne réponse, bonus si 15/15.
 import { CONFIG } from '../config.js';
+import { gotHTML, withFreeBonus } from '../rewards.js';
 import { loadMovies } from './movies.js';
 import { pickDistinct } from './mcq.js';
 import { monkeySVG } from '../art.js';
@@ -39,7 +40,7 @@ export function mount(view, { wallet }) {
     stage.innerHTML = `<div class="qz-card">${monkeySVG({ cap: true })}
       <h2>Quel film a coûté le plus cher ?</h2>
       <p>Le budget du film de gauche est affiché. Devine si celui de droite a eu un budget <b>plus gros</b> ou <b>plus petit</b>.<br>
-      Enchaîne jusqu'à ${MAX_STREAK} bonnes réponses : <b>+${PER} ${CUR}</b> chacune, <b>+${BONUS} ${CUR}</b> si tu vas au bout. Une erreur et la série s'arrête.</p>
+      Enchaîne jusqu'à ${MAX_STREAK} bonnes réponses : <b>${withFreeBonus(`+${PER}`, 'higher')} ${CUR}</b> chacune, <b>${withFreeBonus(`+${BONUS}`, 'higher')} ${CUR}</b> si tu vas au bout. Une erreur et la série s'arrête.</p>
       ${lockBannerHTML(wallet, 'higher')}
       <button class="btn btn-gold btn-lg" id="hi-start" ${lockedUntil(wallet, 'higher') ? 'disabled' : ''}>Commencer</button></div>`;
     $('#hi-start', stage).onclick = start;
@@ -109,7 +110,7 @@ export function mount(view, { wallet }) {
     const perfect = streak >= MAX_STREAK;
     stage.innerHTML = `<div class="qz-card">${monkeySVG(perfect ? { crown: true, fur: '#c98a00', face: '#ffe6a6', ear: '#ffd36b' } : { wink: streak >= 5 })}
       <h2>${perfect ? `${MAX_STREAK}/${MAX_STREAK}, sans-faute !` : `Série de ${streak}`}</h2>
-      <p>${amount ? `+${money(amount)} ajoutés à ton solde.` : 'Pas de Brundles cette fois.'} Ton record : <b>${wallet.stats.higherBest || 0}</b>.</p>
+      <p>${amount ? `${gotHTML(amount)} ajoutés à ton solde.` : 'Pas de Brundles cette fois.'} Ton record : <b>${wallet.stats.higherBest || 0}</b>.</p>
       <button class="btn btn-gold btn-lg" id="hi-again">Rejouer</button></div>`;
     $('#hi-again', stage).onclick = start;
     if (amount) { sfx.win(perfect); coinRain(perfect ? 40 : 12); }

@@ -33,7 +33,7 @@ export function mount(view, { wallet }) {
     stage.innerHTML = `<div class="qz-card">${monkeySVG({ cap: true })}
       <h2>Retrouve toutes les paires</h2>
       <p>Retourne deux cartes à la fois. Si elles sont identiques, elles restent face visible. <b>+50 %</b> si tu termines avec peu d'erreurs.</p>
-      ${modesHTML(MEMORY_LEVELS, lv, (l, i) => `+${l.reward} ${CUR} · bonus en ${Math.ceil((l.cols * l.rows) / 2 * 1.6)} coups max${bestTxt(i)}`)}
+      ${modesHTML(MEMORY_LEVELS, lv, (l, i) => `+${l.reward} ${CUR} · bonus en ${Math.ceil((l.cols * l.rows) / 2 * 1.6)} coups max${bestTxt(i)}`, 'memory')}
       ${lockBannerHTML(wallet, 'memory')}
       <button class="btn btn-gold btn-lg" id="fg-start" ${lockedUntil(wallet, 'memory') ? 'disabled' : ''}>Jouer</button></div>`;
     bindModes(stage, (i) => { lv = i; saveLevel('chibouk_memory_lv', i); sfx.click(); intro(); });

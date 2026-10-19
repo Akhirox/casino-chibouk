@@ -36,7 +36,7 @@ export function mount(view, { wallet }) {
     stage.innerHTML = `<div class="qz-card">${monkeySVG({ cap: true })}
       <h2>Le bon vieux Sudoku</h2>
       <p>Chaque ligne, chaque colonne et chaque carré de 3×3 contient les chiffres de 1 à 9. <b>+50 %</b> si tu bats le temps de référence.</p>
-      ${modesHTML(SUDOKU_INFO, lv, (l, i) => `+${l.reward} ${CUR} · bonus sous ${Math.round(l.par / 60)} min${bestTxt(i)}`)}
+      ${modesHTML(SUDOKU_INFO, lv, (l, i) => `+${l.reward} ${CUR} · bonus sous ${Math.round(l.par / 60)} min${bestTxt(i)}`, 'sudoku')}
       ${lockBannerHTML(wallet, 'sudoku')}
       <button class="btn btn-gold btn-lg" id="fg-start" ${lockedUntil(wallet, 'sudoku') ? 'disabled' : ''}>Nouvelle grille</button>
       <p class="muted fair-note">Grille résolue en moins de ${SUDOKU_FAIR[lv].fastSec} s : pas de récompense. Solveurs et scripts sont détectés et sanctionnés.</p></div>`;

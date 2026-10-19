@@ -118,7 +118,7 @@ export class Wallet {
   // Résultat « sous le gobelet » : fn() crédite tout de suite (solde, stats, sauvegarde : rien n'est perdu si on
   // quitte la page pendant l'animation), mais les événements (affichage du solde, succès, quêtes, jackpot, fil…)
   // ne partent qu'au reveal(), une fois le résultat montré à l'écran. Filet de sécurité : reveal auto après 20 s.
-  deferEvents(fn) {
+  deferEvents(fn, maxMs = 20000) {
     const queue = [], prev = this._capture, before = this.p.balance;
     this._capture = queue;
     try { fn(); } finally { this._capture = prev; }
@@ -131,7 +131,7 @@ export class Wallet {
       this.hiddenDelta -= delta;
       queue.forEach((e) => this.emit(e));
     };
-    const t = setTimeout(reveal, 20000);
+    const t = setTimeout(reveal, maxMs);
     return reveal;
   }
   // Solde tel qu'il doit apparaître à l'écran (sans les gains dont l'animation n'est pas encore finie)
@@ -323,7 +323,8 @@ export class Wallet {
     this.p.stats.breakerTotal += CONFIG.BREAKER_REWARD;
     this.touch({ type: 'breaker', amount: CONFIG.BREAKER_REWARD });
     const vx = this.vipBonus('breaker', CONFIG.BREAKER_REWARD);
-    if (this.lootBonus) this.lootBonus('breaker', CONFIG.BREAKER_REWARD + vx); // boost de caisse
+    const lx = this.lootBonus ? this.lootBonus('breaker', CONFIG.BREAKER_REWARD + vx) || 0 : 0; // boost de caisse
+    this.lastFree = { kind: 'breaker', base: CONFIG.BREAKER_REWARD, total: CONFIG.BREAKER_REWARD + vx + lx, at: Date.now() };
     // pas d'envoi immédiat : la synchro régulière s'en charge (1 écriture par minute au lieu d'1 par partie)
   }
 
@@ -348,7 +349,8 @@ export class Wallet {
     if (amount > 0) this.p.balance += amount;
     this.touch({ type: 'free', game: kind, amount: Math.max(0, amount), extra, meta });
     const vx = this.vipBonus(kind, amount);
-    if (this.lootBonus) this.lootBonus(kind, amount + vx); // boost de caisse sur ce mini-jeu
+    const lx = this.lootBonus ? this.lootBonus(kind, amount + vx) || 0 : 0; // boost de caisse sur ce mini-jeu
+    this.lastFree = { kind, base: Math.max(0, amount), total: Math.max(0, amount) + vx + lx, at: Date.now() }; // affichage « base → avec bonus »
     // pas d'envoi immédiat : la synchro régulière s'en charge (1 écriture par minute au lieu d'1 par partie)
   }
 

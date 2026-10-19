@@ -1,5 +1,6 @@
 // Casse-briques de la dèche — accessible quand le solde est bas, chaque niveau terminé rapporte des Brundles
 import { CONFIG } from '../config.js';
+import { gotHTML, withFreeBonus } from '../rewards.js';
 import { monkeySVG } from '../art.js';
 import { h, $, fmt, money, coinRain, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
@@ -91,7 +92,7 @@ export function mount(view, { wallet, navigate }) {
     buildLevel();
     state = 'ready';
     showOverlay(`<div class="bk-card">${monkeySVG({})}<h2>Niveau ${levelNum() + 1} · ${LEVELS[levelIdx].name}</h2>
-      <p>Casse <b>toutes les briques</b> pour gagner <b>${money(CONFIG.BREAKER_REWARD)}</b>.<br>3 noix de coco, aucune mise. Bonne chance !</p>
+      <p>Casse <b>toutes les briques</b> pour gagner <b>${withFreeBonus(`+${CONFIG.BREAKER_REWARD}`, 'breaker')} ${CUR}</b>.<br>3 noix de coco, aucune mise. Bonne chance !</p>
       <button class="btn btn-gold btn-lg" id="bk-go">Jouer</button></div>`);
     $('#bk-go', view).onclick = () => { hideOverlay(); state = 'serve'; sfx.click(); };
     drawFrame();
@@ -223,7 +224,7 @@ export function mount(view, { wallet, navigate }) {
     wallet.breakerReward();
     sfx.win(true); coinRain(30);
     showOverlay(`<div class="bk-card">${monkeySVG({ crown: true, fur: '#c98a00', face: '#ffe6a6', ear: '#ffd36b' })}<h2>Niveau terminé !</h2>
-      <p>+${money(CONFIG.BREAKER_REWARD)} ajoutés à ton solde.<br>Solde : ${money(wallet.balance)}</p>
+      <p>${gotHTML(CONFIG.BREAKER_REWARD, 'breaker')} ajoutés à ton solde.<br>Solde : ${money(wallet.balance)}</p>
       <button class="btn btn-gold btn-lg" id="bk-next">Niveau suivant</button> <button class="btn btn-ghost" data-go="lobby">Retour au casino</button></div>`);
     overlay.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => navigate(b.dataset.go)));
     const nx = $('#bk-next', view);

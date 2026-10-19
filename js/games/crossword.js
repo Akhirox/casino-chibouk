@@ -31,7 +31,7 @@ export function mount(view, { wallet }) {
     stage.innerHTML = `<div class="qz-card">${monkeySVG({ cap: true })}
       <h2>Une nouvelle grille à chaque partie</h2>
       <p>Clique sur une case et tape les lettres (sans accents). Re-clique pour changer de sens. « Vérifier » montre les erreurs gratuitement, chaque lettre révélée retire 10 % du gain.</p>
-      ${modesHTML(CW_LEVELS, lv, (l, i) => `+${l.reward} ${CUR}${bestTxt(i)}`)}
+      ${modesHTML(CW_LEVELS, lv, (l, i) => `+${l.reward} ${CUR}${bestTxt(i)}`, 'crossword')}
       ${lockBannerHTML(wallet, 'crossword')}
       <button class="btn btn-gold btn-lg" id="fg-start" ${lockedUntil(wallet, 'crossword') ? 'disabled' : ''}>Nouvelle grille</button></div>`;
     bindModes(stage, (i) => { lv = i; saveLevel('chibouk_cw_lv', i); sfx.click(); intro(); });
