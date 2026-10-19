@@ -1,9 +1,25 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '28';
+export const VERSION = '29';
 
 export const CHANGELOG = [
+  {
+    v: '29', date: '20 octobre 2026', title: 'Correctifs et quêtes ×5',
+    groups: [
+      ['Correctifs', [
+        'Ferme : les boosts de récolte gagnés avant la V28 n\'étaient plus pris en compte (ils n\'avaient pas disparu de ta sauvegarde). Ils reviennent avec le temps qu\'il leur reste.',
+        'Ferme : tes ventes passées comptent bien pour le premier prestige, même si ta ferme n\'avait pas été rouverte depuis la mise à jour.',
+        'Défi de la jungle : si l\'horloge de ton appareil est décalée, le site se cale sur l\'heure du serveur. Une validation refusée est retentée automatiquement avant d\'afficher une erreur.',
+      ]],
+      ['Quêtes du jour ×5', [
+        'Récompenses multipliées par 5 : 1 500, 3 000 et 5 000 Brundles (avant bonus), et 2 500 de bonus pour les 3 quêtes. Les quêtes déjà tirées aujourd\'hui en profitent aussi.',
+      ]],
+      ['Cadeaux', [
+        'L\'équipe peut maintenant offrir des cadeaux (Brundles, boosts, tours de roue), à un joueur ou à tout le monde. Ils arrivent au prochain chargement de la page.',
+      ]],
+    ],
+  },
   {
     v: '28', date: '19 octobre 2026', title: 'Podium, prestige et chat',
     groups: [

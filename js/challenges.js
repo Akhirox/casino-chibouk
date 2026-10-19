@@ -12,7 +12,19 @@ import { chalBoost, lootPerm } from './loot.js';
 
 export const SLOT_MS = 12 * 60000;
 export const PODIUM = [1, 0.6, 0.35]; // part du prix pour la 1re, 2e et 3e place
-export const slotOf = (t = Date.now()) => Math.floor(t / SLOT_MS);
+// Heure du serveur (V29) : les règles Firestore vérifient le créneau avec l'heure du serveur. Si l'horloge de l'appareil
+// est décalée, on se cale sur l'en-tête « Date » renvoyé par le site lui-même (aucune lecture en base).
+let clockOffset = 0;
+export const serverNow = () => Date.now() + clockOffset;
+export async function syncClock() {
+  try {
+    const t0 = Date.now(), r = await fetch(location.href.split('#')[0], { method: 'HEAD', cache: 'no-store' }), t1 = Date.now();
+    const d = Date.parse(r.headers.get('Date') || '');
+    if (d > 0) { const off = d + 500 - (t0 + t1) / 2; clockOffset = Math.abs(off) > 20000 ? Math.round(off) : 0; } // l'en-tête est à la seconde près
+  } catch {}
+  return clockOffset;
+}
+export const slotOf = (t = serverNow()) => Math.floor(t / SLOT_MS);
 export const slotEnd = (slot) => (slot + 1) * SLOT_MS;
 export const CHALLENGE_PRIZE = [5000, 10000, 15000]; // facile, moyen, difficile (× challengeMult : bonus VIP réduit)
 // Bonus VIP réduit sur les défis : un quart du bonus des gains gratuits, plafonné à ×2
@@ -113,7 +125,7 @@ export function initChallenges(wallet, backend, social, { onWin, onLost, onNew }
   const nextPlace = () => { for (let k = 1; k <= 3; k++) if (!st.podium.some((x) => x.place === k)) return k; return 0; };
   const view = () => {
     const c = current(), np = nextPlace();
-    return { ...st, c, full: !np, next: np, prize: prizeAt(c, 1), prizes: [1, 2, 3].map((k) => prizeAt(c, k)), end: slotEnd(st.slot), history,
+    return { ...st, c, full: !np, next: np, prize: prizeAt(c, 1), prizes: [1, 2, 3].map((k) => prizeAt(c, k)), end: slotEnd(st.slot) - clockOffset, history, // fin en heure de l'appareil (pour le chrono)
       winner: st.podium.find((x) => x.place === 1) || null };
   };
   let history = [];
@@ -138,7 +150,7 @@ export function initChallenges(wallet, backend, social, { onWin, onLost, onNew }
   async function claim() {
     if (busy || st.claimed || !alive) return;
     const c = current();
-    if (Date.now() > slotEnd(c.slot) + 60000) return; // trop tard, le créneau est fini
+    if (serverNow() > slotEnd(c.slot) + 60000) return; // trop tard, le créneau est fini
     busy = true;
     try {
       for (let place = nextPlace(); place && place <= 3 && !st.claimed; place = nextPlace()) {
@@ -157,6 +169,10 @@ export function initChallenges(wallet, backend, social, { onWin, onLost, onNew }
           return;
         }
         if (r.taken) { addPodium({ place, ...r.taken }); save(); if (r.taken.uid === wallet.uid) return; continue; } // place prise : on tente la suivante
+        // refus sans place prise : version du site pas encore à jour, règles en cours de publication ou horloge décalée.
+        // On recale l'horloge et on réessaie (2 fois au plus) avant d'afficher l'erreur.
+        st.tries = (st.tries || 0) + 1;
+        if (st.tries <= 2) { st.error = 'Validation en cours…'; save(); await syncClock(); setTimeout(() => { if (alive && st.slot === c.slot && !st.claimed) { st.error = ''; claim(); } }, 20000); return; }
         st.error = r.error || 'Validation impossible'; save();
         return;
       }
@@ -200,7 +216,7 @@ export function initChallenges(wallet, backend, social, { onWin, onLost, onNew }
   let lastCheck = 0;
   async function verify(minGap = 3 * 60000) {
     if (!alive || !nextPlace() || !backend.getChallenge || !subs.size || isIdle()) return;
-    if (Date.now() - lastCheck < minGap || Date.now() - st.slot * SLOT_MS < 45000) return;
+    if (Date.now() - lastCheck < minGap || serverNow() - st.slot * SLOT_MS < 45000) return;
     lastCheck = Date.now();
     const slot = st.slot;
     try {
@@ -212,6 +228,7 @@ export function initChallenges(wallet, backend, social, { onWin, onLost, onNew }
     } catch (e) { console.warn('Défi : lecture impossible', e); }
   }
   const tick = setInterval(() => { roll(); verify(); }, 1000);
+  syncClock().then((off) => { if (off && alive) { roll(); notify(); } });
 
   return {
     subscribe(cb) { subs.add(cb); cb(view()); setTimeout(() => verify(60000), 300); return () => subs.delete(cb); },

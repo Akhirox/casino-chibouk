@@ -310,6 +310,17 @@ export function applyDrop(wallet, c, d) {
   wallet.touch({ type: 'loot', case: c.id, r: d.r, kind: d.kind, amount: d.amount || 0 });
 }
 
+// Cadeau d'un admin (V29) : Brundles, boost de récolte, boosts temporaires (mini-jeux, défis, vente) ou tours de roue.
+// g = { id, kind: 'br' | 'farm' | 'all' | 'chal' | 'sell' | 'spin', amount?, m?, h?, n?, msg? }
+export function applyGift(wallet, g, now = Date.now()) {
+  const p = wallet.p, l = lootOf(p);
+  if (g.kind === 'br') { wallet.credit('gift', Math.max(0, Math.floor(g.amount || 0)), { msg: g.msg || '' }); return true; }
+  if (g.kind === 'farm' && g.m > 1 && g.h > 0) { p.farm = F.normalize(p.farm); F.tick(p.farm); F.addBoost(p.farm, g.m, g.h, now); wallet.touch({ type: 'gift', kind: g.kind }); return true; }
+  if (['all', 'chal', 'sell'].includes(g.kind) && g.m > 1 && g.h > 0) { l.boosts = activeBoosts(p, now); l.boosts.push({ g: g.kind, m: g.m, u: now + g.h * 3600000 }); wallet.touch({ type: 'gift', kind: g.kind }); return true; }
+  if (g.kind === 'spin' && g.n > 0) { l.spins = (l.spins || 0) + Math.floor(g.n); wallet.touch({ type: 'gift', kind: g.kind }); return true; }
+  return false;
+}
+
 // Tickets à gratter gagnés dans les anciennes caisses
 export const freeTickets = (p, t) => (p && p.loot && p.loot.tk && p.loot.tk[t]) || 0;
 export function useTicket(wallet, t) {

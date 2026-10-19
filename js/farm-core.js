@@ -110,13 +110,7 @@ export function normalize(raw, now = Date.now()) {
   for (const k of ['b', 'w', 'bu', 'tot', 'sold', 'earned', 't', 'life', 'seeds', 'rp', 'bought']) f[k] = Number(f[k]) || 0;
   if (!raw.life && raw.tot) f.life = Number(raw.tot) || 0; // fermes créées avant les graines d'or
   f.bu = Math.max(1, Math.min(3, f.bu));
-  // boosts de récolte (caisses) : liste de { m, u } qui se cumulent (avant la V28 : un seul boost f.xb)
-  const xbs = Array.isArray(raw.xbs) ? raw.xbs : raw.xb ? [raw.xb] : [];
-  f.xbs = xbs.filter((b) => b && Number(b.u) > now && Number(b.m) > 1).map((b) => ({ m: Number(b.m), u: Number(b.u) })).slice(0, 40);
-  delete f.xb;
-  // prestige (V28) : bananes vendues depuis le dernier prestige ; les fermes d'avant repartent de leurs ventes totales
-  f.pr = Math.max(0, Number(raw.pr) || 0);
-  f.ss = raw.ss === undefined ? f.sold : Math.max(0, Number(raw.ss) || 0);
+  migrate(f, now);
   f.spd = Math.max(0, Math.min(SPEED_MAX, Number(raw.spd) || 0));
   return f;
 }
@@ -139,13 +133,28 @@ export function assignment(f) {
 // le plus fort compte en entier, le 2e à moitié, le 3e au quart… et le total est plafonné à ×5
 // (deux ×2 → ×2,5 ; trois ×2 → ×2,75 ; il faut beaucoup de ×3 pour approcher ×5).
 export const FARM_BOOST_CAP = 5;
+// Fermes d'avant la V28 (V29 : correctif) : l'ancien boost unique f.xb rejoint la liste f.xbs (sans doublon), puis
+// f.xb passe à null (la sauvegarde Firestore fusionne les champs : sans ce null, l'ancien boost reviendrait à chaque chargement).
+// Les ventes passées comptent pour le premier prestige.
+export function migrate(f, now = Date.now()) {
+  if (!f || typeof f !== 'object') return f;
+  let list = Array.isArray(f.xbs) ? f.xbs : [];
+  if (f.xb && Number(f.xb.m) > 1 && !list.some((b) => b && Number(b.u) === Number(f.xb.u) && Number(b.m) === Number(f.xb.m))) list = [...list, f.xb];
+  if (f.xb !== null) f.xb = null;
+  f.xbs = list.filter((b) => b && Number(b.u) > now && Number(b.m) > 1).map((b) => ({ m: Number(b.m), u: Number(b.u) })).slice(0, 40);
+  if (!(f.pr >= 0)) f.pr = Math.max(0, Number(f.pr) || 0);
+  if (f.ss === undefined || f.ss === null || Number.isNaN(Number(f.ss))) f.ss = Number(f.sold) || 0;
+  // V29 : en V28, les fermes jamais « normalisées » repartaient de 0 vente pour le premier prestige : on rattrape une fois
+  if (f.ssm !== 1) { if (!f.pr) f.ss = Math.max(Number(f.ss) || 0, Number(f.sold) || 0); f.ssm = 1; }
+  return f;
+}
 export function farmStack(ms) {
   const s = ms.filter((m) => m > 1).sort((a, b) => b - a);
   let t = 1;
   s.forEach((m, i) => { t += (m - 1) / 2 ** i; });
   return Math.min(FARM_BOOST_CAP, Math.round(t * 100) / 100);
 }
-export const activeFarmBoosts = (f, t = Date.now()) => ((f && f.xbs) || []).filter((b) => b.u > t);
+export const activeFarmBoosts = (f, t = Date.now()) => { if (f && (f.xb || !Array.isArray(f.xbs))) migrate(f, Math.min(t, f.t || t)); return ((f && f.xbs) || []).filter((b) => b.u > t); };
 export const boostAt = (f, t = Date.now()) => farmStack(activeFarmBoosts(f, t).map((b) => b.m));
 export const boostEnd = (f, t = Date.now()) => Math.max(0, ...activeFarmBoosts(f, t).map((b) => b.u));
 export function addBoost(f, m, hours, now = Date.now()) {
@@ -162,6 +171,7 @@ export const landPrice = (f) => landCost(f.own.length - START.length);
 // Production jusqu'à `now` en appliquant les chantiers terminés au bon moment. Renvoie les chantiers finis.
 export function tick(f, now = Date.now()) {
   const done = [];
+  migrate(f, Math.min(now, f.t || now));
   if (!f.t || f.t > now) f.t = now;
   const seg = (until, m) => {
     const dt = (until - f.t) / HOUR;

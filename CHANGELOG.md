@@ -2,6 +2,22 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V29 — Correctifs et quêtes ×5 (20 octobre 2026)
+
+### Correctifs
+
+- Ferme : les boosts de récolte gagnés avant la V28 n'étaient plus pris en compte (ils n'avaient pas disparu de ta sauvegarde). Ils reviennent avec le temps qu'il leur reste.
+- Ferme : tes ventes passées comptent bien pour le premier prestige, même si ta ferme n'avait pas été rouverte depuis la mise à jour.
+- Défi de la jungle : si l'horloge de ton appareil est décalée, le site se cale sur l'heure du serveur. Une validation refusée est retentée automatiquement avant d'afficher une erreur.
+
+### Quêtes du jour ×5
+
+- Récompenses multipliées par 5 : 1 500, 3 000 et 5 000 Brundles (avant bonus), et 2 500 de bonus pour les 3 quêtes. Les quêtes déjà tirées aujourd'hui en profitent aussi.
+
+### Cadeaux
+
+- L'équipe peut maintenant offrir des cadeaux (Brundles, boosts, tours de roue), à un joueur ou à tout le monde. Ils arrivent au prochain chargement de la page.
+
 ## V28 — Podium, prestige et chat (19 octobre 2026)
 
 ### Défi de la jungle : podium

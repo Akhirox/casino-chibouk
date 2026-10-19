@@ -227,6 +227,8 @@ async function createFirebaseBackend() {
       const docs = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
       return { rows: flattenLogs(docs), cursor: docs.length ? docs[docs.length - 1].at : before, done: docs.length < n };
     },    // Correction d'un compte par un admin (règles : admins seulement, champs limités, adminRev + 1)
+    // Cadeaux reçus : le joueur vide sa liste (seule modification permise de ce champ côté joueur)
+    async clearGifts(uid) { await F.updateDoc(F.doc(db, 'users', uid), { gifts: [] }); },
     async adminUpdateUser(uid, data, rev) {
       await F.updateDoc(F.doc(db, 'users', uid), { ...data, adminRev: (rev || 0) + 1, adminAt: Date.now() });
     },
@@ -242,7 +244,7 @@ async function createFirebaseBackend() {
         if (!c.includes('permission-denied')) throw e; // réseau : on réessaiera
         const snap = await F.getDoc(ref);
         if (snap.exists()) { const d = snap.data(); return { ok: false, taken: { uid: d.uid, pseudo: d.pseudo, at: d.at, amount: d.prize } }; }
-        return { ok: false, error: 'Validation refusée : vérifie que l\'heure de ton appareil est juste, et que les dernières règles Firestore sont publiées.' };
+        return { ok: false, error: 'Validation refusée. Recharge la page (la version du site n\'est peut-être pas à jour) ; si ça recommence, préviens l\'admin.' };
       }
     },
     async isAdmin(uid) {
@@ -314,6 +316,7 @@ function createDemoBackend() {
       if (p.banned || (data.adminRev ?? p.adminRev ?? 0) !== (p.adminRev || 0)) { const e = new Error('permission-denied'); e.code = 'permission-denied'; throw e; }
       write(kProfile(uid), { ...p, ...data });
     },
+    async clearGifts(uid) { const p = read(kProfile(uid), null); if (p) write(kProfile(uid), { ...p, gifts: [] }); },
     async adminUpdateUser(uid, data, rev) {
       const p = read(kProfile(uid), null); if (!p) throw new Error('joueur introuvable');
       write(kProfile(uid), { ...p, ...data, adminRev: (rev || 0) + 1, adminAt: Date.now() });

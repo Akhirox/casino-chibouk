@@ -40,11 +40,13 @@ service cloud.firestore {
         && request.resource.data.get('banReason', '') == resource.data.get('banReason', '')
         && request.resource.data.get('adminRev', 0) == resource.data.get('adminRev', 0)
         && request.resource.data.get('adminNote', '') == resource.data.get('adminNote', '')
-        && request.resource.data.get('tags', []) == resource.data.get('tags', []);
+        && request.resource.data.get('tags', []) == resource.data.get('tags', [])
+        // cadeaux de l'admin : le joueur ne peut que vider la liste après les avoir reçus
+        && (request.resource.data.get('gifts', []) == resource.data.get('gifts', []) || request.resource.data.get('gifts', []).size() == 0);
 
-      // Correction par un admin : solde, coffre, suspension, note et tags (OG CHBK…) uniquement, avec adminRev + 1
+      // Correction par un admin : solde, coffre, suspension, note, tags (OG CHBK…) et cadeaux uniquement, avec adminRev + 1
       allow update: if isAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['balance', 'vault', 'banned', 'banReason', 'adminRev', 'adminAt', 'adminNote', 'tags'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['balance', 'vault', 'banned', 'banReason', 'adminRev', 'adminAt', 'adminNote', 'tags', 'gifts'])
         && request.resource.data.adminRev == resource.data.get('adminRev', 0) + 1
         && request.resource.data.balance is number && request.resource.data.balance >= 0;
 

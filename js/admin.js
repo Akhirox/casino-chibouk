@@ -2,6 +2,7 @@
 // Visible seulement par les comptes listés dans la collection Firestore « admins » (voir README).
 import { $, $$, fmt, esc, toast, modal, CUR } from './ui.js';
 import { TAGS, tagsOf, tagsHTML } from './tags.js';
+import { GIFT_KINDS, giftLabel } from './gifts.js';
 import { CONFIG } from './config.js';
 
 const NAMES = { quiz: 'Calcul mental', capitals: 'Capitales', flags: 'Drapeaux', movies: 'Quiz ciné', higher: 'Plus ou moins', motus: 'Mot du jour',
@@ -57,17 +58,20 @@ export function mount(view, { wallet, backend, isAdmin }) {
     const nSus = rows.filter((r) => r.a.sus && !r.p.banned).length;
     body.innerHTML = `
       <div class="adm-kpis"><div><span>Joueurs</span><b>${rows.length}</b></div><div class="${nSus ? 'bad' : ''}"><span>Soldes inexplicables</span><b>${nSus}</b></div><div><span>Suspendus</span><b>${rows.filter((r) => r.p.banned).length}</b></div></div>
+      <div class="adm-giftall"><button class="btn btn-gold btn-sm" data-giftall>Cadeau à tous les joueurs</button><small class="muted">Indemnisation, événement… Chaque joueur le reçoit à son prochain chargement (1 écriture par joueur).</small></div>
       <p class="muted adm-help">« Max explicable » = 1 000 de départ + tout ce que le joueur a gagné (jeux, bonus, mini-jeux, ferme, transferts reçus) − tout ce qu'il a misé. Une fortune au-dessus ne peut venir que d'une modification à la main.</p>
       <div class="tbl-scroll"><table class="tbl adm-tbl"><thead><tr><th>Joueur</th><th class="r">Solde</th><th class="r">Coffre</th><th class="r">Misé</th><th class="r">Gagné aux jeux</th><th class="r">Max explicable</th><th class="r">Écart</th><th>Statut</th><th></th></tr></thead><tbody>
       ${rows.map(({ p, a }) => `<tr class="${p.banned ? 'banned' : a.sus ? 'cheat' : ''}"><td><b>${esc(p.pseudo)}</b>${tagsHTML(p)}${p.adminNote ? `<small class="adm-note">${esc(p.adminNote)}</small>` : ''}</td><td class="r">${fmt(p.balance || 0)}</td><td class="r">${fmt(p.vault || 0)}</td>
         <td class="r">${fmt((p.stats && p.stats.totalWagered) || 0)}</td><td class="r">${fmt((p.stats && p.stats.totalWon) || 0)}</td><td class="r">${fmt(Math.max(0, Math.round(a.max)))}</td>
         <td class="r ${a.gap > 0 ? 'neg' : ''}">${a.gap > 0 ? '+' + fmt(Math.round(a.gap)) : '—'}</td>
         <td>${p.banned ? '<span class="adm-flag cheat">Suspendu</span>' : a.sus ? '<span class="adm-flag cheat">Solde inexplicable</span>' : '<span class="adm-flag ok">OK</span>'}</td>
-        <td class="adm-acts"><button class="btn btn-ghost btn-sm" data-tags="${esc(p.uid)}">Tags${tagsOf(p).length ? ` (${tagsOf(p).length})` : ''}</button><button class="btn btn-ghost btn-sm" data-fix="${esc(p.uid)}">Corriger</button><button class="btn btn-ghost btn-sm" data-ban="${esc(p.uid)}">${p.banned ? 'Réactiver' : 'Suspendre'}</button></td></tr>`).join('')}
+        <td class="adm-acts"><button class="btn btn-ghost btn-sm" data-gift="${esc(p.uid)}">Cadeau${(p.gifts || []).length ? ` (${p.gifts.length} en attente)` : ''}</button><button class="btn btn-ghost btn-sm" data-tags="${esc(p.uid)}">Tags${tagsOf(p).length ? ` (${tagsOf(p).length})` : ''}</button><button class="btn btn-ghost btn-sm" data-fix="${esc(p.uid)}">Corriger</button><button class="btn btn-ghost btn-sm" data-ban="${esc(p.uid)}">${p.banned ? 'Réactiver' : 'Suspendre'}</button></td></tr>`).join('')}
       </tbody></table></div>`;
     $$('[data-fix]', body).forEach((b) => (b.onclick = () => fix(rows.find((r) => r.p.uid === b.dataset.fix))));
     $$('[data-ban]', body).forEach((b) => (b.onclick = () => ban(rows.find((r) => r.p.uid === b.dataset.ban).p)));
     $$('[data-tags]', body).forEach((b) => (b.onclick = () => editTags(rows.find((r) => r.p.uid === b.dataset.tags).p)));
+    $$('[data-gift]', body).forEach((b) => (b.onclick = () => gift([rows.find((r) => r.p.uid === b.dataset.gift).p])));
+    const ga = $('[data-giftall]', body); if (ga) ga.onclick = () => gift(rows.filter((r) => !r.p.banned).map((r) => r.p));
   }
   async function fix({ p, a }) {
     let box = null;
@@ -94,6 +98,52 @@ export function mount(view, { wallet, backend, isAdmin }) {
     if (res !== 'ok' || !box) return;
     const tags = [...box.querySelectorAll('.adm-tag input:checked')].map((x) => x.value).filter((t) => TAGS[t]);
     await apply(p, { tags }, tags.length ? `Tags de ${p.pseudo} : ${tags.map((t) => TAGS[t].label).join(', ')}` : `Tags de ${p.pseudo} retirés`);
+  }
+  // Cadeaux (V29) : Brundles, boosts temporaires ou tours de roue, reçus par le joueur à son prochain chargement
+  async function gift(list) {
+    if (!list.length) return;
+    let box = null;
+    const one = list.length === 1;
+    const res = await modal({ title: one ? `Cadeau pour ${esc(list[0].pseudo)}` : `Cadeau à ${list.length} joueurs`, cls: 'adm-gift-modal', html: `
+      <label class="adm-field">Type<select id="gf-kind" class="bet-input">${Object.entries(GIFT_KINDS).map(([k, n]) => `<option value="${k}">${esc(n)}</option>`).join('')}</select></label>
+      <label class="adm-field gf-br">Montant<input id="gf-amount" class="bet-input" type="number" min="1" step="1" value="10000"></label>
+      <label class="adm-field gf-boost" hidden>Multiplicateur ×<input id="gf-m" class="bet-input" type="number" min="1.1" max="5" step="0.1" value="2"></label>
+      <label class="adm-field gf-boost" hidden>Durée (heures)<input id="gf-h" class="bet-input" type="number" min="0.25" max="720" step="0.25" value="24"></label>
+      <label class="adm-field gf-spin" hidden>Nombre de tours<input id="gf-n" class="bet-input" type="number" min="1" max="50" step="1" value="3"></label>
+      <label class="adm-field">Message (affiché au joueur)<input id="gf-msg" class="bet-input" type="text" maxlength="120" placeholder="ex : désolé pour le bug de la ferme !"></label>
+      <p class="muted" id="gf-prev"></p>`,
+      buttons: [{ label: 'Annuler', value: false }, { label: one ? 'Envoyer' : `Envoyer à ${list.length} joueurs`, value: 'ok', primary: true }],
+      onOpen: (m) => {
+        box = m;
+        const sync = () => {
+          const k = m.querySelector('#gf-kind').value;
+          m.querySelectorAll('.gf-br').forEach((x) => (x.hidden = k !== 'br'));
+          m.querySelectorAll('.gf-boost').forEach((x) => (x.hidden = !['farm', 'all', 'chal', 'sell'].includes(k)));
+          m.querySelectorAll('.gf-spin').forEach((x) => (x.hidden = k !== 'spin'));
+          m.querySelector('#gf-prev').textContent = 'Aperçu : ' + giftLabel(read(m));
+        };
+        m.querySelectorAll('select,input').forEach((x) => (x.oninput = x.onchange = sync));
+        sync();
+      } });
+    if (res !== 'ok' || !box) return;
+    const g = read(box);
+    if ((g.kind === 'br' && !(g.amount > 0)) || (['farm', 'all', 'chal', 'sell'].includes(g.kind) && !(g.m > 1 && g.h > 0)) || (g.kind === 'spin' && !(g.n > 0))) { toast('Cadeau incomplet', 'error'); return; }
+    let ok = 0;
+    for (const p of list) {
+      const item = { ...g, id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7), at: Date.now() };
+      try { await backend.adminUpdateUser(p.uid, { gifts: [...(Array.isArray(p.gifts) ? p.gifts : []), item].slice(-20) }, p.adminRev || 0); ok++; }
+      catch (e) { toast(`${p.pseudo} : refusé (${e.code || e.message || e})`, 'error'); }
+    }
+    backend.addLog({ uid: wallet.uid, pseudo: wallet.pseudo, game: '_admin', flag: 'ok', amount: 0, at: Date.now(), reason: `Cadeau (${giftLabel(g)}) à ${ok} joueur${ok > 1 ? 's' : ''}${g.msg ? ` : ${g.msg}` : ''}`.slice(0, 200), info: one ? list[0].uid : 'tous' }).catch(() => {});
+    toast(`Cadeau envoyé à ${ok} joueur${ok > 1 ? 's' : ''} : ${giftLabel(g)}`, 'win');
+    await loadPlayers(true);
+  }
+  function read(m) {
+    const v = (id) => m.querySelector(id).value;
+    const kind = v('#gf-kind'), msg = String(v('#gf-msg') || '').slice(0, 120);
+    if (kind === 'br') return { kind, amount: Math.max(0, Math.floor(+v('#gf-amount') || 0)), msg };
+    if (kind === 'spin') return { kind, n: Math.max(0, Math.min(50, Math.floor(+v('#gf-n') || 0))), msg };
+    return { kind, m: Math.max(1, Math.min(5, Math.round((+String(v('#gf-m')).replace(',', '.') || 0) * 100) / 100)), h: Math.max(0, Math.min(720, +String(v('#gf-h')).replace(',', '.') || 0)), msg };
   }
   async function ban(p) {
     if (p.banned) { await apply(p, { banned: false, banReason: '' }, `${p.pseudo} est réactivé`); return; }

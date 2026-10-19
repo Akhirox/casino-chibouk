@@ -44,7 +44,7 @@ import * as Shop from './shop.js';
 import * as Cases from './cases.js';
 import { initLoot } from './loot.js';
 import { createChat } from './chat.js';
-import { initQuests, today, questText, vipOf, vipProgress, VIP, rakePot, claimRake, initVip, pctFmt, freeMult, xMult, questMult } from './progress.js';
+import { initQuests, today, questText, vipOf, vipProgress, VIP, rakePot, claimRake, initVip, pctFmt, freeMult, xMult, questMult, questReward } from './progress.js';
 import { initChallenges, challengeRoute, challengeMult, MIN_BET, PODIUM } from './challenges.js';
 import { createSocial, feedRich, feedText, groupFeed, groupRich, FEED_ICON, jackpotChance, chanceText } from './social.js';
 import { openVipModal } from './vip.js';
@@ -67,6 +67,7 @@ import * as Profile from './profile.js';
 import { createTips } from './tips.js';
 import { setRewardWallet, bonusHTML, questInfo, challengeInfo } from './rewards.js';
 import { tagsHTML } from './tags.js';
+import { receiveGifts } from './gifts.js';
 
 const app = $('#app');
 let backend = null;
@@ -209,7 +210,7 @@ async function boot() {
           if (fresh.banned || (fresh.adminRev || 0) !== (w.p.adminRev || 0)) {
             w.disabled = true;
             try { localStorage.removeItem(w.backupKey); } catch {}
-            await modal({ title: fresh.banned ? 'Compte suspendu' : 'Compte mis à jour par un admin', html: `<p>${fresh.banned ? 'Ton compte a été suspendu par un admin du casino.' : 'Un admin a corrigé ton compte. La page va se recharger avec les bonnes valeurs.'}</p>`, buttons: [{ label: 'OK', value: true, primary: true }], dismissable: false });
+            await modal({ title: fresh.banned ? 'Compte suspendu' : 'Compte mis à jour par un admin', html: `<p>${fresh.banned ? 'Ton compte a été suspendu par un admin du casino.' : 'Un admin a mis à jour ton compte (correction, tag ou cadeau). La page va se recharger.'}</p>`, buttons: [{ label: 'OK', value: true, primary: true }], dismissable: false });
             location.reload();
           }
         } catch (e) { console.warn(e); } finally { w.rejecting = false; }
@@ -372,12 +373,13 @@ function renderShell() {
   today(wallet);
   quests = initQuests(wallet, (q, bonus) => {
     if (bonus) { toast(`<span class="ach-toast">${icon('check')}<span><small>Quêtes du jour</small><b>Les 3 quêtes sont terminées !</b><em>+${fmt(Math.round(CONFIG.QUEST_BONUS * questMult(wallet)))} ${CUR} de bonus</em></span></span>`, 'ach', 5000); coinRain(30); }
-    else toast(`<span class="ach-toast">${icon('check')}<span><small>Quête terminée</small><b>${esc(questText(q))}</b><em>+${fmt(Math.round(q.r * questMult(wallet)))} ${CUR}</em></span></span>`, 'ach', 4500);
+    else toast(`<span class="ach-toast">${icon('check')}<span><small>Quête terminée</small><b>${esc(questText(q))}</b><em>+${fmt(Math.round(questReward(q) * questMult(wallet)))} ${CUR}</em></span></span>`, 'ach', 4500);
     sfx.bonus();
   });
   social = createSocial(wallet, backend);
   loot = initLoot(wallet);
   setRewardWallet(wallet);
+  setTimeout(() => wallet && receiveGifts(wallet, backend), 1500); // cadeaux de l'admin (indemnisations…)
   chat = createChat(wallet, social);
   challenges = initChallenges(wallet, backend, social, {
     onWin: (c, prize, place) => { toast(`<span class="ach-toast">${icon('flag')}<span><small>Défi de la jungle : ${place === 1 ? '1re place !' : `${place}e place`}</small><b>${esc(c.text)}</b><em>+${fmt(prize)} ${CUR}</em></span></span>`, 'ach', 6000); sfx.bonus(); sfx.win(place === 1); coinRain(place === 1 ? 50 : place === 2 ? 30 : 20); },
@@ -605,7 +607,7 @@ function questsHTML() {
   const qi = questInfo(), r = (x) => bonusHTML(x, qi);
   return `<div class="dash-head">${icon('check')}<b>Quêtes du jour</b><small class="muted">renouvelées à minuit</small></div>
     <ul class="quests">${d.quests.map((q) => `<li class="${q.done ? 'done' : ''}"><div><span class="q-lv q${q.tier}">${lv[q.tier]}</span>${esc(questText(q))}</div>
-      <div class="q-bar"><i style="width:${Math.min(100, (q.p / q.n) * 100)}%"></i></div><small>${q.done ? 'Terminée' : `${fmt(q.p)} / ${fmt(q.n)}`} · ${r(q.r)}</small></li>`).join('')}</ul>
+      <div class="q-bar"><i style="width:${Math.min(100, (q.p / q.n) * 100)}%"></i></div><small>${q.done ? 'Terminée' : `${fmt(q.p)} / ${fmt(q.n)}`} · ${r(questReward(q))}</small></li>`).join('')}</ul>
     <p class="muted q-bonus">${d.bonus ? 'Bonus de la journée récupéré !' : `Les 3 terminées : ${r(CONFIG.QUEST_BONUS)} ${CUR} de bonus`}</p>`;
 }
 function vipHTML() {

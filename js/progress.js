@@ -149,7 +149,9 @@ TEMPLATES.push(
   { id: 'cwClean', tier: 2, n: 1, text: () => 'Termine une grille de mots croisés moyenne ou difficile sans révéler de lettre', ev: (e) => (e.type === 'free' && e.game === 'crossword' && e.extra && e.extra.Clean && (e.extra.Won1 || e.extra.Won2) ? 1 : 0) },
   { id: 'free3', tier: 0, n: 3, text: (n) => `Termine ${n} parties de jeux gratuits (quiz, Sudoku, Snake…)`, ev: (e) => (e.type === 'free' ? 1 : 0) },
 );
-export const QUEST_REWARD = [300, 600, 1000];
+export const QUEST_REWARD = [1500, 3000, 5000]; // V29 : ×5
+// récompense d'une quête : toujours selon sa difficulté (les quêtes déjà tirées avant la V29 ont gardé l'ancien montant dans q.r)
+export const questReward = (q) => QUEST_REWARD[q.tier] ?? q.r ?? 0;
 
 // Tirage déterministe (même quêtes pour toute la journée), une par niveau de difficulté
 function seeded(seed) { let h = 2166136261; for (const c of seed) h = Math.imul(h ^ c.charCodeAt(0), 16777619); return () => { h = Math.imul(h ^ (h >>> 15), 2246822507); h = Math.imul(h ^ (h >>> 13), 3266489909); return ((h ^= h >>> 16) >>> 0) / 4294967296; }; }
@@ -185,7 +187,7 @@ export function initQuests(wallet, onDone) {
       if (t.set) { if (!q.seen.includes(v)) { q.seen.push(v); q.p = q.seen.length; changed = true; } } else { q.p = Math.min(q.n, q.p + v); changed = true; }
       if (q.p >= q.n) {
         q.done = true;
-        setTimeout(() => { wallet.p.stats.questsDone = (wallet.p.stats.questsDone || 0) + 1; wallet.credit('quest', Math.round(q.r * questMult(wallet)), { quest: q.id }); onDone && onDone(q, false); }, 0);
+        setTimeout(() => { wallet.p.stats.questsDone = (wallet.p.stats.questsDone || 0) + 1; wallet.credit('quest', Math.round(questReward(q) * questMult(wallet)), { quest: q.id }); onDone && onDone(q, false); }, 0);
       }
     }
     if (changed && !day.bonus && day.quests.every((q) => q.done)) {
