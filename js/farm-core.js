@@ -45,7 +45,12 @@ export const rushCost = (ms, cost = 0, total = 0) => Math.max(10, Math.ceil(ms /
 export const SEED_BONUS = 0.05;
 export const seedGain = (life) => Math.floor(2 * Math.sqrt(Math.max(0, life) / 1e6)); // 1 M récoltées → 2 graines, 25 M → 10
 export const REPLANT_MIN = 2;
-export const seedMult = (f) => 1 + SEED_BONUS * (f.seeds || 0);
+export const seedMult = (f) => (1 + SEED_BONUS * (f.seeds || 0)) * prestigeMult(f);
+// Prestige (V28) : après 2 M de bananes vendues, on peut remettre la ferme à zéro contre +100 % de production pour toujours.
+// Le palier double à chaque fois (2 M, 4 M, 8 M… de bananes vendues depuis le prestige précédent).
+export const PRESTIGE_BASE = 2e6, PRESTIGE_BONUS = 1;
+export const prestigeMult = (f) => 1 + PRESTIGE_BONUS * ((f && f.pr) || 0);
+export const prestigeNeed = (f) => PRESTIGE_BASE * 2 ** ((f && f.pr) || 0);
 // Récoltes nécessaires (depuis la dernière replantation) pour la graine suivante
 export const lifeForSeeds = (n) => Math.pow(n / 2, 2) * 1e6;
 // Niveau des bâtiments de départ après une replantation (plus on a de graines, plus on repart grand)
@@ -105,7 +110,13 @@ export function normalize(raw, now = Date.now()) {
   for (const k of ['b', 'w', 'bu', 'tot', 'sold', 'earned', 't', 'life', 'seeds', 'rp', 'bought']) f[k] = Number(f[k]) || 0;
   if (!raw.life && raw.tot) f.life = Number(raw.tot) || 0; // fermes créées avant les graines d'or
   f.bu = Math.max(1, Math.min(3, f.bu));
-  f.xb = raw.xb && raw.xb.u > now && raw.xb.m > 1 ? { m: Number(raw.xb.m), u: Number(raw.xb.u) } : null;
+  // boosts de récolte (caisses) : liste de { m, u } qui se cumulent (avant la V28 : un seul boost f.xb)
+  const xbs = Array.isArray(raw.xbs) ? raw.xbs : raw.xb ? [raw.xb] : [];
+  f.xbs = xbs.filter((b) => b && Number(b.u) > now && Number(b.m) > 1).map((b) => ({ m: Number(b.m), u: Number(b.u) })).slice(0, 40);
+  delete f.xb;
+  // prestige (V28) : bananes vendues depuis le dernier prestige ; les fermes d'avant repartent de leurs ventes totales
+  f.pr = Math.max(0, Number(raw.pr) || 0);
+  f.ss = raw.ss === undefined ? f.sold : Math.max(0, Number(raw.ss) || 0);
   f.spd = Math.max(0, Math.min(SPEED_MAX, Number(raw.spd) || 0));
   return f;
 }
@@ -124,16 +135,21 @@ export function assignment(f) {
   for (const x of fields) { x.w = Math.min(x.cap, left); left -= x.w; }
   return { fields, idle: Math.max(0, Math.min(f.w, houses(f)) - fields.reduce((a, x) => a + x.w, 0)), homeless: Math.max(0, f.w - houses(f)) };
 }
-// Boost de production gagné dans une caisse : f.xb = { m: multiplicateur, u: fin (ms) }
-export const boostAt = (f, t = Date.now()) => (f.xb && f.xb.u > t ? f.xb.m : 1);
+// Boosts de récolte gagnés dans les caisses : f.xbs = [{ m, u }]. Ils se cumulent avec un rendement très dégressif :
+// le plus fort compte en entier, le 2e à moitié, le 3e au quart… et le total est plafonné à ×5
+// (deux ×2 → ×2,5 ; trois ×2 → ×2,75 ; il faut beaucoup de ×3 pour approcher ×5).
+export const FARM_BOOST_CAP = 5;
+export function farmStack(ms) {
+  const s = ms.filter((m) => m > 1).sort((a, b) => b - a);
+  let t = 1;
+  s.forEach((m, i) => { t += (m - 1) / 2 ** i; });
+  return Math.min(FARM_BOOST_CAP, Math.round(t * 100) / 100);
+}
+export const activeFarmBoosts = (f, t = Date.now()) => ((f && f.xbs) || []).filter((b) => b.u > t);
+export const boostAt = (f, t = Date.now()) => farmStack(activeFarmBoosts(f, t).map((b) => b.m));
+export const boostEnd = (f, t = Date.now()) => Math.max(0, ...activeFarmBoosts(f, t).map((b) => b.u));
 export function addBoost(f, m, hours, now = Date.now()) {
-  // pas de boost en cours : il démarre ; même force : on prolonge ; plus fort : il remplace (le reste de l'ancien est converti) ;
-  // plus faible : il prolonge le boost en cours d'une durée équivalente (même gain total)
-  const cur = f.xb && f.xb.u > now ? f.xb : null;
-  if (!cur) { f.xb = { m, u: now + hours * HOUR }; return; }
-  if (m === cur.m) { cur.u += hours * HOUR; return; }
-  if (m > cur.m) { const rest = ((cur.u - now) * (cur.m - 1)) / (m - 1); f.xb = { m, u: now + hours * HOUR + rest }; return; }
-  cur.u += (hours * HOUR * (m - 1)) / (cur.m - 1);
+  f.xbs = [...activeFarmBoosts(f, now), { m, u: now + hours * HOUR }];
 }
 export const productionPerHour = (f) => assignment(f).fields.reduce((a, x) => a + x.w * x.per, 0);
 export const totalSlots = (f) => built(f).filter((x) => x.t === 'F').reduce((a, x) => a + slots(x.l), 0);
@@ -156,10 +172,11 @@ export function tick(f, now = Date.now()) {
     }
     f.t = until;
   };
-  // boost de production (caisses) : multiplicateur jusqu'à f.xb.u, puis production normale
+  // boosts de récolte (caisses) : on découpe la période à chaque fin de boost
   const produce = (until) => {
-    if (f.xb && f.xb.u > f.t && f.xb.u < until) { seg(f.xb.u, f.xb.m); seg(until, 1); }
-    else seg(until, boostAt(f, f.t));
+    const ends = activeFarmBoosts(f, f.t).map((b) => b.u).filter((u) => u < until).sort((a, b) => a - b);
+    for (const u of ends) seg(u, boostAt(f, f.t));
+    seg(until, boostAt(f, f.t));
   };
   f.q.sort((a, b) => a.end - b.end);
   while (f.q.length && f.q[0].end <= now) {
@@ -170,6 +187,7 @@ export function tick(f, now = Date.now()) {
   }
   produce(now);
   f.rate = Math.round(productionPerHour(f));
+  if (f.xbs && f.xbs.some((b) => b.u <= now)) f.xbs = activeFarmBoosts(f, now);
   return done;
 }
 
@@ -222,23 +240,27 @@ export function demolish(f, i) {
   return null;
 }
 
-// Replanter : graines d'or gagnées, bâtiments et singes remis à zéro (parcelles, bâtisseurs et graines conservés)
-export function canReplant(f) {
-  if (seedGain(f.life) < REPLANT_MIN) return `Il faut avoir récolté ${Math.round(lifeForSeeds(REPLANT_MIN) / 1e6)} million de bananes depuis la dernière replantation`;
+// Prestige : bâtiments, singes et bananes remis à zéro contre +100 % de production pour toujours.
+// Conservés : parcelles, bâtisseurs, graines d'or, vitesse de construction et statistiques.
+export function canPrestige(f) {
+  const need = prestigeNeed(f);
+  if ((f.ss || 0) < need) return `Il faut avoir vendu ${fmtM(need)} de bananes depuis ${f.pr ? 'le dernier prestige' : 'le début'}`;
+  if (f.q.length) return 'Attends la fin de tes chantiers';
   return null;
 }
-export function replant(f, now = Date.now()) {
-  const err = canReplant(f);
+const fmtM = (n) => (n >= 1e6 ? `${(n / 1e6).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} million${n >= 2e6 ? 's' : ''}` : Math.round(n).toLocaleString('fr-FR'));
+export function prestige(f, now = Date.now()) {
+  const err = canPrestige(f);
   if (err) return err;
-  const gain = seedGain(f.life);
-  f.seeds = (f.seeds || 0) + gain;
+  tick(f, now);
+  f.pr = (f.pr || 0) + 1;
   f.rp = (f.rp || 0) + 1;
-  const L = restartLevel(f.seeds);
+  f.ss = 0;
+  const L = Math.min(6, f.pr + 1); // on repart un peu plus grand à chaque prestige
   f.g = new Array(SIZE * SIZE).fill(null);
   f.g[24] = { t: 'F', l: L }; f.g[17] = { t: 'C', l: L }; f.g[31] = { t: 'E', l: L };
   f.q = []; f.w = 2; f.life = 0; f.t = now;
   f.b = Math.floor(capacity(f) * 0.8);
-  f.lastGain = gain;
   return null;
 }
 

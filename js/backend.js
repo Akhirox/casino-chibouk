@@ -182,6 +182,14 @@ async function createFirebaseBackend() {
       const snap = await F.getDocs(q);
       return snap.docs.map((d) => ({ id: d.id, ...d.data() }));
     },
+    // Chat : collection à part, triée par l'heure du serveur (même ordre sur tous les appareils)
+    async postChat(msg) { await F.addDoc(F.collection(db, 'chat'), { ...msg, at: Date.now(), ts: F.serverTimestamp() }); },
+    async fetchChat(afterMs = 0, n = 80) {
+      const c = F.collection(db, 'chat');
+      const q = afterMs ? F.query(c, F.where('ts', '>', F.Timestamp.fromMillis(afterMs)), F.orderBy('ts', 'desc'), F.limit(n)) : F.query(c, F.orderBy('ts', 'desc'), F.limit(n));
+      const snap = await F.getDocs(q);
+      return snap.docs.map((d) => { const x = d.data(); return { id: d.id, ...x, kind: 'chat', at: x.ts && x.ts.toMillis ? x.ts.toMillis() : x.at || 0 }; });
+    },
     // Jackpot commun : amount = montant accumulé au-dessus de la mise de départ
     async getJackpot() {
       const snap = await F.getDoc(F.doc(db, 'meta', 'jackpot'));
@@ -222,18 +230,18 @@ async function createFirebaseBackend() {
     async adminUpdateUser(uid, data, rev) {
       await F.updateDoc(F.doc(db, 'users', uid), { ...data, adminRev: (rev || 0) + 1, adminAt: Date.now() });
     },
-    // Défi de la jungle : le premier qui crée le document du créneau gagne (création unique, voir firestore.rules)
+    // Défi de la jungle : podium de 3 places, une place = un document challenges/p<créneau>_<place> créé une seule fois
     async getChallenge(slot) {
-      const snap = await F.getDoc(F.doc(db, 'challenges', 'c' + slot));
-      return snap.exists() ? snap.data() : null;
+      const snaps = await Promise.all([1, 2, 3].map((k) => F.getDoc(F.doc(db, 'challenges', `p${slot}_${k}`))));
+      return snaps.filter((x) => x.exists()).map((x) => x.data());
     },
-    async claimChallenge(slot, data) {
-      const ref = F.doc(db, 'challenges', 'c' + slot);
+    async claimChallenge(slot, place, data) {
+      const ref = F.doc(db, 'challenges', `p${slot}_${place}`);
       try { await F.setDoc(ref, data); return { ok: true }; } catch (e) {
         const c = (e && e.code) || '';
         if (!c.includes('permission-denied')) throw e; // réseau : on réessaiera
         const snap = await F.getDoc(ref);
-        if (snap.exists()) { const d = snap.data(); return { ok: false, winner: { uid: d.uid, pseudo: d.pseudo, at: d.at } }; }
+        if (snap.exists()) { const d = snap.data(); return { ok: false, taken: { uid: d.uid, pseudo: d.pseudo, at: d.at, amount: d.prize } }; }
         return { ok: false, error: 'Validation refusée : vérifie que l\'heure de ton appareil est juste, et que les dernières règles Firestore sont publiées.' };
       }
     },
@@ -351,6 +359,14 @@ function createDemoBackend() {
     async fetchFeed(since = 0, n = 25) {
       return read(K_FEED, []).filter((e) => e.at > since).sort((a, b) => b.at - a.at).slice(0, n);
     },
+    async postChat(msg) {
+      const list = read('chibouk_demo_chat', []);
+      list.push({ ...msg, id: 'c_' + Math.random().toString(36).slice(2, 10), at: Date.now() });
+      write('chibouk_demo_chat', list.slice(-200));
+    },
+    async fetchChat(afterMs = 0, n = 80) {
+      return read('chibouk_demo_chat', []).map((e) => ({ ...e, kind: 'chat' })).filter((e) => e.at > afterMs).sort((a, b) => b.at - a.at).slice(0, n);
+    },
     async getJackpot() { return { amount: 0, ...read(K_JACKPOT, {}) }; },
     async addJackpot(delta) { const j = read(K_JACKPOT, {}); j.amount = (j.amount || 0) + Math.floor(delta); write(K_JACKPOT, j); },
     async winJackpot(uid, pseudo) {
@@ -366,11 +382,12 @@ function createDemoBackend() {
       const docs = read(K_LOGS, []).filter((e) => !before || e.at < before).sort((a, b) => b.at - a.at).slice(0, n);
       return { rows: flattenLogs(docs), cursor: docs.length ? docs[docs.length - 1].at : before, done: docs.length < n };
     },
-    async getChallenge(slot) { return read('chibouk_demo_challenges', {})[slot] || null; },
-    async claimChallenge(slot, data) {
-      const all = read('chibouk_demo_challenges', {});
-      if (all[slot]) return { ok: false, winner: { uid: all[slot].uid, pseudo: all[slot].pseudo, at: all[slot].at } };
-      all[slot] = data; write('chibouk_demo_challenges', all);
+    async getChallenge(slot) { const all = read('chibouk_demo_podium', {}); return [1, 2, 3].map((k) => all[`${slot}_${k}`]).filter(Boolean); },
+    async claimChallenge(slot, place, data) {
+      const all = read('chibouk_demo_podium', {}), k = `${slot}_${place}`;
+      if (all[k]) return { ok: false, taken: { uid: all[k].uid, pseudo: all[k].pseudo, at: all[k].at, amount: all[k].prize } };
+      if ([1, 2].some((j) => j < place && (!all[`${slot}_${j}`] || all[`${slot}_${j}`].uid === data.uid))) return { ok: false, error: 'Place refusée' };
+      all[k] = data; write('chibouk_demo_podium', all);
       return { ok: true };
     },
     async isAdmin() { return true; }, // en démo, tout le monde voit le journal

@@ -45,7 +45,7 @@ import * as Cases from './cases.js';
 import { initLoot } from './loot.js';
 import { createChat } from './chat.js';
 import { initQuests, today, questText, vipOf, vipProgress, VIP, rakePot, claimRake, initVip, pctFmt, freeMult, xMult, questMult } from './progress.js';
-import { initChallenges, challengeRoute, challengeMult, MIN_BET } from './challenges.js';
+import { initChallenges, challengeRoute, challengeMult, MIN_BET, PODIUM } from './challenges.js';
 import { createSocial, feedRich, feedText, groupFeed, groupRich, FEED_ICON, jackpotChance, chanceText } from './social.js';
 import { openVipModal } from './vip.js';
 import { openVault } from './vault.js';
@@ -66,6 +66,7 @@ import { getPlayers } from './players.js';
 import * as Profile from './profile.js';
 import { createTips } from './tips.js';
 import { setRewardWallet, bonusHTML, questInfo, challengeInfo } from './rewards.js';
+import { tagsHTML } from './tags.js';
 
 const app = $('#app');
 let backend = null;
@@ -379,9 +380,9 @@ function renderShell() {
   setRewardWallet(wallet);
   chat = createChat(wallet, social);
   challenges = initChallenges(wallet, backend, social, {
-    onWin: (c, prize) => { toast(`<span class="ach-toast">${icon('flag')}<span><small>Défi de la jungle remporté !</small><b>${esc(c.text)}</b><em>+${fmt(prize)} ${CUR}</em></span></span>`, 'ach', 6000); sfx.bonus(); sfx.win(true); coinRain(50); },
-    onLost: (c, w) => toast(`Défi réussi, mais <b>${esc(w.pseudo)}</b> a été plus rapide que toi !`, 'info', 5000),
-    onNew: (v) => { if (!isIdle() && location.hash !== '#/lobby' && location.hash !== '') toast(`<span class="ach-toast">${icon('flag')}<span><small>Nouveau défi de la jungle</small><b>${esc(v.c.text)}</b><em>+${fmt(v.prize)} ${CUR} pour le premier</em></span></span>`, 'ach', 6000); },
+    onWin: (c, prize, place) => { toast(`<span class="ach-toast">${icon('flag')}<span><small>Défi de la jungle : ${place === 1 ? '1re place !' : `${place}e place`}</small><b>${esc(c.text)}</b><em>+${fmt(prize)} ${CUR}</em></span></span>`, 'ach', 6000); sfx.bonus(); sfx.win(place === 1); coinRain(place === 1 ? 50 : place === 2 ? 30 : 20); },
+    onLost: () => toast('Défi réussi, mais le podium est déjà complet !', 'info', 5000),
+    onNew: (v) => { if (!isIdle() && location.hash !== '#/lobby' && location.hash !== '') toast(`<span class="ach-toast">${icon('flag')}<span><small>Nouveau défi de la jungle</small><b>${esc(v.c.text)}</b><em>+${fmt(v.prize)} ${CUR} pour le premier, 3 places au podium</em></span></span>`, 'ach', 6000); },
   });
   farmTimer = Farm.initFarm(wallet);
   vip = initVip(wallet, (v, bonus) => {
@@ -618,23 +619,30 @@ function vipHTML() {
 }
 // Défi de la jungle (remplace le jackpot sur l'accueil ; le jackpot reste affiché à côté de la slot)
 const mmss = (ms) => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };
+const PLACE = ['1er', '2e', '3e'], MEDAL = ['#f5c542', '#cfd8dc', '#d08a4a'];
 function challengeHTML(v) {
-  const c = v.c, mine = v.winner && v.winner.uid === wallet.uid;
-  const status = mine ? `<div class="ch-status win">${icon('trophy')}Tu as remporté ce défi !</div>`
-    : v.winner ? `<div class="ch-status lost">${icon('flag')}Remporté par <button type="button" class="pl-link" data-player="${esc(v.winner.uid)}">${esc(v.winner.pseudo)}</button>. Prochain défi dans <b class="mono ch-time">${mmss(v.end - Date.now())}</b></div>`
+  const c = v.c, info = challengeInfo(challengeMult(wallet));
+  const status = v.claimed ? `<div class="ch-status win">${icon('trophy')}Tu es ${v.claimed === 1 ? '<b>1er</b>' : `<b>${PLACE[v.claimed - 1]}</b>`} sur le podium !</div>`
+    : v.full ? `<div class="ch-status lost">${icon('flag')}Podium complet. Prochain défi dans <b class="mono ch-time">${mmss(v.end - Date.now())}</b></div>`
     : v.error ? `<div class="ch-status lost">${esc(v.error)}</div>`
     : v.done ? '<div class="ch-status">Défi réussi, validation en cours…</div>'
-    : '<div class="ch-status open">Personne ne l\'a encore réussi : fonce !</div>';
-  const prog = c.n > 1 && !v.winner ? `<div class="q-bar"><i style="width:${Math.min(100, (v.p / c.n) * 100)}%"></i></div><small class="muted">${v.p} / ${c.n}</small>` : '';
+    : `<div class="ch-status open">${v.next === 1 ? 'Personne ne l\'a encore réussi : fonce !' : `Encore ${4 - v.next} place${v.next < 3 ? 's' : ''} sur le podium : fonce !`}</div>`;
+  const prog = c.n > 1 && !v.claimed && !v.full ? `<div class="q-bar"><i style="width:${Math.min(100, (v.p / c.n) * 100)}%"></i></div><small class="muted">${v.p} / ${c.n}</small>` : '';
+  const podium = `<ol class="ch-podium">${[1, 2, 3].map((k) => {
+    const x = (v.podium || []).find((y) => y.place === k), me = x && x.uid === wallet.uid;
+    return `<li class="pl${k}${x ? ' taken' : ''}${me ? ' me' : ''}" style="--mc:${MEDAL[k - 1]}"><span class="ch-medal">${k}</span>
+      <span class="ch-who">${x ? `<button type="button" class="pl-link" data-player="${esc(x.uid)}">${esc(x.pseudo)}</button>` : '<i class="muted">libre</i>'}</span>
+      <b class="ch-amt">${x && x.amount ? `+${fmt(x.amount)}` : bonusHTML(c.prize * PODIUM[k - 1], info, { total: v.prizes[k - 1] })}</b></li>`;
+  }).join('')}</ol>`;
   const hist = (v.history || []).filter((h) => h.slot !== v.slot).slice(0, 3);
   return `<div class="dash-head">${icon('flag')}<b>Défi de la jungle</b><small class="ch-clock" title="Temps restant">${icon('hourglass')}<b class="mono ch-time">${mmss(v.end - Date.now())}</b></small></div>
     <div class="ch-tags"><span class="q-lv q${c.tier}">${['Facile', 'Moyen', 'Difficile'][c.tier]}</span><span class="ch-kind">${c.kind === 'casino' ? 'Casino' : 'Mini-jeu'}</span></div>
     <p class="ch-text">${esc(c.text)}${c.kind === 'casino' ? ` <small class="muted">(mise d'au moins ${fmt(MIN_BET)})</small>` : ''}</p>
     ${prog}
-    <div class="ch-prize">Récompense : <b class="gold">${bonusHTML(c.prize, challengeInfo(challengeMult(wallet)), { total: v.prize })} ${CUR}</b> <small class="muted">pour le premier qui réussit</small></div>
+    ${podium}
     ${status}
-    <div class="ch-foot">${!v.winner && c.game !== 'lobby' ? `<a class="btn btn-gold btn-sm" href="${challengeRoute(c)}">Y aller ${icon('arrow')}</a>` : ''}
-      <small class="muted">Un nouveau défi toutes les 15 min${hist.length ? ` · derniers vainqueurs : ${hist.map((h) => `<b>${esc(h.pseudo)}</b>`).join(', ')}` : ''}</small></div>`;
+    <div class="ch-foot">${!v.claimed && !v.full && c.game !== 'lobby' ? `<a class="btn btn-gold btn-sm" href="${challengeRoute(c)}">Y aller ${icon('arrow')}</a>` : ''}
+      <small class="muted">Un nouveau défi toutes les 12 min, 3 places récompensées${hist.length ? ` · derniers vainqueurs : ${hist.map((h) => `<b>${esc(h.pseudo)}</b>`).join(', ')}` : ''}</small></div>`;
 }
 let feedAll = false;
 const feedOpen = new Set();
@@ -660,7 +668,7 @@ const chatReadKey = () => 'chibouk_chat_read_' + (wallet ? wallet.uid : '');
 let chatsOpen = 0; // panneaux de chat visibles (le fil est relu plus souvent tant qu'il y en a un)
 function chatListHTML(st) {
   const list = ((st && st.entries) || []).filter((e) => e.kind === 'chat').sort((a, b) => a.at - b.at);
-  const msgs = list.map((e) => `<li class="${e.uid === wallet.uid ? 'me' : ''}"><div class="ch-head"><button type="button" class="pl-link ch-who" data-player="${esc(e.uid)}">${esc(e.pseudo)}</button><small>${hhmm(e.at)}</small></div><span class="ch-t">${esc(e.text || '')}</span></li>`).join('');
+  const msgs = list.map((e) => `<li class="${e.uid === wallet.uid ? 'me' : ''}"><div class="ch-head"><button type="button" class="pl-link ch-who" data-player="${esc(e.uid)}">${esc(e.pseudo)}</button>${tagsHTML({ tags: e.tg })}<small>${hhmm(e.at)}</small></div><span class="ch-t">${esc(e.text || '')}</span></li>`).join('');
   const pend = chat && chat.pending ? `<li class="me pending"><div class="ch-head"><b>${esc(wallet.pseudo)}</b><small data-chwait>envoi dans ${Math.ceil(chat.waitMs / 1000)} s</small></div><span class="ch-t">${esc(chat.pending)}</span></li>` : '';
   return msgs || pend ? msgs + pend : '<li class="muted ch-empty">Personne n\'a encore rien dit. Lance la discussion !</li>';
 }
@@ -669,7 +677,7 @@ function panelInner() {
     <div class="fp-body fp-feed"></div>
     <div class="fp-body fp-chat" hidden><ul class="ch-list"></ul>
       <form class="ch-form" autocomplete="off"><input class="bet-input ch-in" maxlength="200" placeholder="Ton message…"><button class="btn btn-gold btn-sm" type="submit">${icon('send')}</button></form>
-      <small class="ch-note muted">1 message par minute, envoyé avec la synchro du solde (pas de chat instantané : ça économise la base de données).</small></div>`;
+      <small class="ch-note muted">1 message par minute. Historique des 80 derniers messages, le même sur tous les appareils (relu toutes les 45 s quand le chat est ouvert).</small></div>`;
 }
 // Remplit un panneau et le garde à jour ; renvoie la fonction de nettoyage
 function bindPanel(root) {
@@ -759,7 +767,7 @@ function mountLobby(view, { wallet: w }) {
   const casinoCards = [
     card('slots', 'Chibouk Slot', 'Machine à sous 5×3, 99 lignes, WILD ×2. 3 SCATTER = tours gratuits ×2. Jackpot commun !', 'RTP ≈ 100 %',
       `<div class="mini-reels">${['S', 'F', 'S'].map((x) => `<div>${symbolSVG(x)}</div>`).join('')}</div>`),
-    card('jungle', 'Jungle Connect', 'Nouveau ! Grille 7×7 : 5 symboles reliés = gain, cascades à l\'infini, multiplicateurs jusqu\'à ×256 et tours gratuits du Masque Tribal.', 'RTP 98,5 %', jungleArtSVG()),
+    card('jungle', 'Jungle Connect', 'Nouveau ! Grille 7×7 : 5 symboles reliés = gain, cascades à l\'infini, multiplicateurs jusqu\'à ×256 et tours gratuits du Masque Tribal.', 'RTP 99,5 %', jungleArtSVG()),
     card('blackjack', 'Blackjack du Singe', 'Blackjack 6 jeux, paie 3:2, mises annexes Perfect Pairs et 21+3, cartes en 3D.', 'RTP ≈ 99,5 %',
       `<div class="mini-cards"><div class="mc mc1">A<span>♠</span></div><div class="mc mc2 red">K<span>♥</span></div></div>`),
     card('roulette', 'Roulette Banane', 'Roulette européenne à un zéro, roue et bille animées.', 'RTP 97,3 %', `<div class="mini-wheel"></div>`),

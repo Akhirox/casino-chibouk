@@ -31,6 +31,9 @@ buildTables();
 // Chance qu'un symbole d'un cluster gagnant révèle un multiplicateur
 export const MULT_P = { base: 0.06, free: 0.1 };
 export const MULT_X4 = 0.35; // en tours gratuits, part des ×4
+// Recharges « en chaîne » (V28) : un symbole qui tombe pendant une cascade a cette chance de copier un de ses voisins
+// déjà en place (dessous, ou à côté) : les cascades s'enchaînent beaucoup plus souvent.
+export const CHAIN = { base: 0.42, free: 0.42 };
 
 // Gains en × la mise totale, selon la taille du cluster : 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15+
 const RAW = {
@@ -42,7 +45,7 @@ const RAW = {
   L: [0.25, 0.35, 0.5, 0.7, 1, 1.5, 2, 3, 5, 10, 25],
   P: [0.2, 0.3, 0.4, 0.6, 0.8, 1.2, 1.6, 2.5, 4, 8, 20],
 };
-export let PAY_SCALE = 2.42; // réglé par simulation (28 M de parties) : RTP ≈ 98,5 % (± 0,4), bonus ≈ 1/127, bonus moyen ≈ 31× la mise
+export let PAY_SCALE = 1.355; // réglé par simulation (24 M de parties, V28) : RTP ≈ 99,5 % (± 0,45), bonus ≈ 1/129, bonus moyen ≈ 32× la mise
 export const setPayScale = (k) => { PAY_SCALE = k; };
 export const payOf = (s, size) => Math.round(RAW[s][Math.min(size, 15) - MIN_CLUSTER] * PAY_SCALE * 100) / 100;
 export const PAY_SIZES = [5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
@@ -100,7 +103,7 @@ export function spinJungle({ free = false, rand = randInt, capLeft = MAX_WIN } =
     // explosion + gravité + remplissage
     const gone = new Uint8Array(N * N);
     for (const c of clusters) for (const k of c.cells) gone[k] = 1;
-    const ng = new Array(N * N), drops = []; // drops : [colonne, de (ligne, -1.. pour les nouveaux), vers]
+    const ng = new Array(N * N).fill(null), drops = [], fresh = []; // drops : [colonne, de (ligne, -1.. pour les nouveaux), vers]
     for (let c = 0; c < N; c++) {
       let w = N - 1;
       for (let r = N - 1; r >= 0; r--) {
@@ -110,7 +113,19 @@ export function spinJungle({ free = false, rand = randInt, capLeft = MAX_WIN } =
         if (w !== r) drops.push([c, r, w]);
         w--;
       }
-      for (let n = 0; w >= 0; w--, n++) { ng[idx(w, c)] = pick(tr, rand); drops.push([c, -1 - n, w]); }
+      for (let n = 0; w >= 0; w--, n++) { fresh.push(idx(w, c)); drops.push([c, -1 - n, w]); }
+    }
+    // remplissage de bas en haut : chance de copier un voisin déjà en place (jamais un masque)
+    const ch = free ? CHAIN.free : CHAIN.base;
+    fresh.sort((a, b) => b - a);
+    for (const k of fresh) {
+      const r = (k / N) | 0, c = k % N;
+      let sym = null;
+      if (rand(1e6) < ch * 1e6) {
+        const nb = [[r + 1, c], [r, c - 1], [r, c + 1]].filter(([rr, cc]) => rr < N && cc >= 0 && cc < N).map(([rr, cc]) => ng[idx(rr, cc)]).filter((x) => x && x !== SCATTER);
+        if (nb.length) sym = nb[rand(nb.length)];
+      }
+      ng[k] = sym || pick(tr, rand);
     }
     steps.push({ clusters, win: stepWin, grid: ng.slice(), drops });
     g = ng;

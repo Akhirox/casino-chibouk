@@ -37,7 +37,7 @@ export function mount(view, { wallet }) {
       <aside class="side-panel">
         ${betFieldHTML('cr-bet')}
         <div class="bet-field"><label for="cr-auto"><input type="checkbox" id="cr-auto-on"> Encaissement auto à</label>
-          <div class="bet-field-row"><input id="cr-auto" class="bet-input" type="number" min="1.01" step="0.01" inputmode="decimal"><span class="suffix">×</span></div></div>
+          <div class="bet-field-row"><input id="cr-auto" class="bet-input" type="text" inputmode="decimal" autocomplete="off"><span class="suffix">×</span></div></div>
         <button class="btn btn-gold btn-lg wide cr-main" id="cr-main">Décoller</button>
         ${autoHTML('cr-autobet', 'Paris automatiques', '<p class="ab-note">Chaque fusée encaisse au multiplicateur « Encaissement auto » ci-dessus (activé automatiquement).</p>')}
         <div class="plk-info"><span>Gain potentiel</span><b id="cr-pot">—</b></div>
@@ -68,12 +68,24 @@ export function mount(view, { wallet }) {
   const mainBtn = $('#cr-main', view);
   const bet = bindBetField(view, 'cr-bet', 'chibouk_crash_bet', wallet, 10);
   const autoInput = $('#cr-auto', view), autoChk = $('#cr-auto-on', view);
-  autoInput.value = autoTarget.toFixed(2); autoChk.checked = autoOn;
-  autoInput.onchange = () => { autoTarget = Math.max(1.01, Math.round((+autoInput.value || 2) * 100) / 100); autoInput.value = autoTarget.toFixed(2); try { localStorage.setItem('chibouk_crash_auto', autoTarget); } catch {} };
+  const showAuto = () => { autoInput.value = autoTarget.toFixed(2).replace('.', ','); };
+  showAuto(); autoChk.checked = autoOn;
+  // accepte « 1,10 » comme « 1.10 » (un champ nombre refusait la virgule sur certains navigateurs et repassait à ×2)
+  const readAuto = () => {
+    const v = parseFloat(String(autoInput.value).replace(/\s/g, '').replace(',', '.'));
+    if (v >= 1.01) autoTarget = Math.min(1e6, Math.round(v * 100) / 100);
+    showAuto();
+    try { localStorage.setItem('chibouk_crash_auto', autoTarget); } catch {}
+  };
+  autoInput.onchange = readAuto; autoInput.onblur = readAuto;
   autoChk.onchange = () => { autoOn = autoChk.checked; try { localStorage.setItem('chibouk_crash_auto_on', autoOn ? '1' : '0'); } catch {} };
 
   function renderHist() {
-    $('#cr-hist', view).innerHTML = history.slice(0, 16).map((m) => `<span class="${m >= 10 ? 'gold' : m >= 2 ? 'good' : 'bad'}">${fmtM(m)}</span>`).join('');
+    // couleur = ton résultat (vert : encaissé, rouge : perdu) ; fusées d'avant la V28 : couleur selon le multiplicateur
+    $('#cr-hist', view).innerHTML = history.slice(0, 16).map((x) => {
+      const m = typeof x === 'number' ? x : x.m, cls = typeof x === 'number' ? (m >= 10 ? 'gold' : m >= 2 ? 'good' : 'bad') : x.me ? (m >= 10 ? 'gold' : 'good') : 'bad';
+      return `<span class="${cls}" title="${typeof x === 'number' ? '' : x.me ? 'Encaissé' : 'Perdu'}">${fmtM(m)}</span>`;
+    }).join('');
   }
 
   function updateUI() {
@@ -93,6 +105,7 @@ export function mount(view, { wallet }) {
   const auto = bindAuto(view, 'cr-autobet', { wallet, game: 'crash', turbo: true, bet, delay: 900,
     play: async () => {
       if (!autoOn) { autoOn = true; autoChk.checked = true; }
+      readAuto();
       if (!start()) return false;
       while (alive && state === 'flying') await new Promise((r) => setTimeout(r, 100));
       return alive;
@@ -145,10 +158,13 @@ export function mount(view, { wallet }) {
   }
 
   function explode() {
+    // filet de sécurité : si l'encaissement auto était atteignable, il est payé même si aucune image ne l'a vu passer
+    // (gros saut de temps en turbo, onglet en arrière-plan…)
+    if (round.auto && !round.cashed && round.auto <= round.crash) cashOut(round.auto);
     state = 'crashed';
     round.m = round.crash;
     if (!round.cashed) wallet.round('crash', 0, { bet: round.bet, cashed: 0, crash: round.crash });
-    history.unshift(round.crash); history = history.slice(0, 30);
+    history.unshift({ m: round.crash, me: round.cashed ? 1 : 0 }); history = history.slice(0, 30);
     try { localStorage.setItem('chibouk_crash_hist', JSON.stringify(history)); } catch {}
     renderHist();
     const head = toScreen(timeFor(round.crash), round.crash);
@@ -289,8 +305,9 @@ export function mount(view, { wallet }) {
     document.removeEventListener('keydown', onKey);
     auto.stop();
     // si on quitte en plein vol sans avoir encaissé : on encaisse au multiplicateur actuel
-    if (state === 'flying' && round && !round.cashed) {
-      const m = Math.min(round.crash, Math.floor(multAt((performance.now() - round.start) / 1000) * 100) / 100);
+    if (state === 'flying' && round && !round.cashed && round.auto && round.auto <= round.crash) cashOut(round.auto);
+    else if (state === 'flying' && round && !round.cashed) {
+      const m = Math.min(round.crash, round.m || 1); // multiplicateur affiché (le temps de la courbe va 4× plus vite en turbo)
       if (m < round.crash) cashOut(m); else wallet.round('crash', 0);
     }
   };

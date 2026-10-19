@@ -1,6 +1,7 @@
 // Page admin (#/admin) : onglet « Joueurs » (soldes inexplicables, correction, suspension) et journal des mini-jeux.
 // Visible seulement par les comptes listés dans la collection Firestore « admins » (voir README).
 import { $, $$, fmt, esc, toast, modal, CUR } from './ui.js';
+import { TAGS, tagsOf, tagsHTML } from './tags.js';
 import { CONFIG } from './config.js';
 
 const NAMES = { quiz: 'Calcul mental', capitals: 'Capitales', flags: 'Drapeaux', movies: 'Quiz ciné', higher: 'Plus ou moins', motus: 'Mot du jour',
@@ -58,14 +59,15 @@ export function mount(view, { wallet, backend, isAdmin }) {
       <div class="adm-kpis"><div><span>Joueurs</span><b>${rows.length}</b></div><div class="${nSus ? 'bad' : ''}"><span>Soldes inexplicables</span><b>${nSus}</b></div><div><span>Suspendus</span><b>${rows.filter((r) => r.p.banned).length}</b></div></div>
       <p class="muted adm-help">« Max explicable » = 1 000 de départ + tout ce que le joueur a gagné (jeux, bonus, mini-jeux, ferme, transferts reçus) − tout ce qu'il a misé. Une fortune au-dessus ne peut venir que d'une modification à la main.</p>
       <div class="tbl-scroll"><table class="tbl adm-tbl"><thead><tr><th>Joueur</th><th class="r">Solde</th><th class="r">Coffre</th><th class="r">Misé</th><th class="r">Gagné aux jeux</th><th class="r">Max explicable</th><th class="r">Écart</th><th>Statut</th><th></th></tr></thead><tbody>
-      ${rows.map(({ p, a }) => `<tr class="${p.banned ? 'banned' : a.sus ? 'cheat' : ''}"><td><b>${esc(p.pseudo)}</b>${p.adminNote ? `<small class="adm-note">${esc(p.adminNote)}</small>` : ''}</td><td class="r">${fmt(p.balance || 0)}</td><td class="r">${fmt(p.vault || 0)}</td>
+      ${rows.map(({ p, a }) => `<tr class="${p.banned ? 'banned' : a.sus ? 'cheat' : ''}"><td><b>${esc(p.pseudo)}</b>${tagsHTML(p)}${p.adminNote ? `<small class="adm-note">${esc(p.adminNote)}</small>` : ''}</td><td class="r">${fmt(p.balance || 0)}</td><td class="r">${fmt(p.vault || 0)}</td>
         <td class="r">${fmt((p.stats && p.stats.totalWagered) || 0)}</td><td class="r">${fmt((p.stats && p.stats.totalWon) || 0)}</td><td class="r">${fmt(Math.max(0, Math.round(a.max)))}</td>
         <td class="r ${a.gap > 0 ? 'neg' : ''}">${a.gap > 0 ? '+' + fmt(Math.round(a.gap)) : '—'}</td>
         <td>${p.banned ? '<span class="adm-flag cheat">Suspendu</span>' : a.sus ? '<span class="adm-flag cheat">Solde inexplicable</span>' : '<span class="adm-flag ok">OK</span>'}</td>
-        <td class="adm-acts"><button class="btn btn-ghost btn-sm" data-fix="${esc(p.uid)}">Corriger</button><button class="btn btn-ghost btn-sm" data-ban="${esc(p.uid)}">${p.banned ? 'Réactiver' : 'Suspendre'}</button></td></tr>`).join('')}
+        <td class="adm-acts"><button class="btn btn-ghost btn-sm" data-tags="${esc(p.uid)}">Tags${tagsOf(p).length ? ` (${tagsOf(p).length})` : ''}</button><button class="btn btn-ghost btn-sm" data-fix="${esc(p.uid)}">Corriger</button><button class="btn btn-ghost btn-sm" data-ban="${esc(p.uid)}">${p.banned ? 'Réactiver' : 'Suspendre'}</button></td></tr>`).join('')}
       </tbody></table></div>`;
     $$('[data-fix]', body).forEach((b) => (b.onclick = () => fix(rows.find((r) => r.p.uid === b.dataset.fix))));
     $$('[data-ban]', body).forEach((b) => (b.onclick = () => ban(rows.find((r) => r.p.uid === b.dataset.ban).p)));
+    $$('[data-tags]', body).forEach((b) => (b.onclick = () => editTags(rows.find((r) => r.p.uid === b.dataset.tags).p)));
   }
   async function fix({ p, a }) {
     let box = null;
@@ -81,6 +83,17 @@ export function mount(view, { wallet, backend, isAdmin }) {
     if (res !== 'ok' || !box) return;
     const val = (id) => box.querySelector(id).value;
     await apply(p, { balance: Math.max(0, Math.floor(+val('#adm-bal') || 0)), vault: Math.max(0, Math.floor(+val('#adm-vault') || 0)), adminNote: String(val('#adm-note') || '').slice(0, 120) }, `Compte de ${p.pseudo} corrigé`);
+  }
+  // Tags spéciaux (OG CHBK…) : affichés à côté du pseudo partout (profil, classements, chat)
+  async function editTags(p) {
+    let box = null;
+    const cur = new Set(tagsOf(p));
+    const res = await modal({ title: `Tags de ${esc(p.pseudo)}`, html: `<p class="muted">Coche les tags à donner. Le joueur les voit après son prochain rechargement (automatique).</p>
+      <div class="adm-tags">${Object.entries(TAGS).map(([id, t]) => `<label class="adm-tag"><input type="checkbox" value="${id}" ${cur.has(id) ? 'checked' : ''}> <span class="pl-tag tag-${id}">${esc(t.label)}</span> <small class="muted">${esc(t.desc)}</small></label>`).join('')}</div>`,
+      buttons: [{ label: 'Annuler', value: false }, { label: 'Enregistrer', value: 'ok', primary: true }], onOpen: (m) => { box = m; } });
+    if (res !== 'ok' || !box) return;
+    const tags = [...box.querySelectorAll('.adm-tag input:checked')].map((x) => x.value).filter((t) => TAGS[t]);
+    await apply(p, { tags }, tags.length ? `Tags de ${p.pseudo} : ${tags.map((t) => TAGS[t].label).join(', ')}` : `Tags de ${p.pseudo} retirés`);
   }
   async function ban(p) {
     if (p.banned) { await apply(p, { banned: false, banReason: '' }, `${p.pseudo} est réactivé`); return; }

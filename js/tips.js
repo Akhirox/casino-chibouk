@@ -17,7 +17,7 @@ export const TIPS = [
   { id: 'global', route: ['stats'], text: 'L\'onglet « Le casino » de la page Stats montre tout ce que les singes ont misé, gagné et dépensé, et le RTP réel de chaque jeu.' },
   { id: 'quests', route: ['lobby'], text: 'Trois quêtes du jour t\'attendent sur l\'accueil (facile, moyenne, difficile). Elles avancent toutes seules pendant que tu joues.' },
   { id: 'vip', route: ['lobby', 'stats'], text: 'Plus tu mises, plus ton rang VIP monte : chaque nouveau rang t\'offre un bonus, et une petite part de chaque mise tombe dans ta cagnotte de rakeback, à récupérer quand tu veux sur l\'accueil.' },
-  { id: 'challenge', route: ['lobby'], text: 'Le défi de la jungle change toutes les 15 minutes, pour tout le monde en même temps. Le premier qui le réussit empoche la récompense : regarde le chrono et fonce !' },
+  { id: 'challenge', route: ['lobby'], text: 'Le défi de la jungle change toutes les 12 minutes, pour tout le monde en même temps. Les 3 premiers qui le réussissent montent sur le podium (100 %, 60 % et 35 % de la récompense) : regarde le chrono et fonce !' },
   { id: 'jackpot', route: ['slots'], text: 'Le jackpot commun grossit avec chaque spin de la Chibouk Slot, et il peut tomber sur n\'importe quel spin. Plus ta mise est grosse, plus tu as de chances.' },
   { id: 'shop', route: ['lobby', 'profile'], when: (w) => w.balance >= 10000, text: `Tu as des ${CUR} qui dorment ? La boutique propose des cadres d'avatar, des titres, des dos de cartes, des thèmes de slot et des effets de victoire.`, go: ['Boutique', '#/shop'] },
   { id: 'weekly', route: ['ranking'], text: 'Le classement de la semaine compte ton bénéfice du lundi au dimanche : le premier gagne un trophée permanent sur son profil.' },

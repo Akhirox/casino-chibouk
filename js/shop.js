@@ -1,6 +1,7 @@
 // Boutique cosmétique : cadres d'avatar, titres, dos de cartes, thèmes de la slot, effets de victoire.
 // Purement visuel, mais ça retire des Brundles du circuit (sinon les soldes gonflent à l'infini).
 import { icon } from './art.js';
+import { tagsHTML } from './tags.js';
 import { $, $$, fmt, money, esc, toast, modal, coinRain, setWinFx, CUR } from './ui.js';
 import { avatarHTML } from './profile.js';
 import { sfx } from './sfx.js';
@@ -87,7 +88,8 @@ export const ownedCount = (p) => Object.keys(shopOf(p).owned || {}).filter((id) 
 
 // Classe CSS du cadre d'avatar et titre d'un joueur (utilisés partout où son avatar / pseudo apparaît)
 export const frameClass = (p) => { const f = equipped(p, 'frame'); return f === 'fr-none' ? '' : f; };
-export const titleHTML = (p) => { const t = equipped(p, 'title'); return t === 'ti-none' ? '' : `<span class="pl-title">${esc(byId(t).name)}</span>`; };
+// tags d'admin (OG CHBK…) puis titre équipé
+export const titleHTML = (p) => { const t = equipped(p, 'title'); return tagsHTML(p) + (t === 'ti-none' ? '' : `<span class="pl-title">${esc(byId(t).name)}</span>`); };
 
 // Applique les cosmétiques du joueur connecté (classes sur <body> + effet de victoire)
 export function applyCosmetics(wallet) {

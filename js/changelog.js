@@ -1,9 +1,41 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '27';
+export const VERSION = '28';
 
 export const CHANGELOG = [
+  {
+    v: '28', date: '19 octobre 2026', title: 'Podium, prestige et chat',
+    groups: [
+      ['Défi de la jungle : podium', [
+        'Un nouveau défi toutes les 12 minutes (au lieu de 15).',
+        'Les 3 premiers qui le réussissent sont récompensés : 100 % du prix pour le 1er, 60 % pour le 2e, 35 % pour le 3e (avec tes bonus).',
+        'Le podium s\'affiche en direct sur l\'accueil, avec ce que tu toucherais à chaque place.',
+      ]],
+      ['Ferme : prestige', [
+        'La replantation contre des graines d\'or est remplacée par le prestige : après 2 millions de bananes vendues, tu peux remettre ta ferme à zéro contre +100 % de production pour toujours (×2, puis ×3, ×4…).',
+        'Le palier double à chaque prestige : 2 M, 4 M, 8 M de bananes vendues… Tes ventes passées comptent déjà pour le premier.',
+        'Conservés : parcelles, bâtisseurs, graines d\'or (des caisses), vitesse de construction et boosts en cours.',
+        'Les boosts de récolte des caisses se cumulent enfin (avant, un seul comptait) : le 2e à moitié, le 3e au quart… jusqu\'à ×5. Il faut vraiment enchaîner les caisses pour s\'en approcher.',
+      ]],
+      ['Jungle Connect', [
+        'Beaucoup plus de cascades en chaîne : les symboles qui tombent copient souvent un de leurs voisins. 40 % des tours gagnants enchaînent au moins une 2e cascade (19 % avant), 4 % vont jusqu\'à 5 cascades ou plus.',
+        'RTP relevé à 99,5 %.',
+      ]],
+      ['Chat', [
+        'Le chat a son propre historique, le même sur tous les appareils : les 80 derniers messages, dans l\'ordre de l\'heure du serveur.',
+      ]],
+      ['Classements', [
+        'Nouveau classement des mini-jeux : pour chaque jeu, parties jouées, réussite, moyenne (score, temps ou essais), record et Brundles gagnés. Clique sur une colonne pour trier.',
+        'Les temps moyens sont comptés à partir de cette version.',
+      ]],
+      ['Divers', [
+        'Caisses : onglets des familles bien plus visibles, chacun avec sa couleur et son icône.',
+        'Tag spécial « OG CHBK », donné par l\'admin, affiché à côté du pseudo (profil, classements, chat).',
+        'Crash : l\'encaissement auto accepte la virgule (« 1,10 ») et il est garanti même si une image saute (turbo, onglet en arrière-plan). L\'historique colore en vert les fusées que tu as encaissées.',
+      ]],
+    ],
+  },
   {
     v: '27', date: '19 octobre 2026', title: 'Jungle Connect et caisses par familles',
     groups: [

@@ -346,6 +346,9 @@ export class Wallet {
     s[kind + 'Rounds'] = (s[kind + 'Rounds'] || 0) + 1;
     s[kind + 'Total'] = (s[kind + 'Total'] || 0) + Math.max(0, amount);
     for (const [k, v] of Object.entries(extra)) s[kind + k] = (s[kind + k] || 0) + v;
+    // temps de jeu (classement des mini-jeux : temps moyen)
+    const sec = meta && meta.log && +meta.log.sec;
+    if (sec > 0 && sec < 7200) { s[kind + 'Sec'] = Math.round((s[kind + 'Sec'] || 0) + sec); s[kind + 'Timed'] = (s[kind + 'Timed'] || 0) + 1; }
     if (amount > 0) this.p.balance += amount;
     this.touch({ type: 'free', game: kind, amount: Math.max(0, amount), extra, meta });
     const vx = this.vipBonus(kind, amount);

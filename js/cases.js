@@ -3,6 +3,7 @@ import { $, $$, fmt, money, esc, toast, modal, coinRain, CUR } from './ui.js';
 import { icon, coinSVG } from './art.js';
 import { sfx } from './sfx.js';
 import * as L from './loot.js';
+import * as F from './farm-core.js';
 import { applyCosmetics } from './shop.js';
 import { permBonus, xMult, freeMult } from './progress.js';
 
@@ -49,7 +50,7 @@ export function mount(view, { wallet, social }) {
   $('#cs-help', view).onclick = help;
 
   function kpis() {
-    const p = wallet.p, now = Date.now(), fb = p.farm && p.farm.xb && p.farm.xb.u > now ? p.farm.xb : null;
+    const p = wallet.p, now = Date.now(), fbs = p.farm ? F.activeFarmBoosts(p.farm, now) : [], fb = fbs.length ? { m: F.boostAt(p.farm, now), u: F.boostEnd(p.farm, now), n: fbs.length } : null;
     const boosts = L.activeBoosts(p, now), by = (g) => boosts.filter((b) => b.g === g);
     const stackLine = (g, label) => { const list = by(g); if (!list.length) return ''; const m = g === 'all' ? L.boostMult(p, 'all') : g === 'chal' ? L.chalBoost(p) : L.sellBoost(p); const end = Math.max(...list.map((b) => b.u)); return `<li title="${list.map((b) => `×${String(b.m).replace('.', ',')} encore ${left(b.u - now)}`).join(' · ')}"><b>${xMult(m)}</b> ${label}${list.length > 1 ? ` <small>(${list.length} boosts empilés)</small>` : ''} <small data-u="${end}">${left(end - now)}</small></li>`; };
     const perms = [
@@ -62,7 +63,7 @@ export function mount(view, { wallet, social }) {
       p.farm && p.farm.spd ? `chantiers −${pc(p.farm.spd)}` : '',
     ].filter(Boolean);
     const lines = [stackLine('all', 'tous les mini-jeux'), stackLine('chal', 'récompenses des défis'), stackLine('sell', 'vente des bananes'),
-      fb ? `<li><b>${xMult(fb.m)}</b> récolte de la ferme <small data-u="${fb.u}">${left(fb.u - now)}</small></li>` : '',
+      fb ? `<li title="${fbs.map((b) => `×${String(b.m).replace('.', ',')} encore ${left(b.u - now)}`).join(' · ')}"><b>${xMult(fb.m)}</b> récolte de la ferme${fb.n > 1 ? ` <small>(${fb.n} boosts empilés)</small>` : ''} <small data-u="${fb.u}">${left(fb.u - now)}</small></li>` : '',
       ...boosts.filter((b) => L.BOOST_GAMES[b.g]).map((b) => `<li><b>${xMult(b.m)}</b> ${esc(L.BOOST_GAMES[b.g][0])} <small data-u="${b.u}">${left(b.u - now)}</small></li>`),
       p.loot && p.loot.spins ? `<li><b>${p.loot.spins}</b> tour${p.loot.spins > 1 ? 's' : ''} de roue bonus</li>` : ''].filter(Boolean);
     $('#cs-kpis', view).innerHTML = `
@@ -77,12 +78,21 @@ export function mount(view, { wallet, social }) {
     return list.length ? `<a class="cs-tk" href="#/scratch">${icon('scratch')}${list.map(([t, n]) => `<b>${n}</b> ${esc(L.TICKETS[t][0])}`).join(' · ')}</a>` : '';
   }
   let fam = cur.fam;
+  // couleur, icône et accroche de chaque famille (onglets bien visibles)
+  const FAM_STYLE = {
+    farm: { c: '#7fd14f', c2: '#2f7a1c', ic: 'banana', tag: 'ferme' },
+    mini: { c: '#36c2ff', c2: '#1060b8', ic: 'gift', tag: 'mini-jeux & défis' },
+    cos: { c: '#ff7ab6', c2: '#a8235f', ic: 'shop', tag: 'cosmétiques' },
+    br: { c: '#ff8a3d', c2: '#b8320f', ic: 'bolt', tag: 'gros risque' },
+    royal: { c: '#f5c542', c2: '#9a6a00', ic: 'star', tag: 'bonus permanents' },
+  };
   function cases() {
     const card = (c) => `<button type="button" class="cs-case ${c.id === cur.id ? 'on' : ''}" data-c="${c.id}" style="--hue:${c.hue}">
       ${crateSVG(c.hue)}<b>${esc(c.name)}</b><span class="cs-price">${money(c.price)}</span><small class="muted">${esc(c.desc)}</small></button>`;
     const f = L.FAMILIES.find((x) => x[0] === fam) || L.FAMILIES[0];
-    $('#cs-cases', view).innerHTML = `<div class="seg cs-fams">${L.FAMILIES.map(([k, n]) => `<button type="button" data-fam="${k}" class="${k === fam ? 'on' : ''}">${n}</button>`).join('')}</div>
-      <p class="muted cs-famdesc">${esc(f[2])}</p>
+    $('#cs-cases', view).innerHTML = `<div class="cs-fams">${L.FAMILIES.map(([k, n]) => { const st = FAM_STYLE[k] || {}; const nb = L.CASES.filter((c) => c.fam === k).length;
+      return `<button type="button" data-fam="${k}" class="cs-fam ${k === fam ? 'on' : ''}" style="--fc:${st.c};--fc2:${st.c2}"><span class="cs-fam-ic">${icon(st.ic || 'crate')}</span><span class="cs-fam-t"><b>${n}</b><small>${nb} ${k === 'cos' ? 'coffrets' : k === 'royal' ? 'coffres' : 'caisses'} · ${st.tag || ''}</small></span></button>`; }).join('')}</div>
+      <p class="cs-famdesc" style="--fc:${(FAM_STYLE[fam] || {}).c}">${esc(f[2])}</p>
       <div class="cs-row">${L.CASES.filter((c) => c.fam === fam).map(card).join('')}</div>`;
     $$('[data-fam]', view).forEach((b) => (b.onclick = () => { if (busy) return; fam = b.dataset.fam; sfx.click(); const first = L.CASES.find((c) => c.fam === fam); if (cur.fam !== fam && first) { cur = first; opener(); pool(); } cases(); }));
     $$('[data-c]', view).forEach((b) => (b.onclick = () => { if (busy) return; cur = L.caseById(b.dataset.c); try { localStorage.setItem('chibouk_case', cur.id); } catch {} sfx.click(); cases(); opener(); pool(); }));
@@ -114,7 +124,7 @@ export function mount(view, { wallet, social }) {
     $('#cs-val', view).textContent = cur.fam === 'cos' ? `En moyenne, un tirage vaut ${v} % du prix du coffret en valeur boutique. Un objet déjà possédé est remboursé à sa valeur boutique.`
       : cur.fam === 'royal' ? 'Toujours un bonus permanent : plus le coffre est cher, plus il est gros. Un bonus déjà au maximum est remplacé par des gains gratuits en plus.'
         : cur.fam === 'br' ? `En moyenne ${v} % du prix revient en ${CUR}${cur.id === 'qod' ? '' : ' (la plupart du temps beaucoup moins : c\'est le gros lot qui fait la moyenne)'}.`
-          : `${v} % du prix revient en ${CUR} en moyenne ; le reste de la valeur est dans les boosts (${cur.fam === 'mini' ? 'empilables' : 'ferme'}).`;
+          : `${v} % du prix revient en ${CUR} en moyenne ; le reste de la valeur est dans les boosts (${cur.fam === 'mini' ? 'empilables' : 'ferme, cumulables'}).`;
     $('#cs-pool', view).innerHTML = list.map((it) => { const lb = L.poolLabel(cur, it); return `<div class="cs-it r-${it.r} cs-pool-it"><div class="cs-it-ic">${itemIcon(lb.icon)}</div><b>${esc(lb.title)}</b><small>${esc(lb.sub)}</small><span class="cs-ch">${L.RARITIES[it.r].name} · ${pctTxt(L.chanceOf(cur, it))}</span><i class="cs-bar"></i></div>`; }).join('');
   }
   function history() {
@@ -194,7 +204,7 @@ export function mount(view, { wallet, social }) {
       <li><b>Raretés</b> : Commun 70 %, Rare 22 %, Épique 6 %, Légendaire 1,7 %, Mythique 0,3 % (sauf coffrets cosmétiques et quitte ou double).</li>
       ${L.FAMILIES.map(([, n, d]) => `<li><b>${n}</b> : ${d}</li>`).join('')}
       <li><b>Boosts empilables</b> (mini-jeux, défis, vente des bananes) : le plus fort compte en entier, le 2e aux 3/4, le 3e au quart, puis de moins en moins. Deux ×3 = ×4,5, trois ×3 = ×5. Plafonds : ×6 pour les mini-jeux, ×3 pour les défis et la vente.</li>
-      <li><b>Récolte de la ferme</b> : un seul boost à la fois ; un nouveau boost plus faible prolonge le boost en cours d'une durée équivalente.</li>
+      <li><b>Récolte de la ferme</b> : les boosts se cumulent aussi, mais très peu : le 2e compte à moitié, le 3e au quart, le 4e au huitième… jusqu'à ×5 au maximum (deux ×2 = ×2,5 ; il faut beaucoup de ×3 pour approcher ×5).</li>
       <li><b>Plafonds des bonus permanents</b> : coffre +100 %, vente des bananes +100 %, roue du jour +300 %, défis +200 %, vitesse de construction −60 % ; gains gratuits sans plafond.</li>
       <li>Aucune caisse ne donne de rakeback : impossible de miser à l'infini en se faisant rembourser.</li>
       <li>Le lot est enregistré dès le clic : quitter la page pendant l'animation ne fait rien perdre.</li></ul>`, buttons: [{ label: 'Compris', value: true, primary: true }] });

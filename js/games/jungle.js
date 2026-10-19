@@ -77,8 +77,8 @@ export function mount(view, { wallet }) {
         <button class="btn btn-gold btn-lg wide" id="jc-spin">Tourner</button>
         ${autoHTML('jc-auto')}
         <div class="plk-info"><span>Gain max</span><b>×${fmt(J.MAX_WIN)}</b></div>
-        <div class="plk-info"><span>Bonus</span><b>≈ 1 tour sur 127</b></div>
-        <div class="plk-info"><span>RTP</span><b>98,5 %</b></div>
+        <div class="plk-info"><span>Bonus</span><b>≈ 1 tour sur 129</b></div>
+        <div class="plk-info"><span>RTP</span><b>99,5 %</b></div>
         <div class="dc-hist jc-hist" id="jc-hist"></div>
       </aside>
       <div class="jc-stage">
@@ -353,8 +353,8 @@ function rulesHTML(b) {
     <li><b>Cascade</b> : les symboles gagnants explosent, ceux du dessus tombent et de nouveaux arrivent par le haut. Ça continue tant qu'il y a des clusters, sans limite.</li>
     <li><b>Multiplicateurs</b> : chaque symbole d'un cluster gagnant peut révéler un <b>×2</b>. Ceux d'un même cluster se multiplient entre eux (trois ×2 = ×8), jusqu'à <b>×256</b> par cluster.</li>
     <li><b>Masque Tribal</b> : 3 masques ou plus sur la grille à la fin de la cascade = <b>10 tours gratuits</b> à la même mise (3 de plus pendant le bonus = +5 tours). Pendant les tours gratuits, les multiplicateurs apparaissent plus souvent (10 % au lieu de 6 %) et peuvent valoir ×4.</li>
-    <li>Les nouveaux symboles qui tombent pendant les cascades sont un peu plus souvent des Singes Dorés et des Gorilles.</li>
-    <li>Gain maximum : ×${fmt(J.MAX_WIN)} la mise par tour (bonus compris). RTP ≈ 98,5 % (simulé sur 28 millions de tours), bonus ≈ 1 tour sur 127.</li></ul>
+    <li>Les nouveaux symboles qui tombent pendant les cascades copient souvent un de leurs voisins (≈ 4 sur 10) : les cascades s'enchaînent facilement. Ils sont aussi un peu plus souvent des Singes Dorés et des Gorilles.</li>
+    <li>Gain maximum : ×${fmt(J.MAX_WIN)} la mise par tour (bonus compris). RTP ≈ 99,5 % (simulé sur 24 millions de tours), bonus ≈ 1 tour sur 129.</li></ul>
     <p class="muted">Gains pour ta mise actuelle (${fmt(b)}), selon la taille du cluster, avant multiplicateurs :</p>
     <div class="jc-pt-wrap"><table class="jc-paytable"><thead><tr><th>Symbole</th><th>5</th><th>6</th><th>8</th><th>10</th><th>12</th><th>15+</th></tr></thead><tbody>${rows}</tbody></table></div>`;
 }

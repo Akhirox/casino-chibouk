@@ -11,6 +11,7 @@ import { weeklyRows, getWeeks, syncWeeks } from './weekly.js';
 import { GAMES, signed } from './stats.js';
 import { hasFarm, snapshot, visit } from './farm.js';
 import { productionPerHour } from './farm-core.js';
+import { miniRankPanel } from './minirank.js';
 
 export function mount(view, { wallet, backend }) {
   let alive = true, wkTab = 'cur', players = null;
@@ -26,6 +27,10 @@ export function mount(view, { wallet, backend }) {
       <div id="farms"><p class="muted">Chargement…</p></div>
     </div>
 
+    <div class="panel"><h2><span class="h-ic">${icon('gift')}Classement des mini-jeux</span></h2>
+      <div id="minirank"><p class="muted">Chargement…</p></div>
+    </div>
+
     <div class="panel"><h2><span class="h-ic">${icon('trophy')}Classement des singes (fortune)</span></h2>
       <div id="lb"><p class="muted">Chargement…</p></div>
     </div>
@@ -34,6 +39,7 @@ export function mount(view, { wallet, backend }) {
       <div id="bw" class="bw-grid"><p class="muted">Chargement…</p></div>
       <p class="muted" style="font-size:.78rem;margin:12px 0 0">Plus gros gain encaissé en une seule partie. Les données des autres joueurs sont mises à jour toutes les ${CONFIG.SYNC_INTERVAL_MS / 1000} s environ, et la liste est gardée en cache ${CONFIG.LEADERBOARD_CACHE_MS / 60000} min pour économiser la base de données.</p>
     </div>`;
+  const mini = miniRankPanel($('#minirank', view), { wallet, getRows: () => players });
   $('#lb-refresh', view).onclick = () => loadLB(true);
   $$('.wk-tabs button', view).forEach((b) => (b.onclick = () => { wkTab = b.dataset.w; $$('.wk-tabs button', view).forEach((x) => x.classList.toggle('on', x === b)); renderWeek(); }));
 
@@ -50,6 +56,7 @@ export function mount(view, { wallet, backend }) {
     if (!alive || !box) return;
     renderWeek();
     renderFarms();
+    mini.render();
     syncWeeks(backend, wallet).then(() => alive && renderHall());
     const fort = (r) => r.balance + Math.max(0, r.vault || 0);
     const rows = [...players].sort((a, b) => fort(b) - fort(a)).slice(0, CONFIG.LEADERBOARD_SIZE);

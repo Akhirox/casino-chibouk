@@ -1,16 +1,17 @@
-// Défi de la jungle : un défi commun à tous les joueurs toutes les 15 minutes (casino et mini-jeux en alternance).
-// Seul le premier joueur qui le réussit remporte la récompense.
+// Défi de la jungle : un défi commun à tous les joueurs toutes les 12 minutes (casino et mini-jeux en alternance).
+// Podium : les 3 premiers qui le réussissent sont récompensés (100 %, 60 %, 35 % du prix).
 //
 // - Le défi du créneau est tiré au sort de façon déterministe à partir du numéro de créneau : tous les navigateurs
 //   affichent le même sans rien lire en base.
-// - Le vainqueur est désigné par Firestore : le premier qui crée le document challenges/c<créneau> gagne
-//   (création unique garantie par les règles, qui vérifient aussi l'heure du serveur).
+// - Les places sont attribuées par Firestore : challenges/p<créneau>_<place> ne peut être créé qu'une fois, et la place 2
+//   (puis 3) seulement si la précédente est prise par quelqu'un d'autre (règles, avec l'heure du serveur).
 // - Les autres joueurs l'apprennent par le fil d'activité (déjà relu régulièrement) : aucune lecture en plus.
 import { freeMult } from './progress.js';
 import { isIdle } from './activity.js';
 import { chalBoost, lootPerm } from './loot.js';
 
-export const SLOT_MS = 15 * 60000;
+export const SLOT_MS = 12 * 60000;
+export const PODIUM = [1, 0.6, 0.35]; // part du prix pour la 1re, 2e et 3e place
 export const slotOf = (t = Date.now()) => Math.floor(t / SLOT_MS);
 export const slotEnd = (slot) => (slot + 1) * SLOT_MS;
 export const CHALLENGE_PRIZE = [5000, 10000, 15000]; // facile, moyen, difficile (× challengeMult : bonus VIP réduit)
@@ -95,20 +96,33 @@ export function challengeFor(slot) {
 }
 
 /* -------------------------------------------------------------------------------------------------- */
-// Suivi en direct : progression locale, tentative de victoire, vainqueur (appris par le fil d'activité)
+// Suivi en direct : progression locale, tentative de place sur le podium, podium (appris par le fil d'activité)
 export function initChallenges(wallet, backend, social, { onWin, onLost, onNew } = {}) {
-  const key = 'chibouk_chal_' + wallet.uid;
+  const key = 'chibouk_chal2_' + wallet.uid;
   let st = load(), alive = true, busy = false;
   const subs = new Set();
-  function fresh(slot) { return { slot, p: 0, done: false, claimed: false, winner: null, lost: false }; }
+  // podium : [{ place, uid, pseudo, amount }] ; claimed : ma place (1 à 3) ; full : les 3 places sont prises
+  function fresh(slot) { return { slot, p: 0, done: false, claimed: 0, podium: [], lost: false }; }
   function load() { try { const s = JSON.parse(localStorage.getItem(key) || 'null'); if (s && s.slot === slotOf()) return s; } catch {} return fresh(slotOf()); }
   const save = () => { try { localStorage.setItem(key, JSON.stringify(st)); } catch {} };
   const current = () => challengeFor(st.slot);
   const notify = () => subs.forEach((cb) => { try { cb(view()); } catch (e) { console.error(e); } });
   // bonus VIP réduit × bonus permanent « défis » des coffres royaux × boosts « défis » des caisses (empilés)
-  const prizeNow = (c) => Math.round(c.prize * challengeMult(wallet) * (1 + lootPerm(wallet.p, 'chalp')) * chalBoost(wallet.p));
-  const view = () => { const c = current(); return { ...st, c, prize: prizeNow(c), end: slotEnd(st.slot), history }; };
+  const multNow = () => challengeMult(wallet) * (1 + lootPerm(wallet.p, 'chalp')) * chalBoost(wallet.p);
+  const prizeAt = (c, place) => Math.round(c.prize * PODIUM[place - 1] * multNow());
+  const nextPlace = () => { for (let k = 1; k <= 3; k++) if (!st.podium.some((x) => x.place === k)) return k; return 0; };
+  const view = () => {
+    const c = current(), np = nextPlace();
+    return { ...st, c, full: !np, next: np, prize: prizeAt(c, 1), prizes: [1, 2, 3].map((k) => prizeAt(c, k)), end: slotEnd(st.slot), history,
+      winner: st.podium.find((x) => x.place === 1) || null };
+  };
   let history = [];
+  function addPodium(x) {
+    if (!x || !x.place || st.podium.some((y) => y.place === x.place)) return false;
+    st.podium = [...st.podium, { place: x.place, uid: x.uid, pseudo: x.pseudo, amount: x.amount || x.prize || 0 }].sort((a, b) => a.place - b.place);
+    if (x.uid === wallet.uid && !st.claimed) st.claimed = x.place;
+    return true;
+  }
 
   // changement de créneau : nouveau défi
   function roll() {
@@ -122,37 +136,41 @@ export function initChallenges(wallet, backend, social, { onWin, onLost, onNew }
   }
 
   async function claim() {
-    if (busy || st.claimed || st.winner || !alive) return;
+    if (busy || st.claimed || !alive) return;
     const c = current();
     if (Date.now() > slotEnd(c.slot) + 60000) return; // trop tard, le créneau est fini
     busy = true;
-    const prize = prizeNow(c);
     try {
-      const r = await backend.claimChallenge(c.slot, { uid: wallet.uid, pseudo: wallet.pseudo, at: Date.now(), slot: c.slot, ch: c.id, prize });
-      if (st.slot !== c.slot) return;
-      if (r.ok) {
-        st.claimed = true; st.winner = { uid: wallet.uid, pseudo: wallet.pseudo, at: Date.now() }; save();
-        wallet.p.stats.challengesWon = (wallet.p.stats.challengesWon || 0) + 1;
-        wallet.credit('challenge', prize, { ch: c.id, slot: c.slot });
-        wallet.flush();
-        if (social) social.post({ kind: 'challenge', slot: c.slot, amount: prize, txt: c.text.slice(0, 80) });
-        onWin && onWin(c, prize);
-      } else if (r.winner) {
-        st.winner = r.winner; st.lost = r.winner.uid !== wallet.uid; save(); // déjà remporté depuis un autre appareil : rien de plus
-        if (st.lost) onLost && onLost(c, r.winner);
-      } else {
+      for (let place = nextPlace(); place && place <= 3 && !st.claimed; place = nextPlace()) {
+        const prize = prizeAt(c, place);
+        const r = await backend.claimChallenge(c.slot, place, { uid: wallet.uid, pseudo: wallet.pseudo, at: Date.now(), slot: c.slot, place, ch: c.id, prize });
+        if (st.slot !== c.slot) return;
+        if (r.ok) {
+          addPodium({ place, uid: wallet.uid, pseudo: wallet.pseudo, amount: prize });
+          st.claimed = place; save();
+          wallet.p.stats.challengesPodium = (wallet.p.stats.challengesPodium || 0) + 1;
+          if (place === 1) wallet.p.stats.challengesWon = (wallet.p.stats.challengesWon || 0) + 1;
+          wallet.credit('challenge', prize, { ch: c.id, slot: c.slot, place });
+          wallet.flush();
+          if (social) social.post({ kind: 'challenge', slot: c.slot, place, amount: prize, txt: c.text.slice(0, 80) });
+          onWin && onWin(c, prize, place);
+          return;
+        }
+        if (r.taken) { addPodium({ place, ...r.taken }); save(); if (r.taken.uid === wallet.uid) return; continue; } // place prise : on tente la suivante
         st.error = r.error || 'Validation impossible'; save();
+        return;
       }
+      if (!st.claimed) { st.lost = true; save(); onLost && onLost(c, st.podium); }
     } catch (e) {
       console.warn('Défi : validation impossible, nouvel essai bientôt', e);
-      setTimeout(() => { if (alive && st.done && !st.claimed && !st.winner) claim(); }, 15000);
+      setTimeout(() => { if (alive && st.done && !st.claimed && nextPlace()) claim(); }, 15000);
     } finally { busy = false; notify(); }
   }
 
   const off = wallet.on((e) => {
     if (!e) return;
     roll();
-    if (st.done || st.winner) return;
+    if (st.done || st.claimed || !nextPlace()) return;
     const c = current();
     let v = 0;
     try { v = c.ev(e); } catch {}
@@ -163,30 +181,34 @@ export function initChallenges(wallet, backend, social, { onWin, onLost, onNew }
     if (st.done) claim();
   });
 
-  // Vainqueurs connus grâce au fil d'activité (messages « challenge »)
+  // Podiums connus grâce au fil d'activité (messages « challenge » avec une place ; ceux d'avant la V28 n'en ont pas)
   let entries = [];
   function learnFromFeed() {
-    const wins = entries.filter((x) => x.kind === 'challenge' && Number.isInteger(x.slot));
-    const seen = new Set();
-    history = wins.sort((a, b) => b.slot - a.slot).filter((x) => (seen.has(x.slot) ? false : seen.add(x.slot))).slice(0, 5)
-      .map((x) => ({ slot: x.slot, pseudo: x.pseudo, uid: x.uid, amount: x.amount, txt: x.txt }));
-    const w = history.find((x) => x.slot === st.slot);
-    if (w && !st.winner) { st.winner = { uid: w.uid, pseudo: w.pseudo }; st.lost = w.uid !== wallet.uid; save(); return true; }
-    return false;
+    const wins = entries.filter((x) => x.kind === 'challenge' && Number.isInteger(x.slot) && Number.isInteger(x.place));
+    let changed = false;
+    wins.filter((x) => x.slot === st.slot).forEach((x) => { if (addPodium(x)) changed = true; });
+    const bySlot = new Map();
+    for (const x of wins.sort((a, b) => b.slot - a.slot || a.place - b.place)) { if (!bySlot.has(x.slot)) bySlot.set(x.slot, []); if (!bySlot.get(x.slot).some((y) => y.place === x.place)) bySlot.get(x.slot).push(x); }
+    history = [...bySlot.entries()].slice(0, 5).map(([slot, list]) => ({ slot, podium: list.map((x) => ({ place: x.place, uid: x.uid, pseudo: x.pseudo, amount: x.amount })), pseudo: (list.find((x) => x.place === 1) || list[0]).pseudo }));
+    if (changed) save();
+    return changed;
   }
   const offSocial = social ? social.subscribe((s) => { entries = s.entries || []; learnFromFeed(); notify(); }) : () => {};
 
-  // Vérification directe du créneau (1 lecture) quand l'accueil est affiché et qu'aucun vainqueur n'est connu :
-  // le fil peut avoir du retard, ou le message du vainqueur ne jamais partir (page fermée juste après).
+  // Vérification directe du podium (3 lectures au plus) quand l'accueil est affiché et qu'il reste des places :
+  // le fil peut avoir du retard, ou le message d'un gagnant ne jamais partir (page fermée juste après).
   let lastCheck = 0;
   async function verify(minGap = 3 * 60000) {
-    if (!alive || st.winner || !backend.getChallenge || !subs.size || isIdle()) return;
+    if (!alive || !nextPlace() || !backend.getChallenge || !subs.size || isIdle()) return;
     if (Date.now() - lastCheck < minGap || Date.now() - st.slot * SLOT_MS < 45000) return;
     lastCheck = Date.now();
     const slot = st.slot;
     try {
-      const d = await backend.getChallenge(slot);
-      if (d && st.slot === slot && !st.winner) { st.winner = { uid: d.uid, pseudo: d.pseudo, at: d.at }; st.lost = d.uid !== wallet.uid; save(); notify(); }
+      const list = await backend.getChallenge(slot);
+      if (st.slot !== slot) return;
+      let ch = false;
+      (list || []).forEach((d) => { if (addPodium(d)) ch = true; });
+      if (ch) { save(); notify(); }
     } catch (e) { console.warn('Défi : lecture impossible', e); }
   }
   const tick = setInterval(() => { roll(); verify(); }, 1000);

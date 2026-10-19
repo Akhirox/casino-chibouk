@@ -10,6 +10,7 @@ import { avatarHTML } from './profile.js';
 
 /* ------------------------------ outils ------------------------------ */
 export const BANANA = '<svg viewBox="0 0 24 24" class="ban" aria-hidden="true"><path d="M4.2 5.6C4.4 12.6 9.6 18.6 16.2 18.6c2.4 0 4.3-.8 5.6-2.2-1.9.3-3.8.2-5.6-.4C11.4 14.4 7.8 10.6 6.8 5.4z" fill="#ffd23f" stroke="#b88600" stroke-width="1" stroke-linejoin="round"/><path d="M6.6 8.6c1.4 4 4.4 7 8.4 8.2" stroke="#e0aa00" stroke-width="1" fill="none" stroke-linecap="round"/><path d="M4.3 5.8 3.6 3.4l2.8-.3.4 2.3z" fill="#7a5a2a"/><path d="M21.8 16.4l.9.6" stroke="#5a3a1a" stroke-width="1.6" stroke-linecap="round"/></svg>';
+export const STAR = '<svg viewBox="0 0 24 24" class="seed" aria-hidden="true"><path d="M12 2l2.9 6.3 6.9.7-5.2 4.6 1.5 6.8L12 17l-6.1 3.4 1.5-6.8L2.2 9l6.9-.7z" fill="#f5c542" stroke="#b88600" stroke-width="1.2" stroke-linejoin="round"/></svg>';
 export const SEED = '<svg viewBox="0 0 24 24" class="seed" aria-hidden="true"><path d="M12 3c4.5 3 6.5 7 6 11-.4 3.6-3 6.5-6 7-3-.5-5.6-3.4-6-7-.5-4 1.5-8 6-11z" fill="#f5c542" stroke="#b88600" stroke-width="1.2"/><path d="M12 7c-1.4 3-1.6 7 0 11" stroke="#fff6" stroke-width="1.4" fill="none" stroke-linecap="round"/></svg>';
 export const ban = (n) => `<span class="bn">${fmt(Math.floor(n))}${BANANA}</span>`;
 export function dur(ms) {
@@ -194,12 +195,12 @@ export function mount(view, { wallet, backend }) {
     el('fm-bar').style.width = Math.min(100, (fm.b / Math.max(1, cap)) * 100) + '%';
     el('fm-bar').classList.toggle('full', fm.b >= cap - 0.5);
     el('fm-full').textContent = fm.b >= cap - 0.5 ? 'Entrepôt plein : la récolte est à l\'arrêt !' : rate > 0 ? `Plein dans ${dur(((cap - fm.b) / rate) * F.HOUR)}` : 'Aucun singe au travail';
-    el('fm-rate').innerHTML = `${fmt(Math.round(rate))} <small>/ h</small>${bm > 1 ? ` <span class="fm-boost" title="Boost gagné dans une caisse">×${String(bm).replace('.', ',')} · ${dur(fm.xb.u - Date.now())}</span>` : ''}`;
+    el('fm-rate').innerHTML = `${fmt(Math.round(rate))} <small>/ h</small>${bm > 1 ? ` <span class="fm-boost" title="${F.activeFarmBoosts(fm).map((b) => `×${String(b.m).replace('.', ',')} encore ${dur(b.u - Date.now())}`).join(' · ')} (cumul dégressif, ×${F.FARM_BOOST_CAP} max)">×${String(bm).replace('.', ',')}${F.activeFarmBoosts(fm).length > 1 ? ` (${F.activeFarmBoosts(fm).length} boosts)` : ''} · ${dur(F.boostEnd(fm) - Date.now())}</span>` : ''}`;
     el('fm-value').textContent = `≈ ${fmt(Math.round(rate * F.sellRate(fm)))} ${CUR}/h à la vente`;
-    el('fm-seeds').innerHTML = fm.seeds ? `${SEED} ${fm.seeds} graine${fm.seeds > 1 ? 's' : ''} d'or · +${Math.round(F.SEED_BONUS * fm.seeds * 100)} %` : '';
-    const gain = F.seedGain(fm.life), rb = el('fm-replant');
-    rb.hidden = gain < F.REPLANT_MIN;
-    if (!rb.hidden) rb.innerHTML = `${SEED} Replanter · +${gain}`;
+    el('fm-seeds').innerHTML = [fm.pr ? `${STAR} Prestige ${fm.pr} · ×${F.prestigeMult(fm)}` : '', fm.seeds ? `${SEED} ${fm.seeds} graine${fm.seeds > 1 ? 's' : ''} d'or · +${Math.round(F.SEED_BONUS * fm.seeds * 100)} %` : ''].filter(Boolean).join(' · ');
+    const rb = el('fm-replant');
+    rb.hidden = (fm.ss || 0) < F.prestigeNeed(fm);
+    if (!rb.hidden) rb.innerHTML = `${STAR} Prestige · +100 %`;
     const hc = F.hireCost(fm.w), H = F.houses(fm);
     el('fm-wk').textContent = `${fm.w} / ${H}`;
     // singes nécessaires pour remplir toutes les places des bananeraies (construites)
@@ -313,15 +314,15 @@ export function mount(view, { wallet, backend }) {
     }).join('')}</div>`;
   }
 
-  // Graines d'or : où on en est, combien on gagnerait en replantant
+  // Prestige : bananes vendues depuis le dernier prestige / palier, et bonus actuel
   function seedsHTML(fm) {
-    const gain = F.seedGain(fm.life), next = F.lifeForSeeds(Math.max(F.REPLANT_MIN, gain + 1)), prev = gain >= F.REPLANT_MIN ? F.lifeForSeeds(gain) : 0;
-    const pct = Math.max(0, Math.min(100, ((fm.life - prev) / Math.max(1, next - prev)) * 100));
-    return `<div class="fm-seedbox"><h4>${SEED}Graines d'or</h4>
-      <p>${fm.seeds ? `Tu as <b>${fm.seeds} graine${fm.seeds > 1 ? 's' : ''}</b> : <b>+${Math.round(F.SEED_BONUS * fm.seeds * 100)} %</b> de production, pour toujours.` : 'Replante ta ferme après 1 million de bananes récoltées pour gagner des graines d\'or : +5 % de production chacune, pour toujours.'}</p>
-      <p class="muted">Récoltées depuis ${fm.rp ? 'la dernière replantation' : 'le début'} : <b>${fmt(Math.floor(fm.life))}</b>. ${gain >= F.REPLANT_MIN ? `Replanter maintenant : <b class="gold">+${gain}</b> graine${gain > 1 ? 's' : ''}.` : ''} Prochaine graine à ${fmt(next)}.</p>
+    const need = F.prestigeNeed(fm), ss = fm.ss || 0, ok = ss >= need;
+    const pct = Math.max(0, Math.min(100, (ss / need) * 100));
+    return `<div class="fm-seedbox"><h4>${STAR}Prestige${fm.pr ? ` ${fm.pr}` : ''}</h4>
+      <p>${fm.pr ? `Ta production est multipliée par <b>×${F.prestigeMult(fm)}</b> grâce à tes ${fm.pr} prestige${fm.pr > 1 ? 's' : ''}.` : 'Vends 2 millions de bananes pour débloquer le prestige : ferme remise à zéro contre <b>+100 % de production pour toujours</b>.'}${fm.seeds ? ` Tes <b>${fm.seeds} graine${fm.seeds > 1 ? 's' : ''} d'or</b> ajoutent +${Math.round(F.SEED_BONUS * fm.seeds * 100)} %.` : ''}</p>
+      <p class="muted">Vendues depuis ${fm.pr ? 'le dernier prestige' : 'le début'} : <b>${fmt(Math.floor(ss))}</b> / ${fmt(need)}${ok ? ' : prestige disponible !' : ''}. Le palier double à chaque prestige.</p>
       <div class="fm-bar"><i style="width:${pct}%"></i></div>
-      ${gain >= F.REPLANT_MIN ? `<button class="btn btn-gold btn-sm" data-replant>${SEED}Replanter la ferme (+${gain})</button>` : ''}</div>`;
+      ${ok ? `<button class="btn btn-gold btn-sm" data-replant>${STAR}Prestige : +100 % de production</button>` : ''}</div>`;
   }
 
   function overview() {
@@ -405,7 +406,7 @@ export function mount(view, { wallet, backend }) {
     amount = Math.min(amount, Math.floor(fm.b));
     const gain = Math.floor(amount * rate);
     if (amount < 1 || gain < 1) return;
-    fm.b -= amount; fm.sold = (fm.sold || 0) + amount; fm.earned = (fm.earned || 0) + gain;
+    fm.b -= amount; fm.sold = (fm.sold || 0) + amount; fm.ss = (fm.ss || 0) + amount; fm.earned = (fm.earned || 0) + gain;
     wallet.credit('farm', gain, { bananas: amount });
     save(wallet, 'sell', { bananas: amount });
     sfx.win(gain >= 1000); coinRain(Math.min(40, 8 + Math.floor(gain / 200)));
@@ -413,26 +414,26 @@ export function mount(view, { wallet, backend }) {
     numbers(); if (sel < 0) side();
   }
 
-  // Replanter la ferme contre des graines d'or
+  // Prestige : ferme remise à zéro contre +100 % de production pour toujours
   async function replant() {
     const fm = f();
     F.tick(fm);
-    const err = F.canReplant(fm);
+    const err = F.canPrestige(fm);
     if (err) { toast(err, 'error'); return; }
-    const gain = F.seedGain(fm.life), after = (fm.seeds || 0) + gain;
-    const ok = await modal({ title: 'Replanter la ferme ?', html: `
-      <p>Tu gagnes <b class="gold">${gain} graine${gain > 1 ? 's' : ''} d'or</b> : ta production passera de <b>+${Math.round(F.SEED_BONUS * (fm.seeds || 0) * 100)} %</b> à <b>+${Math.round(F.SEED_BONUS * after * 100)} %</b>, pour toujours.</p>
-      <ul class="muted"><li><b>Conservé</b> : tes ${fm.own.length} parcelles, tes ${fm.bu} bâtisseur${fm.bu > 1 ? 's' : ''}, tes graines d'or et tes statistiques.</li>
-      <li><b>Remis à zéro</b> : tous les bâtiments, les singes, les bananes et les chantiers en cours.</li>
-      <li>Tu repars avec une bananeraie, une cabane et un entrepôt de niveau <b>${F.restartLevel(after)}</b>, et un entrepôt rempli aux 4/5.</li></ul>
-      <p class="muted fm-note">Plus tu récoltes avant de replanter, plus tu gagnes de graines : ${fmt(Math.round(F.lifeForSeeds(gain + 1) - fm.life))} bananes de plus pour une graine supplémentaire.</p>`,
-      buttons: [{ label: 'Pas encore', value: false }, { label: `Replanter (+${gain})`, value: true, primary: true }] });
+    const after = (fm.pr || 0) + 1;
+    const ok = await modal({ title: `Prestige ${after} ?`, html: `
+      <p>Ta production passe de <b>×${F.prestigeMult(fm)}</b> à <b class="gold">×${after + 1}</b>, pour toujours.</p>
+      <ul class="muted"><li><b>Conservé</b> : tes ${fm.own.length} parcelles, tes ${fm.bu} bâtisseur${fm.bu > 1 ? 's' : ''}, tes graines d'or, ta vitesse de construction, tes boosts en cours et tes statistiques.</li>
+      <li><b>Remis à zéro</b> : tous les bâtiments, les singes et les bananes en stock (vends-les avant !).</li>
+      <li>Tu repars avec une bananeraie, une cabane et un entrepôt de niveau <b>${Math.min(6, after + 1)}</b>, et un entrepôt rempli aux 4/5.</li></ul>
+      <p class="muted fm-note">Prochain prestige après ${fmt(F.PRESTIGE_BASE * 2 ** after)} bananes vendues.</p>`,
+      buttons: [{ label: 'Pas encore', value: false }, { label: `Prestige (×${after + 1})`, value: true, primary: true }] });
     if (!ok || !alive) return;
-    if (F.replant(fm)) return;
+    if (F.prestige(fm)) return;
     sel = -1;
-    save(wallet, 'replant', { gain, seeds: fm.seeds });
-    sfx.bonus(); coinRain(50);
-    toast(`Ferme replantée : +${gain} graine${gain > 1 ? 's' : ''} d'or (production +${Math.round(F.SEED_BONUS * fm.seeds * 100)} %)`, 'win', 6000);
+    save(wallet, 'prestige', { pr: fm.pr });
+    sfx.bonus(); coinRain(60);
+    toast(`Prestige ${fm.pr} : ta ferme produit maintenant ×${F.prestigeMult(fm)} !`, 'win', 6000);
     render();
   }
 
@@ -446,7 +447,9 @@ export function mount(view, { wallet, backend }) {
       <li>Constructions, améliorations et singes se paient directement en <b>${CUR}</b>.</li>
       <li>Les chantiers prennent du temps (de quelques secondes à plusieurs heures). Engage des <b>bâtisseurs</b> pour en mener plusieurs à la fois, ou termine-les tout de suite en payant des ${CUR}.</li>
       <li>Les <b>parcelles</b> autour de ta ferme s'achètent en ${CUR}.</li>
-      <li><b>Graines d'or</b> : après 1 million de bananes récoltées, tu peux <b>replanter</b> ta ferme. Bâtiments, singes et bananes repartent de zéro, mais tu gardes tes parcelles et tes bâtisseurs, et chaque graine donne <b>+5 % de production pour toujours</b>. Plus tu récoltes avant de replanter, plus tu gagnes de graines.</li>
+      <li><b>Prestige</b> : après 2 millions de bananes vendues, tu peux remettre ta ferme à zéro contre <b>+100 % de production pour toujours</b> (×2, puis ×3, ×4…). Tu gardes tes parcelles, tes bâtisseurs et tes graines d'or. Le palier double à chaque fois : 2 M, 4 M, 8 M de bananes vendues…</li>
+      <li><b>Graines d'or</b> (caisses) : +5 % de production chacune, pour toujours.</li>
+      <li><b>Boosts de récolte</b> (caisses) : ils se cumulent, mais de moins en moins (le 2e compte à moitié, le 3e au quart…), jusqu'à ×5.</li>
       <li>Onglet <b>Les voisins</b> : visite les fermes des autres joueurs et compare vos productions.</li></ul>`, buttons: [{ label: 'Compris', value: true, primary: true }] });
   }
 
@@ -460,9 +463,9 @@ export function mount(view, { wallet, backend }) {
     const now = Date.now();
     const rows = players.filter(hasFarm).map((p) => { const s = snapshot(p.farm, now); return { p, s, rate: F.productionPerHour(s) }; }).sort((a, b) => b.rate - a.rate);
     body.innerHTML = `<div class="panel"><h2><span class="h-ic">${BANANA}Les fermes de la jungle</span></h2>
-      ${rows.length ? `<div class="tbl-scroll"><table class="tbl"><thead><tr><th>#</th><th>Fermier</th><th class="r">Production</th><th class="r">Parcelles</th><th class="r">Singes</th><th class="r">Graines d'or</th><th class="r">Bananes vendues</th><th></th></tr></thead><tbody>
+      ${rows.length ? `<div class="tbl-scroll"><table class="tbl"><thead><tr><th>#</th><th>Fermier</th><th class="r">Production</th><th class="r">Parcelles</th><th class="r">Singes</th><th class="r">Prestige · graines</th><th class="r">Bananes vendues</th><th></th></tr></thead><tbody>
       ${rows.map((r, i) => `<tr class="${r.p.uid === wallet.uid ? 'me' : ''}"><td><span class="rank r${i + 1}">${i + 1}</span></td><td><button type="button" class="pl-link" data-player="${r.p.uid}">${avatarHTML(r.p, 'av-sm')}${esc(r.p.pseudo)}${r.p.uid === wallet.uid ? ' (toi)' : ''}</button></td>
-        <td class="r"><b>${fmt(Math.round(r.rate))}</b> /h</td><td class="r">${r.s.own.length}</td><td class="r">${r.s.w}</td><td class="r">${r.s.seeds || 0}</td><td class="r">${fmt(r.s.sold || 0)}</td><td><button class="btn btn-ghost btn-sm" data-visit="${r.p.uid}">Visiter</button></td></tr>`).join('')}
+        <td class="r"><b>${fmt(Math.round(r.rate))}</b> /h</td><td class="r">${r.s.own.length}</td><td class="r">${r.s.w}</td><td class="r">${r.s.pr ? `★${r.s.pr} · ` : ''}${r.s.seeds || 0}</td><td class="r">${fmt(r.s.sold || 0)}</td><td><button class="btn btn-ghost btn-sm" data-visit="${r.p.uid}">Visiter</button></td></tr>`).join('')}
       </tbody></table></div>` : '<p class="muted">Personne n\'a encore de ferme.</p>'}
       <p class="muted fm-note">Les fermes des autres sont mises à jour à chacune de leurs sauvegardes (la production continue entre-temps).</p></div>`;
     $$('[data-visit]', body).forEach((b) => (b.onclick = () => { const r = rows.find((x) => x.p.uid === b.dataset.visit); if (r) visit(r.p); }));
@@ -478,6 +481,6 @@ export function mount(view, { wallet, backend }) {
 export function visit(p) {
   const s = snapshot(p.farm), rate = F.productionPerHour(s);
   modal({ title: `La ferme de ${esc(p.pseudo)}`, cls: 'wide fm-visit', html: `
-    <div class="fm-visit-kpis"><div><span>Production</span><b>${fmt(Math.round(rate))} /h</b></div><div><span>Parcelles</span><b>${s.own.length} / ${F.SIZE * F.SIZE}</b></div><div><span>Singes</span><b>${s.w}</b></div><div><span>Niveaux cumulés</span><b>${F.levels(s)}</b></div><div><span>Graines d'or</span><b>${s.seeds || 0}</b></div><div><span>Vendues</span><b>${fmt(s.sold || 0)}</b></div></div>
+    <div class="fm-visit-kpis"><div><span>Production</span><b>${fmt(Math.round(rate))} /h</b></div><div><span>Parcelles</span><b>${s.own.length} / ${F.SIZE * F.SIZE}</b></div><div><span>Singes</span><b>${s.w}</b></div><div><span>Niveaux cumulés</span><b>${F.levels(s)}</b></div><div><span>Prestige · graines</span><b>${s.pr || 0} · ${s.seeds || 0}</b></div><div><span>Vendues</span><b>${fmt(s.sold || 0)}</b></div></div>
     ${boardHTML(s, { readOnly: true })}`, buttons: [{ label: 'Fermer', value: true, primary: true }] });
 }

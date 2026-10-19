@@ -38,11 +38,12 @@ export function feedText(e) {
     case 'perfect': return `a fait un sans-faute ${QUIZ_LABEL[e.game] || ''}${e.mode ? ` (${e.mode})` : ''}`;
     case 'wheel': return `a gagné ${fmt(e.amount)} Brundles à la roue du jour${e.streak > 1 ? ` (série de ${e.streak} jours)` : ''}`;
     case 'streak': return `a gagné ${fmt(e.amount)} Brundles au Plus ou moins avec une série de ${e.n}`;
+    case 'prestige': return `a fait un prestige de sa ferme (niveau ${e.pr}, production ×${(e.pr || 0) + 1})`;
     case 'replant': return `a replanté sa ferme et gagne ${e.gain} graine${e.gain > 1 ? 's' : ''} d'or (${e.seeds} au total)`;
     case 'farm': return `a une ferme qui produit plus de ${fmt(e.n)} bananes par heure`;
     case 'feat': return `${e.txt || ''} ${FEAT_GAMES[e.game] || ''}${e.tail ? ' ' + e.tail : ''}`;
     case 'loot': return `a ouvert une ${e.box || 'caisse'} et décroché « ${e.txt || ''} »${e.sub ? ` (${e.sub})` : ''}, lot ${e.r === 'gold' ? 'MYTHIQUE' : 'légendaire'} !`;
-    case 'challenge': return `a remporté le défi de la jungle (+${fmt(e.amount)} Brundles)${e.txt ? ` : ${e.txt}` : ''}`;
+    case 'challenge': return `${e.place > 1 ? `finit ${e.place}e du` : 'a remporté le'} défi de la jungle (+${fmt(e.amount)} Brundles)${e.txt ? ` : ${e.txt}` : ''}`;
     default: return e.text || '';
   }
 }
@@ -74,11 +75,12 @@ export function feedRich(e) {
     case 'fs': t = `a déclenché <b class="gold">${e.spins} tours gratuits</b> à la ${L('#/slots', 'Chibouk Slot')} (${e.scatters} SCATTER)`; break;
     case 'perfect': t = `a fait un <b class="gold">sans-faute</b> ${QUIZ_ROUTE[e.game] ? L('#/' + QUIZ_ROUTE[e.game], esc(QUIZ_LABEL[e.game])) : ''}${e.mode ? ` (${esc(e.mode)})` : ''}`; break;
     case 'wheel': t = `a gagné <b class="gold">${fmt(e.amount)}</b> Brundles à la roue du jour${e.streak > 1 ? ` (série de ${e.streak} jours)` : ''}`; break;
+    case 'prestige': t = `a fait un prestige de sa ${L('#/farm', 'ferme')} : production <b class="gold">×${(e.pr || 0) + 1}</b> pour toujours`; break;
     case 'replant': t = `a replanté sa ${L('#/farm', 'ferme')} et gagne <b class="gold">${e.gain} graine${e.gain > 1 ? 's' : ''} d'or</b> (${e.seeds} au total)`; break;
     case 'farm': t = `a une ${L('#/farm', 'ferme')} qui produit plus de <b class="gold">${fmt(e.n)}</b> bananes par heure`; break;
     case 'feat': t = `${esc(e.txt || '')} ${FEAT_GAMES[e.game] ? L('#/' + e.game, FEAT_GAMES[e.game]) : ''}${e.tail ? ' ' + esc(e.tail) : ''}`; break;
     case 'loot': t = `a ouvert une ${L('#/cases', esc(e.box || 'caisse'))} et décroché <b class="${e.r === 'gold' ? 'gold' : 'neg'}">« ${esc(e.txt || '')} »</b>${e.sub ? ` <small class="muted">(${esc(e.sub)})</small>` : ''}, lot ${e.r === 'gold' ? '<b class="gold">MYTHIQUE</b>' : 'légendaire'} !`; break;
-    case 'challenge': t = `a remporté le ${L('#/lobby', 'défi de la jungle')} et touche <b class="gold">${fmt(e.amount)}</b> Brundles${e.txt ? ` <small class="muted">(${esc(e.txt)})</small>` : ''}`; break;
+    case 'challenge': t = `${e.place > 1 ? `finit <b>${e.place}e</b> du` : 'a remporté le'} ${L('#/lobby', 'défi de la jungle')} et touche <b class="gold">${fmt(e.amount)}</b> Brundles${e.txt ? ` <small class="muted">(${esc(e.txt)})</small>` : ''}`; break;
     default: t = esc(feedText(e));
   }
   return `${who} ${t}`;
@@ -117,7 +119,7 @@ export function groupRich(g) {
   if (e.kind === 'bigwin') return feedRich(items.reduce((a, b) => ((b.amount || 0) > (a.amount || 0) ? b : a), e));
   return feedRich(e);
 }
-export const FEED_ICON = { bigwin: 'bolt', ach: 'medal', achs: 'medal', jackpot: 'trophy', vip: 'star', motus: 'motus', shop: 'shop', week: 'trophy', quests: 'check', perfect: 'quiz', wheel: 'wheel', streak: 'higher', feat: 'bulb', farm: 'banana', replant: 'banana', challenge: 'flag', loot: 'crate' };
+export const FEED_ICON = { bigwin: 'bolt', ach: 'medal', achs: 'medal', jackpot: 'trophy', vip: 'star', motus: 'motus', shop: 'shop', week: 'trophy', quests: 'check', perfect: 'quiz', wheel: 'wheel', streak: 'higher', feat: 'bulb', farm: 'banana', replant: 'banana', prestige: 'star', challenge: 'flag', loot: 'crate' };
 
 // Chance de remporter le jackpot sur un spin payant de la slot (proportionnelle à la mise, plafonnée à 1 %)
 export const JACKPOT_FACTOR = 1.5;
@@ -131,8 +133,25 @@ export function chanceText(p) {
 const FEED_LS = 'chibouk_feed_v1';
 const FEED_MARGIN = 5 * 60000;
 // on garde 80 messages du fil et 60 messages de chat (les deux arrivent par la même collection « feed »)
-const capEntries = (list) => { const chat = list.filter((e) => e.kind === 'chat').slice(0, 60), rest = list.filter((e) => e.kind !== 'chat').slice(0, 80); return [...chat, ...rest].sort((a, b) => b.at - a.at); };
+const capEntries = (list) => { const chat = list.filter((e) => e.kind === 'chat').slice(0, 30), rest = list.filter((e) => e.kind !== 'chat').slice(0, 80); return [...chat, ...rest].sort((a, b) => b.at - a.at); };
+const CHAT_LS = 'chibouk_chat_v2', CHAT_N = 80;
 export function createSocial(wallet, backend) {
+  // chat (V28) : collection « chat » à part, triée par l'heure du serveur ; chats = les CHAT_N derniers messages
+  let chats = [], chatTs = 0;
+  try { const c = JSON.parse(localStorage.getItem(CHAT_LS) || 'null'); if (c && Array.isArray(c.list)) { chats = c.list; chatTs = c.ts || 0; } } catch {}
+  const keepChat = () => { try { localStorage.setItem(CHAT_LS, JSON.stringify({ ts: chatTs, list: chats.filter((e) => !String(e.id).startsWith('local_')) })); } catch {} };
+  function mergeChat(fresh, full = false) {
+    const known = new Set(chats.map((e) => e.id)), cids = new Set(fresh.map((e) => e.cid).filter(Boolean));
+    const add = fresh.filter((e) => !known.has(e.id));
+    let base = chats.filter((e) => !(e.cid && cids.has(e.cid) && String(e.id).startsWith('local_')));
+    if (full) base = base.filter((e) => String(e.id).startsWith('local_')); // relecture complète : la liste du serveur fait foi
+    chats = [...(full ? fresh : add), ...base].sort((a, b) => a.at - b.at).slice(-CHAT_N);
+    const srv = fresh.map((e) => e.at || 0);
+    if (srv.length) chatTs = Math.max(chatTs, ...srv);
+    return add;
+  }
+  // tout ce que voient les abonnés : fil + anciens messages de chat passés par le fil + chat
+  const allEntries = () => [...entries, ...chats];
   let entries = [], since = 0, jackpot = { amount: 0 }, pending = 0, timer = null, first = true, lastPost = 0, queue = [], alive = true, lastPush = Date.now(), lastPoll = 0;
   // fil gardé dans le navigateur : au rechargement de la page, on ne relit que les nouveaux messages
   try {
@@ -141,7 +160,7 @@ export function createSocial(wallet, backend) {
   } catch {}
   const keepFeed = () => { try { localStorage.setItem(FEED_LS, JSON.stringify({ since, jackpot, entries: entries.filter((e) => !String(e.id).startsWith('local_')).slice(0, 70) })); } catch {} };
   const subs = new Set();
-  const notify = () => subs.forEach((cb) => { try { cb({ entries, jackpot: jackpotValue(), last: jackpot }); } catch (e) { console.error(e); } });
+  const notify = () => subs.forEach((cb) => { try { cb({ entries: allEntries(), jackpot: jackpotValue(), last: jackpot }); } catch (e) { console.error(e); } });
   const jackpotValue = () => CONFIG.JACKPOT_SEED + (jackpot.amount || 0) + Math.floor(pending);
 
   // contributions de la slot au jackpot : regroupées, 1 écriture toutes les JACKPOT_PUSH_MS au plus
@@ -160,8 +179,17 @@ export function createSocial(wallet, backend) {
       await pushJackpot();
       // marge de 5 min : l'heure d'un message est celle de l'appareil qui l'envoie ; une horloge un peu en retard
       // faisait passer ses messages sous « since » et ils n'étaient jamais lus (ex. vainqueur d'un défi resté inconnu)
-      const [fresh, jp] = await Promise.all([backend.fetchFeed(since ? since - FEED_MARGIN : 0, since ? 30 : 40), backend.getJackpot()]);
+      const [fresh, jp, msgs] = await Promise.all([backend.fetchFeed(since ? since - FEED_MARGIN : 0, since ? 30 : 40), backend.getJackpot(),
+        backend.fetchChat ? backend.fetchChat(chatTs, chatTs ? 50 : CHAT_N).catch((e) => { console.warn('Chat indisponible', e); return null; }) : null]);
       jackpot = jp || { amount: 0 };
+      if (msgs) {
+        // trop de nouveaux messages d'un coup (longue absence) : on relit les CHAT_N derniers pour ne pas laisser de trou
+        const full = !chatTs || msgs.length >= 50;
+        const list = full && chatTs ? await backend.fetchChat(0, CHAT_N) : msgs;
+        const add = mergeChat(list, full);
+        if (!first && add.some((e) => e.uid !== wallet.uid)) window.dispatchEvent(new CustomEvent('chibouk:chat'));
+        keepChat();
+      }
       if (fresh.length) {
         since = Math.max(since, ...fresh.map((e) => e.at || 0));
         // un message déjà affiché en local (même cid) est remplacé par sa version serveur, pas dupliqué
@@ -170,7 +198,6 @@ export function createSocial(wallet, backend) {
         const cids = new Set(add.map((e) => e.cid).filter(Boolean));
         entries = capEntries([...add, ...entries.filter((e) => !(e.cid && cids.has(e.cid) && String(e.id).startsWith('local_')))].sort((a, b) => b.at - a.at));
         // petits toasts pour les exploits des autres (pas au premier chargement)
-        if (!first && add.some((e) => e.kind === 'chat' && e.uid !== wallet.uid)) window.dispatchEvent(new CustomEvent('chibouk:chat'));
         if (!first) add.filter((e) => e.uid !== wallet.uid && ['jackpot', 'bigwin', 'week', 'challenge', 'loot'].includes(e.kind)).slice(0, 2)
           .forEach((e) => toast(`<b>${esc(feedWho(e))}</b> ${esc(feedText(e))}`, e.kind === 'jackpot' ? 'win' : 'info', 5000));
       }
@@ -253,7 +280,7 @@ export function createSocial(wallet, backend) {
     if (e.type === 'quest' && e.bonus) post({ kind: 'quests' });
     if (e.type === 'free' && e.meta && e.meta.feed && FEAT_GAMES[e.game]) post({ kind: 'feat', game: e.game, txt: String(e.meta.feed.txt || '').slice(0, 80), tail: String(e.meta.feed.tail || '').slice(0, 40) });
     if (e.type === 'farm' && e.act === 'milestone' && e.n >= 500) post({ kind: 'farm', n: e.n });
-    if (e.type === 'farm' && e.act === 'replant') post({ kind: 'replant', gain: e.gain, seeds: e.seeds });
+    if (e.type === 'farm' && e.act === 'prestige') post({ kind: 'prestige', pr: e.pr });
     if (e.type === 'vipup') post({ kind: 'vip', rank: e.rank, bonus: e.amount });
   });
   const onCustom = (ev) => { const d = ev.detail || {}; if (d.type === 'motus' && d.won) post({ kind: 'motus', tries: d.tries }); if (d.type === 'week') post({ kind: 'week', winner: d.winner, profit: d.profit }); };
@@ -268,16 +295,17 @@ export function createSocial(wallet, backend) {
   setTimeout(() => poll(true), 1200);
 
   return {
-    subscribe(cb) { subs.add(cb); cb({ entries, jackpot: jackpotValue(), last: jackpot }); return () => subs.delete(cb); },
+    subscribe(cb) { subs.add(cb); cb({ entries: allEntries(), jackpot: jackpotValue(), last: jackpot }); return () => subs.delete(cb); },
     get jackpot() { return jackpotValue(); },
     refresh: () => poll(true),
     post,
     set fast(v) { const was = fast; fast = !!v; if (fast && !was && Date.now() - lastPoll > 30000) poll(); },
     // message de chat : envoyé tout de suite (1 écriture), sans passer par la file du fil d'activité
     async say(text) {
-      const full = { kind: 'chat', text, uid: wallet.uid, pseudo: wallet.pseudo, cid: Math.random().toString(36).slice(2, 10) };
-      await backend.postFeed(full);
-      entries = capEntries([{ ...full, id: 'local_' + Date.now(), at: Date.now() }, ...entries]);
+      const tg = Array.isArray(wallet.p.tags) && wallet.p.tags.length ? { tg: wallet.p.tags } : {};
+      const full = { text, uid: wallet.uid, pseudo: wallet.pseudo, cid: Math.random().toString(36).slice(2, 10), ...tg };
+      await backend.postChat(full);
+      chats = [...chats, { ...full, kind: 'chat', id: 'local_' + Date.now(), at: Date.now() }].slice(-CHAT_N);
       notify();
     },
     destroy() {

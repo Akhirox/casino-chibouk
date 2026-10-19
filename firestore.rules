@@ -39,11 +39,12 @@ service cloud.firestore {
         && request.resource.data.get('banned', false) == resource.data.get('banned', false)
         && request.resource.data.get('banReason', '') == resource.data.get('banReason', '')
         && request.resource.data.get('adminRev', 0) == resource.data.get('adminRev', 0)
-        && request.resource.data.get('adminNote', '') == resource.data.get('adminNote', '');
+        && request.resource.data.get('adminNote', '') == resource.data.get('adminNote', '')
+        && request.resource.data.get('tags', []) == resource.data.get('tags', []);
 
-      // Correction par un admin : solde, coffre, suspension et note uniquement, avec adminRev + 1
+      // Correction par un admin : solde, coffre, suspension, note et tags (OG CHBK…) uniquement, avec adminRev + 1
       allow update: if isAdmin()
-        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['balance', 'vault', 'banned', 'banReason', 'adminRev', 'adminAt', 'adminNote'])
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['balance', 'vault', 'banned', 'banReason', 'adminRev', 'adminAt', 'adminNote', 'tags'])
         && request.resource.data.adminRev == resource.data.get('adminRev', 0) + 1
         && request.resource.data.balance is number && request.resource.data.balance >= 0;
 
@@ -125,22 +126,46 @@ service cloud.firestore {
       allow write: if false;
     }
 
-    // Défi de la jungle (un défi toutes les 15 min) : le premier joueur qui crée le document du créneau gagne.
-    // Le document s'appelle « c » + numéro du créneau (minutes depuis 1970 ÷ 15) ; il ne peut être créé que pendant
-    // ce créneau (+ 2 min de marge, heure du serveur), une seule fois, et n'est jamais modifié.
+    // Défi de la jungle (un défi toutes les 12 min) : podium de 3 places. Une place = un document
+    // « p » + créneau + « _ » + place (créneau = minutes depuis 1970 ÷ 12). Créé pendant le créneau (+ 2 min de marge,
+    // heure du serveur), une seule fois, jamais modifié. La place 2 (puis 3) n'est possible que si la précédente est déjà
+    // prise, et jamais deux places pour le même joueur.
     match /challenges/{id} {
       allow read: if request.auth != null;
       allow create: if request.auth != null
         && request.resource.data.uid == request.auth.uid
         && request.resource.data.slot is int
-        && id == 'c' + string(request.resource.data.slot)
-        && request.time.toMillis() >= request.resource.data.slot * 900000
-        && request.time.toMillis() < (request.resource.data.slot + 1) * 900000 + 120000
+        && request.resource.data.place is int
+        && request.resource.data.place >= 1
+        && request.resource.data.place <= 3
+        && id == 'p' + string(request.resource.data.slot) + '_' + string(request.resource.data.place)
+        && request.time.toMillis() >= request.resource.data.slot * 720000
+        && request.time.toMillis() < (request.resource.data.slot + 1) * 720000 + 120000
         && request.resource.data.prize is number
         && request.resource.data.prize >= 0
         && request.resource.data.prize <= 5000000
-        && request.resource.data.size() <= 10;
+        && request.resource.data.size() <= 12
+        && (request.resource.data.place == 1
+          || get(/databases/$(database)/documents/challenges/$('p' + string(request.resource.data.slot) + '_1')).data.uid != request.auth.uid)
+        && (request.resource.data.place < 3
+          || get(/databases/$(database)/documents/challenges/$('p' + string(request.resource.data.slot) + '_2')).data.uid != request.auth.uid);
       allow update, delete: if false;
+    }
+
+    // Chat : un message = un document. ts = heure du serveur (ordre identique sur tous les appareils), 200 caractères max.
+    match /chat/{id} {
+      allow read: if request.auth != null;
+      allow create: if request.auth != null
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.text is string
+        && request.resource.data.text.size() >= 1
+        && request.resource.data.text.size() <= 200
+        && request.resource.data.ts == request.time
+        && request.resource.data.size() <= 8
+        && (!('tg' in request.resource.data)
+          || request.resource.data.tg == get(/databases/$(database)/documents/users/$(request.auth.uid)).data.get('tags', []));
+      allow delete: if isAdmin();
+      allow update: if false;
     }
 
     // Journal des mini-jeux : chacun écrit ses propres parties, seuls les admins lisent, personne ne modifie
