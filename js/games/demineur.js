@@ -8,9 +8,9 @@ import { createGuard, judge, punish, tooFast, refusedHTML, lockBannerHTML, locke
 import { makeTimer, modesHTML, bindModes, savedLevel, saveLevel, endCardHTML, fmtTime, fmtTimeLong } from './free-common.js';
 
 export const MS_LEVELS = [
-  { name: 'Facile', rows: 9, cols: 9, mines: 10, limit: 180, reward: 40 },
-  { name: 'Moyen', rows: 16, cols: 16, mines: 40, limit: 480, reward: 120 },
-  { name: 'Difficile', rows: 16, cols: 30, mines: 99, limit: 900, reward: 300 },
+  { name: 'Facile', rows: 9, cols: 9, mines: 10, limit: 180, reward: 100 },
+  { name: 'Moyen', rows: 16, cols: 16, mines: 40, limit: 480, reward: 300 },
+  { name: 'Difficile', rows: 16, cols: 30, mines: 99, limit: 900, reward: 750 },
 ];
 MS_LEVELS.forEach((l) => (l.desc = `${l.rows} × ${l.cols}, ${l.mines} mines, ${Math.round(l.limit / 60)} min`));
 const FLAG = '<svg viewBox="0 0 24 24" class="ms-flag" aria-hidden="true"><path d="M6 21V3.5" stroke="#eaf2ec" stroke-width="2" stroke-linecap="round"/><path d="M7 4h11l-3 4 3 4H7z" fill="#ff4d5e"/></svg>';

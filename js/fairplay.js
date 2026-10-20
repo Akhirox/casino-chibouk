@@ -119,7 +119,9 @@ export function refusedHTML(v, p, extraBtn = '') {
 // Quiz : verdict à partir des temps de réponse (ms entre l'affichage de la question et la réponse).
 // Lire la question, reconnaître la réponse et cliquer prend bien plus de 0,5 s à un humain, même très entraîné.
 // lenient (réponses tapées au clavier) : seulement « trop rapide » (sans sanction) sous 200 ms de médiane, le temps d'appuyer sur une touche
-export function judgeReactions(guard, rts, { minAnswers = 4, cheatMs = 350, fastMs = 550, lenient = false } = {}) {
+// accuracy (0 à 1, facultatif) : part de bonnes réponses. Quelqu'un qui clique au hasard très vite et se trompe presque
+// tout le temps (moins de 30 % de bonnes réponses) n'est pas un tricheur : il ne gagne quasi rien, pas d'amende.
+export function judgeReactions(guard, rts, { minAnswers = 4, cheatMs = 350, fastMs = 550, lenient = false, accuracy = null } = {}) {
   const r = guard ? guard.result() : { sec: 0, actions: 0, untrusted: 0, fastShare: 0 };
   guard && guard.destroy();
   const sorted = [...rts].sort((a, b) => a - b), med = sorted.length ? sorted[Math.floor(sorted.length / 2)] : 0;
@@ -132,5 +134,6 @@ export function judgeReactions(guard, rts, { minAnswers = 4, cheatMs = 350, fast
   else if (rts.length >= minAnswers && med < cheatMs) { flag = 'cheat'; reason = `réponses données en ${Math.round(med)} ms en moyenne, plus vite que le temps de lire la question`; }
   else if (instant >= 3) { flag = 'cheat'; reason = `${instant} réponses en moins de 250 ms`; }
   else if (rts.length >= minAnswers && med < fastMs) { flag = 'fast'; reason = `réponses données en ${Math.round(med)} ms en moyenne, c'est trop rapide`; }
+  if (flag !== 'ok' && accuracy !== null && accuracy < 0.3 && r.untrusted < 3) { flag = 'ok'; reason = ''; }
   return { flag, reason, sec: Math.round(r.sec * 10) / 10, actions: r.actions, untrusted: r.untrusted, fastShare: Math.round(r.fastShare * 100) / 100, medianMs: Math.round(med) };
 }

@@ -1,9 +1,35 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '29';
+export const VERSION = '30';
 
 export const CHANGELOG = [
+  {
+    v: '30', date: '20 octobre 2026', title: 'Géographie et Frappe éclair',
+    groups: [
+      ['Deux nouveaux mini-jeux', [
+        'Quiz géographie : un pays est demandé, clique dessus sur la carte du monde (195 pays). 10 questions, carte zoomable et déplaçable, points cliquables pour les tout petits pays. Facile, moyen ou difficile (+15 à +40 Brundles par pays).',
+        'Frappe éclair : 60 secondes pour taper un maximum de mots (façon 10 fast fingers). Facile, normal ou difficile (+2 à +5 Brundles par mot juste), record en mots par minute.',
+        'Succès, défis de la jungle, quêtes du jour et classement des mini-jeux pour les deux.',
+      ]],
+      ['Défis à relever sur chaque jeu', [
+        'À côté de chaque machine (sous le classement) et sous chaque mini-jeu : le défi de la jungle s\'il porte sur ce jeu, tes quêtes du jour liées au jeu, et les succès du jeu pas encore débloqués avec leur progression.',
+      ]],
+      ['Casse-briques', [
+        'Plus de niveaux de plus en plus durs : chaque nouvelle partie tire un niveau au hasard (6 niveaux dessinés + des niveaux générés), toujours à la même vitesse. « Réessayer » rejoue le même niveau.',
+        'Défis de la jungle : 1 niveau (facile), 2 niveaux (moyen), 3 niveaux (difficile).',
+      ]],
+      ['Gains', [
+        'Démineur : récompenses ×2,5 (100, 300 et 750 Brundles, jusqu\'au double selon le temps restant). Les défis de la jungle du démineur se font sur n\'importe quelle grille, même facile.',
+        'Mot du jour : récompenses ×3 (jusqu\'à 1 200 Brundles).',
+        'Ferme : les boosts de récolte se cumulent toujours un peu (le 2e compte pour 1/2, le 3e pour 1/3, le 4e pour 1/4…) au lieu de plafonner vite : dix ×1,5 donnent ×2,46, dix ×2 donnent ×3,93, jusqu\'à ×5.',
+      ]],
+      ['Correctifs', [
+        'En direct : un groupe de gros gains affichait le plus gros gain du groupe avec l\'heure du plus récent (un gain de plusieurs heures semblait tout frais). C\'est maintenant le plus récent qui s\'affiche, les autres sont dans le détail (+2…).',
+        'Quiz à choix : répondre au hasard très vite en se trompant presque tout le temps (moins de 30 % de bonnes réponses) n\'est plus pris pour de la triche.',
+      ]],
+    ],
+  },
   {
     v: '29', date: '20 octobre 2026', title: 'Correctifs et quêtes ×5',
     groups: [

@@ -56,6 +56,8 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 | **Hi-Lo** | Plus haut ou plus bas que la carte affichée ? Paquet infini, chaque bonne réponse multiplie le gain (0,99 ÷ probabilité), encaissement quand on veut. | 99 % |
 | **Keno** | 1 à 10 numéros sur 40, 10 tirés, 3 niveaux de risque, jusqu'à ×10 000. Tables calculées exactement (`tools/keno-rtp.mjs`). | 99 % |
 | **Roue du Singe** | 30 cases équiprobables, 3 niveaux de risque (jusqu'à ×29,7). | 99 % |
+| **Quiz géographie** | Gratuit : 10 pays à trouver en cliquant sur la carte du monde (195 pays, Natural Earth via world-atlas, `js/games/geo-data.js`), zoom et déplacement, 3 niveaux. | — |
+| **Frappe éclair** | Gratuit : 60 s pour taper un maximum de mots (`js/games/typing-data.js`), 3 niveaux, +2 à +5 par mot juste. | — |
 | **Jungle Connect** | Grille 7×7 à clusters (5+ symboles reliés), cascades infinies, multiplicateurs ×2 qui se multiplient dans un cluster (×256 max), 3 Masques Tribaux = 10 tours gratuits avec ×2 / ×4 plus fréquents. Maths dans `js/games/jungle-math.js` (réglées par simulation, gain max ×5 000). | 98,5 % |
 | **Limbo** | Cible de ×1,01 à ×1 000 000 : on gagne mise × cible si le tirage l'atteint (chance = 99 ÷ cible). | 99 % |
 | **Jeux à gratter** | 3 tickets : Banane Express (10, jusqu'à ×500), Singe d'Or (100, jusqu'à ×1 000), Trésor de la Jungle (1 000, jusqu'à ×10 000). 3 montants identiques = gagné. Grattage à la souris ou au doigt, case par case, « Tout gratter » ou tickets automatiques. Le gain est tiré à l'achat. Tables dans `js/games/scratch-math.js`. | 98 % |
@@ -63,13 +65,13 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 | **Quiz capitales** | Gratuit : 10 questions dans les deux sens (pays → capitale, capitale → pays), 127 pays. Mode facile (4 choix, 10 s, +10 par bonne réponse, +50 sans-faute) ou expert (réponse à écrire, 15 s, +20 par bonne réponse, +100 sans-faute). | — |
 | **Quiz ciné** | Gratuit : 10 questions à 4 choix sur 800 films (réalisateur, acteurs, année de sortie), 15 s chacune. Même barème. Données : `data/movies.json`, extrait de la base TMDB (The Movies Dataset). | — |
 | **Quiz drapeaux** | Gratuit : 10 drapeaux parmi 159 pays (SVG du projet flag-icons, licence MIT, dans `data/flags/`). Modes facile et expert comme les capitales. | — |
-| **Mot du jour** | Gratuit, une fois par jour : façon Motus, même mot pour tout le monde, 6 essais. +400 à +70 selon le nombre d'essais. Dictionnaire de 77 000 mots dans `data/mots.txt` (projet an-array-of-french-words, licence MIT), 346 mots à deviner dans `data/mots-cibles.json`. | — |
+| **Mot du jour** | Gratuit, une fois par jour : façon Motus, même mot pour tout le monde, 6 essais. +1 200 à +210 selon le nombre d'essais. Dictionnaire de 77 000 mots dans `data/mots.txt` (projet an-array-of-french-words, licence MIT), 346 mots à deviner dans `data/mots-cibles.json`. | — |
 | **Plus ou moins** | Gratuit : quel film a eu le plus gros budget ? Série jusqu'à 15, +10 par bonne réponse, +50 au bout. Budgets tirés de ta base TMDB. | — |
 | **Queens** | Gratuit : une reine par ligne, colonne et zone de couleur, jamais deux reines qui se touchent. Grilles 7×7, 8×8, 9×9 générées à la volée avec une solution unique. +60 / +90 / +130, +50 % sous le temps de référence. | — |
 | **Tango** | Gratuit : grille 6×6 de soleils et de lunes (3 de chaque par ligne et colonne, jamais 3 pareils d'affilée, signes = et ×). 3 niveaux, solution unique. +40 / +70 / +100, +50 % si rapide. | — |
 | **Pinpoint** | Gratuit : trouver la catégorie commune à 5 indices dévoilés un par un (570 catégories, jamais deux fois la même avant d'avoir tout vu, réponses tolérantes). +40 au 1er indice, puis +28 / +20 / +12 / +6. | — |
 | **Sudoku** | Gratuit : 3 niveaux (40 / 32 / 25 chiffres donnés), solution unique, notes. +80 / +160 / +300, +50 % si rapide. | — |
-| **Démineur** | Gratuit, contre la montre : 9×9 (10 mines, 3 min), 16×16 (40 mines, 8 min), 16×30 (99 mines, 15 min). +40 / +120 / +300, jusqu'au double selon le temps restant. | — |
+| **Démineur** | Gratuit, contre la montre : 9×9 (10 mines, 3 min), 16×16 (40 mines, 8 min), 16×30 (99 mines, 15 min). +100 / +300 / +750, jusqu'au double selon le temps restant. | — |
 | **Snake** | Gratuit : 3 niveaux (bords traversables, murs, puis accélération). +1 / +2 / +4 par banane. | — |
 | **Memory** | Gratuit : retrouver les paires. 4×4, 6×4, 6×6. +30 / +60 / +100, +50 % si peu de coups. | — |
 | **Mots croisés** | Gratuit : grille générée à chaque partie à partir de 900 mots et définitions (les mots des 25 dernières grilles sont évités). 7, 10 ou 14 mots (première lettre donnée en facile). +40 / +70 / +110, chaque lettre révélée coûte 10 % du gain. | — |
@@ -223,6 +225,7 @@ js/wallet.js               solde, stats, sauvegarde groupée
 js/farm-core.js            ferme à bananes : règles, coûts, production (sans affichage)
 js/farm.js                 ferme à bananes : page, dessins, marché, voisins
 js/loot.js                 caisses : contenu, probabilités, application des lots et des boosts
+js/goals.js                défis à relever affichés sur la page de chaque jeu
 js/rewards.js              affichage « base → avec bonus » des récompenses gratuites et détail des bonus
 js/cases.js                caisses : page d'ouverture (bande animée)
 js/stats.js                stats personnelles + chiffres de tout le casino

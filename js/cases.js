@@ -204,7 +204,7 @@ export function mount(view, { wallet, social }) {
       <li><b>Raretés</b> : Commun 70 %, Rare 22 %, Épique 6 %, Légendaire 1,7 %, Mythique 0,3 % (sauf coffrets cosmétiques et quitte ou double).</li>
       ${L.FAMILIES.map(([, n, d]) => `<li><b>${n}</b> : ${d}</li>`).join('')}
       <li><b>Boosts empilables</b> (mini-jeux, défis, vente des bananes) : le plus fort compte en entier, le 2e aux 3/4, le 3e au quart, puis de moins en moins. Deux ×3 = ×4,5, trois ×3 = ×5. Plafonds : ×6 pour les mini-jeux, ×3 pour les défis et la vente.</li>
-      <li><b>Récolte de la ferme</b> : les boosts se cumulent aussi, mais très peu : le 2e compte à moitié, le 3e au quart, le 4e au huitième… jusqu'à ×5 au maximum (deux ×2 = ×2,5 ; il faut beaucoup de ×3 pour approcher ×5).</li>
+      <li><b>Récolte de la ferme</b> : les boosts se cumulent : le plus fort compte en entier, le 2e pour 1/2, le 3e pour 1/3, le 4e pour 1/4… Chaque boost ajoute toujours un petit quelque chose, jusqu'à ×5 au maximum (dix ×1,5 = ×2,46 ; dix ×2 = ×3,93).</li>
       <li><b>Plafonds des bonus permanents</b> : coffre +100 %, vente des bananes +100 %, roue du jour +300 %, défis +200 %, vitesse de construction −60 % ; gains gratuits sans plafond.</li>
       <li>Aucune caisse ne donne de rakeback : impossible de miser à l'infini en se faisant rembourser.</li>
       <li>Le lot est enregistré dès le clic : quitter la page pendant l'animation ne fait rien perdre.</li></ul>`, buttons: [{ label: 'Compris', value: true, primary: true }] });

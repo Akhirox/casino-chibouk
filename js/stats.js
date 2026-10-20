@@ -31,7 +31,7 @@ export const pct = (a, b) => (b ? (a / b * 100).toFixed(1).replace('.', ',') + '
 export const signed = (n) => `<span class="${n >= 0 ? 'pos' : 'neg'}">${n >= 0 ? '+' : ''}${fmt(n)}</span>`;
 
 // Brundles distribués hors jeux (bonus, quiz, succès…), pour les chiffres globaux
-const FREE_KEYS = ['dailyTotal', 'breakerTotal', 'quizTotal', 'capitalsTotal', 'moviesTotal', 'flagsTotal', 'motusTotal', 'higherTotal', 'queensTotal', 'tangoTotal', 'pinpointTotal', 'sudokuTotal', 'demineurTotal', 'snakeTotal', 'memoryTotal', 'crosswordTotal', 'farmTotal', 'questTotal', 'achTotal', 'rakebackTotal', 'vipupTotal', 'vipfreeTotal', 'jackpotTotal', 'challengeTotal', 'lootfreeTotal', 'cosmeticTotal'];
+const FREE_KEYS = ['dailyTotal', 'breakerTotal', 'quizTotal', 'capitalsTotal', 'moviesTotal', 'flagsTotal', 'motusTotal', 'higherTotal', 'queensTotal', 'tangoTotal', 'pinpointTotal', 'sudokuTotal', 'demineurTotal', 'snakeTotal', 'memoryTotal', 'crosswordTotal', 'geoTotal', 'typingTotal', 'giftTotal', 'farmTotal', 'questTotal', 'achTotal', 'rakebackTotal', 'vipupTotal', 'vipfreeTotal', 'jackpotTotal', 'challengeTotal', 'lootfreeTotal', 'cosmeticTotal'];
 
 export function globalNumbers(players) {
   const sum = (f) => players.reduce((a, p) => a + (f(p) || 0), 0);

@@ -113,7 +113,7 @@ export function spinDaily(wallet, bonus = false) {
 /* ------------------------------ Quêtes du jour ------------------------------ */
 const CASINO = { slots: 'à la Chibouk Slot', jungle: 'à la Jungle Connect', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au Plinkoko', crash: 'au Crashibouk', tower: 'à la Tower', mines: 'aux Mines', dice: 'au Dice', hilo: 'au Hi-Lo', keno: 'au Keno', wheel: 'à la Roue', limbo: 'au Limbo', scratch: 'aux jeux à gratter' };
 const ROUNDS = { slots: 40, jungle: 30, blackjack: 12, roulette: 15, plinko: 40, crash: 15, tower: 10, mines: 10, dice: 40, hilo: 10, keno: 20, wheel: 30, limbo: 30, scratch: 15 };
-const QUIZ = { quiz: 'au calcul mental', capitals: 'au quiz capitales', movies: 'au quiz ciné', flags: 'au quiz drapeaux' };
+const QUIZ = { quiz: 'au calcul mental', capitals: 'au quiz capitales', movies: 'au quiz ciné', flags: 'au quiz drapeaux', geo: 'au quiz géographie' };
 
 // Modèles : tier 0 = facile, 1 = moyen, 2 = difficile. n = objectif, ev(e, q) = progression apportée par l'événement
 const TEMPLATES = [];
@@ -129,6 +129,7 @@ TEMPLATES.push(
   { id: 'mult3x5', tier: 1, n: 5, text: (n) => `Gagne ${n} fois au moins ×3 ta mise`, ev: (e) => (e.type === 'win' && e.bet > 0 && e.amount / e.bet >= 3 ? 1 : 0) },
   { id: 'games5', tier: 1, n: 5, text: (n) => `Joue à ${n} jeux de casino différents`, set: true, ev: (e) => (e.type === 'round' && CASINO[e.game] ? e.game : 0) },
   { id: 'rounds100', tier: 2, n: 100, text: (n) => `Joue ${n} parties de casino (tous jeux confondus)`, ev: (e) => (e.type === 'round' && CASINO[e.game] ? 1 : 0) },
+  { id: 'typing35', tier: 1, n: 1, text: () => 'Tape au moins 35 mots en une partie de Frappe éclair', ev: (e) => (e.type === 'free' && e.game === 'typing' && e.extra && e.extra.Words >= 35 ? 1 : 0) },
   { id: 'breaker2', tier: 1, n: 2, text: (n) => `Termine ${n} niveaux de casse-briques`, ev: (e) => (e.type === 'breaker' ? 1 : 0) },
   { id: 'motus', tier: 2, n: 1, text: () => 'Trouve le mot du jour', ev: (e) => (e.type === 'free' && e.game === 'motus' && e.extra && e.extra.Won ? 1 : 0) },
   { id: 'higher8', tier: 2, n: 1, text: () => 'Fais une série de 8 au Plus ou moins', ev: (e) => (e.type === 'free' && e.game === 'higher' && e.extra && e.extra.Correct >= 8 ? 1 : 0) },

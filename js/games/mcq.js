@@ -135,12 +135,14 @@ export function mountMCQ(view, { wallet }, opt) {
         ${q.img || q.imgP ? `<div class="mcq-img"><img ${q.img ? `src="${esc(q.img)}"` : ''} alt="Drapeau à deviner"></div>` : `<div class="mcq-big">${esc(q.big)}</div>`}${q.sub ? `<div class="mcq-sub">${esc(q.sub)}</div>` : ''}
         <div class="qz-verdict" id="qz-verdict"></div></div>
       <div class="qz-timer"><div class="qz-bar" id="qz-bar"></div><span id="qz-sec">${SECS()}</span></div>
-      ${q.type === 'text' ? `<form class="qz-form mcq-text" id="mcq-form" autocomplete="off">
+      ${q.type === 'map' ? '<div class="mcq-map" id="mcq-map"></div>' : q.type === 'text' ? `<form class="qz-form mcq-text" id="mcq-form" autocomplete="off">
           <input id="mcq-input" class="bet-input" type="text" maxlength="60" placeholder="${esc(q.placeholder || 'Ta réponse')}" autocapitalize="off" autocorrect="off" spellcheck="false" aria-label="Ta réponse">
           <button class="btn btn-gold btn-lg" type="submit">Valider</button></form>`
         : `<div class="mcq-choices">${q.choices.map((c, i) => `<button type="button" class="mcq-c" data-i="${i}"><kbd>${'ABCD'[i]}</kbd><span>${esc(c)}</span></button>`).join('')}</div>`}
       <div class="mcq-reveal" id="mcq-reveal"></div>`;
     $$('.mcq-c', view).forEach((b) => (b.onclick = () => answer(+b.dataset.i)));
+    // question sur une carte (quiz géographie) : opt.map affiche la carte et renvoie le code cliqué
+    if (q.type === 'map' && opt.map) opt.map.show($('#mcq-map', view), q, (code) => answer(code));
     const form = $('#mcq-form', view);
     if (form) {
       const inp = $('#mcq-input', view);
@@ -178,9 +180,11 @@ export function mountMCQ(view, { wallet }, opt) {
     const q = questions[qi];
     const timeout = i === null;
     const text = q.type === 'text';
+    const isMap = q.type === 'map';
     const ok = !timeout && (text ? matches(i, q.accept, q.reject) : i === q.answer);
     if (!timeout) rts.push(performance.now() - shownAt);
-    const right = text ? q.accept[0] : q.choices[q.answer];
+    const right = text ? q.accept[0] : isMap ? q.right : q.choices[q.answer];
+    if (isMap && opt.map) opt.map.reveal(q, i, ok);
     results.push(ok);
     if (ok) correct++;
     $('.qz-q', view).classList.add(ok ? 'good' : 'bad');
@@ -191,21 +195,21 @@ export function mountMCQ(view, { wallet }, opt) {
       if (k === q.answer) b.classList.add('right');
       else if (k === i) b.classList.add('wrong');
     });
-    $('#qz-verdict', view).textContent = ok ? `Bravo ! +${PER()}${text && normalize(i) !== normalize(right) ? ` (c'était ${right})` : ''}` : timeout ? `Temps écoulé… c'était ${right}` : `Raté, c'était ${right}`;
+    $('#qz-verdict', view).textContent = ok ? `Bravo ! +${PER()}${text && normalize(i) !== normalize(right) ? ` (c'était ${right})` : ''}` : timeout ? `Temps écoulé… c'était ${right}` : isMap && opt.map ? `Raté, ça c'est ${opt.map.nameOf(i)} !` : `Raté, c'était ${right}`;
     const rv = $('#mcq-reveal', view);
     rv.innerHTML = `${q.reveal || ''}<button class="btn btn-ghost btn-sm" id="mcq-next">${qi + 1 >= N ? 'Résultat' : 'Question suivante'} <kbd>Entrée</kbd></button>`;
     $$('img', rv).forEach((img) => (img.onerror = () => img.remove()));
     $('#mcq-next', view).onclick = next;
     if (ok) sfx.coin(); else sfx.lose();
     renderDots();
-    nextTimer = setTimeout(next, (ok ? 1100 : 2000) + (q.reveal ? 1400 : 0));
+    nextTimer = setTimeout(next, (ok ? 1100 : isMap ? 2800 : 2000) + (q.reveal ? 1400 : 0));
   }
 
   // Contrôle fair-play puis récompense. Renvoie { amount } ou { refused: verdict, p: sanction }
   function settle(amount, extra, partial = false) {
     // réponses à écrire (capitales en mode expert…) : contrôle souple ; réponses à cliquer : contrôle normal
     const typed = (questions || []).some((q) => q.type === 'text');
-    const v = judgeReactions(guard, rts, { lenient: typed }); guard = null;
+    const v = judgeReactions(guard, rts, { lenient: typed, accuracy: rts.length ? correct / rts.length : null }); guard = null;
     if (v.flag === 'cheat') return { refused: v, p: punish(wallet, opt.kind, mode.key || null, v, Math.max(amount, PER() * 5)) };
     if (v.flag === 'fast') { tooFast(wallet, opt.kind, mode.key || null, v); return { refused: v }; }
     wallet.freeReward(opt.kind, amount, extra, { log: { lv: mode.key || null, sec: v.sec, actions: v.actions, fastShare: v.fastShare, ms: v.medianMs, partial } });
@@ -249,7 +253,8 @@ export function mountMCQ(view, { wallet }, opt) {
     if (state !== 'ask') return;
     const k = e.key.toLowerCase();
     const i = ['1', '2', '3', '4'].indexOf(k) >= 0 ? +k - 1 : ['a', 'b', 'c', 'd'].indexOf(k);
-    if (i >= 0 && i < questions[qi].choices.length) { e.preventDefault(); answer(i); }
+    const ch = questions[qi].choices;
+    if (i >= 0 && ch && i < ch.length) { e.preventDefault(); answer(i); }
   };
   document.addEventListener('keydown', onKey);
 

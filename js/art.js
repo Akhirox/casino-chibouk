@@ -158,6 +158,7 @@ const ICONS = {
   shop: `<path d="M4.5 8h15l-1.3 12h-12.4z" ${D}/><path d="M8.5 10V7a3.5 3.5 0 0 1 7 0v3" stroke-width="1.6"/>`,
   chev: `<path d="m6 9 6 6 6-6" stroke-width="2"/>`,
   fire: `<path d="M12 21c-4 0-7-2.8-7-6.6 0-3.4 2.6-5.4 3.7-8.4.5 2 1.6 3 2.6 3.5C11.6 6 13 4 15 3c-.3 3 1.5 4.6 2.8 6.6A7 7 0 0 1 19 14.4C19 18.2 16 21 12 21z" ${D}/>`,
+  keyboard: `<rect x="2.5" y="6" width="19" height="12" rx="2.5" ${D}/><path d="M6 9.5h1M9.5 9.5h1M13 9.5h1M16.5 9.5h1M6 12.5h1M9.5 12.5h1M13 12.5h1M16.5 12.5h1M8 15.5h8" stroke-width="1.8" stroke-linecap="round"/>`,
   globe: `<circle cx="12" cy="12" r="8.5" ${D}/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5M12 3.5C9.4 5.9 8.2 8.7 8.2 12s1.2 6.1 3.8 8.5" stroke-width="1.5"/>`,
   jungle: `<rect x="3" y="3" width="18" height="18" rx="3" ${D}/><path d="M9 3v18M15 3v18M3 9h18M3 15h18" stroke-width="1" opacity=".6"/><path d="M6 6h6v6h6v6" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`,
   scratch: `<rect x="3" y="5" width="18" height="14" rx="2" ${D}/><path d="M7 9h4M7 12.5h3M13.5 13l3.5-4M14 16l4-4.5" stroke-width="1.6"/><circle cx="17" cy="8" r="1" fill="currentColor"/>`,
@@ -304,6 +305,20 @@ export function jungleArtSVG() {
   return `<svg viewBox="0 0 200 145" class="art-jungle" aria-hidden="true"><rect x="31" y="4" width="138" height="104" rx="10" fill="#0d2010" stroke="#6b4a1e" stroke-width="3"/>${cells}
     <text x="100" y="134" text-anchor="middle" font-family="Bungee, sans-serif" font-size="20" fill="#ffd23f" stroke="#6b4400" stroke-width="1">×256</text>
     <g transform="translate(160 96)"><rect x="-17" y="-12" width="34" height="22" rx="7" fill="#c2185b"/><text y="5" text-anchor="middle" font-family="Bungee, sans-serif" font-size="12" fill="#fff">×4</text></g></svg>`;
+}
+export function geoArtSVG() {
+  return `<svg viewBox="0 0 200 145" class="art-geo" aria-hidden="true"><defs><radialGradient id="geoS" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#3a7bd5"/><stop offset="1" stop-color="#0b2c5a"/></radialGradient></defs>
+    <circle cx="100" cy="70" r="58" fill="url(#geoS)" stroke="#9fd3ff" stroke-width="2"/>
+    <path d="M62 40c10-8 22-6 28 2s-2 14 6 20-4 18-14 16-10-12-18-14-12-16-2-24z" fill="#3ddc84" opacity=".9"/><path d="M112 34c14-4 28 4 30 14s-8 10-4 20-8 20-18 14-2-14-10-20-8-24 2-28z" fill="#3ddc84" opacity=".9"/>
+    <path d="M96 92c8 0 14 6 12 14s-10 10-16 6-6-20 4-20z" fill="#f5c542" stroke="#fff" stroke-width="2"/>
+    <g transform="translate(118 96)"><path d="M0 0l-6-16a10 10 0 1 1 12 0z" fill="#ff4d5e" stroke="#fff" stroke-width="2"/><circle cx="0" cy="-22" r="3.5" fill="#fff"/></g></svg>`;
+}
+export function typingArtSVG() {
+  const k = (x, y, c, on) => `<rect x="${x}" y="${y}" width="22" height="20" rx="5" fill="${on ? '#f5c542' : '#1b2a21'}" stroke="${on ? '#fff3a8' : '#3a5544'}" stroke-width="1.5"/><text x="${x + 11}" y="${y + 14}" text-anchor="middle" font-family="Bungee, sans-serif" font-size="11" fill="${on ? '#2a1600' : '#cfe8d6'}">${c}</text>`;
+  return `<svg viewBox="0 0 200 145" class="art-typing" aria-hidden="true">
+    <text x="100" y="34" text-anchor="middle" font-family="Bungee, sans-serif" font-size="20" fill="#3ddc84">banane <tspan fill="#f5c542">singe</tspan> jungle</text>
+    ${'AZERTYUI'.split('').map((c, i) => k(14 + i * 22, 52, c, i === 2)).join('')}${'QSDFGHJK'.split('').map((c, i) => k(22 + i * 22, 76, c, i === 4)).join('')}${'WXCVBN'.split('').map((c, i) => k(36 + i * 22, 100, c, false)).join('')}
+    <text x="186" y="136" text-anchor="end" font-family="Bungee, sans-serif" font-size="14" fill="#f5c542">72 mots/min</text></svg>`;
 }
 export function flagsArtSVG() {
   const f = (x, y, rot, colors, vertical = true) => `<g transform="translate(${x} ${y}) rotate(${rot})"><rect x="-27" y="-18" width="54" height="36" rx="3" fill="#111"/>${colors.map((c, i) => vertical ? `<rect x="${-27 + i * 18}" y="-18" width="18" height="36" fill="${c}"/>` : `<rect x="-27" y="${-18 + i * 12}" width="54" height="12" fill="${c}"/>`).join('')}<rect x="-27" y="-18" width="54" height="36" rx="3" fill="none" stroke="#0006"/></g>`;

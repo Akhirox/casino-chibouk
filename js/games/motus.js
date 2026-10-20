@@ -9,7 +9,7 @@ import { $, $$, fmt, money, toast, coinRain, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 export const TRIES = 6;
-export const MOTUS_REWARDS = [400, 300, 220, 160, 110, 70]; // selon le nombre d'essais
+export const MOTUS_REWARDS = [1200, 900, 650, 480, 330, 210]; // selon le nombre d'essais (×3 en V30)
 const DAY0 = Date.UTC(2026, 0, 1);
 
 let dict = null, targets = null;

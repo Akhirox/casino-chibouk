@@ -129,9 +129,9 @@ export function assignment(f) {
   for (const x of fields) { x.w = Math.min(x.cap, left); left -= x.w; }
   return { fields, idle: Math.max(0, Math.min(f.w, houses(f)) - fields.reduce((a, x) => a + x.w, 0)), homeless: Math.max(0, f.w - houses(f)) };
 }
-// Boosts de récolte gagnés dans les caisses : f.xbs = [{ m, u }]. Ils se cumulent avec un rendement très dégressif :
-// le plus fort compte en entier, le 2e à moitié, le 3e au quart… et le total est plafonné à ×5
-// (deux ×2 → ×2,5 ; trois ×2 → ×2,75 ; il faut beaucoup de ×3 pour approcher ×5).
+// Boosts de récolte gagnés dans les caisses : f.xbs = [{ m, u }]. Ils se cumulent avec un rendement dégressif (V30) :
+// le plus fort compte en entier, le 2e à 1/2, le 3e à 1/3, le 4e à 1/4… : chaque nouveau boost ajoute toujours un peu,
+// sans jamais s'arrêter net, jusqu'au plafond de ×5 (dix ×1,5 → ×2,46 ; dix ×2 → ×3,93 ; trois ×3 → ×4,67).
 export const FARM_BOOST_CAP = 5;
 // Fermes d'avant la V28 (V29 : correctif) : l'ancien boost unique f.xb rejoint la liste f.xbs (sans doublon), puis
 // f.xb passe à null (la sauvegarde Firestore fusionne les champs : sans ce null, l'ancien boost reviendrait à chaque chargement).
@@ -151,7 +151,7 @@ export function migrate(f, now = Date.now()) {
 export function farmStack(ms) {
   const s = ms.filter((m) => m > 1).sort((a, b) => b - a);
   let t = 1;
-  s.forEach((m, i) => { t += (m - 1) / 2 ** i; });
+  s.forEach((m, i) => { t += (m - 1) / (i + 1); });
   return Math.min(FARM_BOOST_CAP, Math.round(t * 100) / 100);
 }
 export const activeFarmBoosts = (f, t = Date.now()) => { if (f && (f.xb || !Array.isArray(f.xbs))) migrate(f, Math.min(t, f.t || t)); return ((f && f.xbs) || []).filter((b) => b.u > t); };

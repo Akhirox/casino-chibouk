@@ -19,12 +19,39 @@ const LEVELS = [
   { name: 'Le roi de la jungle', rows: ['3.3.33.3.3', '3333333333', '2222222222', '2112112112', '1111111111', '1111111111', '.11.11.11.', '2222222222'] },
 ];
 const ROW_HUES = [0, 28, 48, 95, 160, 200, 260, 310];
+// Niveau aléatoire (V30) : symétrique gauche-droite, 5 à 8 rangées, quelques briques solides
+const NAMES = ['La liane tordue', 'Le nid de toucan', 'La pyramide perdue', 'Le marais', 'La canopée', 'Les ruines', 'Le piège à singes', 'La rivière', 'Le volcan', 'Le bananier géant'];
+function randomLevel() {
+  const rows = 5 + Math.floor(Math.random() * 4), out = [];
+  const style = Math.floor(Math.random() * 4);
+  for (let r = 0; r < rows; r++) {
+    const half = [];
+    for (let c = 0; c < 5; c++) {
+      let ch = '1';
+      if (style === 0 && Math.random() < 0.18) ch = '.';
+      if (style === 1 && (r + c) % 2) ch = '.';
+      if (style === 2 && c < Math.abs(rows / 2 - r) - 1) ch = '.';
+      if (style === 3 && Math.random() < 0.3) ch = '.';
+      if (ch === '1') { const x = Math.random(); ch = x < 0.12 + r * 0.01 ? '3' : x < 0.35 ? '2' : '1'; }
+      half.push(ch);
+    }
+    out.push(half.join('') + [...half].reverse().join(''));
+  }
+  return { name: NAMES[Math.floor(Math.random() * NAMES.length)], rows: out };
+}
 
 export function mount(view, { wallet, navigate }) {
   let alive = true;
   let raf = null;
   let state = 'locked';
-  const levelNum = () => wallet.get('breakerLevel') || 0;
+  const levelNum = () => wallet.get('breakerLevel') || 0; // niveaux terminés (statistique)
+  let level = null, lastName = '';
+  // nouvelle partie : un niveau tiré au hasard (un des niveaux dessinés, ou un niveau généré), jamais deux fois le même d'affilée
+  function pickLevel() {
+    let L;
+    do { L = Math.random() < 0.5 ? LEVELS[Math.floor(Math.random() * LEVELS.length)] : randomLevel(); } while (L.name === lastName);
+    lastName = L.name; level = L;
+  }
 
   view.innerHTML = `
   <div class="bk-wrap">
@@ -62,12 +89,11 @@ export function mount(view, { wallet, navigate }) {
   let lastT = 0;
   let levelIdx = 0;
 
-  function buildLevel() {
-    const n = levelNum();
-    levelIdx = n % LEVELS.length;
-    speedMul = 1 + Math.floor(n / LEVELS.length) * 0.15 + levelIdx * 0.04;
+  function buildLevel(fresh = true) {
+    if (fresh || !level) pickLevel();
+    speedMul = 1.08; // même vitesse pour tous les niveaux (plus de difficulté qui grimpe)
     bricks = [];
-    LEVELS[levelIdx].rows.forEach((row, r) => [...row].forEach((ch, c) => {
+    level.rows.forEach((row, r) => [...row].forEach((ch, c) => {
       const hp = ch === '.' || ch === ' ' ? 0 : +ch;
       if (hp > 0) bricks.push({ x: OX + c * (BW + GAP), y: OY + r * (BH + GAP), hp, max: hp, hue: ROW_HUES[r % ROW_HUES.length], flash: 0 });
     }));
@@ -80,7 +106,7 @@ export function mount(view, { wallet, navigate }) {
     balls = [{ x: paddle.x, y: paddle.y - 12, vx: 0, vy: 0, r: 9, stuck: true }];
   }
   function hud() {
-    $('.bk-level', view).textContent = `Niveau ${levelNum() + 1} · ${LEVELS[levelIdx].name}`;
+    $('.bk-level', view).textContent = level.name;
     $('.bk-lives', view).innerHTML = Array.from({ length: Math.max(0, lives) }, () => '<i class="coco"></i>').join('');
     $('.bk-left', view).textContent = `${bricks.length} briques`;
   }
@@ -91,7 +117,7 @@ export function mount(view, { wallet, navigate }) {
   function intro() {
     buildLevel();
     state = 'ready';
-    showOverlay(`<div class="bk-card">${monkeySVG({})}<h2>Niveau ${levelNum() + 1} · ${LEVELS[levelIdx].name}</h2>
+    showOverlay(`<div class="bk-card">${monkeySVG({})}<h2>${level.name}</h2>
       <p>Casse <b>toutes les briques</b> pour gagner <b>${withFreeBonus(`+${CONFIG.BREAKER_REWARD}`, 'breaker')} ${CUR}</b>.<br>3 noix de coco, aucune mise. Bonne chance !</p>
       <button class="btn btn-gold btn-lg" id="bk-go">Jouer</button></div>`);
     $('#bk-go', view).onclick = () => { hideOverlay(); state = 'serve'; sfx.click(); };
@@ -214,8 +240,9 @@ export function mount(view, { wallet, navigate }) {
     if (lives <= 0) {
       state = 'over';
       showOverlay(`<div class="bk-card">${monkeySVG({})}<h2>Plus de noix de coco !</h2><p>Pas grave, le niveau est gratuit. On recommence ?</p>
-        <button class="btn btn-gold btn-lg" id="bk-retry">Réessayer</button></div>`);
-      $('#bk-retry', view).onclick = () => { buildLevel(); hideOverlay(); state = 'serve'; };
+        <button class="btn btn-gold btn-lg" id="bk-retry">Réessayer</button> <button class="btn btn-ghost" id="bk-new">Autre niveau</button></div>`);
+      $('#bk-retry', view).onclick = () => { buildLevel(false); hideOverlay(); state = 'serve'; };
+      $('#bk-new', view).onclick = () => { buildLevel(true); hideOverlay(); state = 'serve'; };
     } else { resetBall(); state = 'serve'; }
   }
 
@@ -225,7 +252,7 @@ export function mount(view, { wallet, navigate }) {
     sfx.win(true); coinRain(30);
     showOverlay(`<div class="bk-card">${monkeySVG({ crown: true, fur: '#c98a00', face: '#ffe6a6', ear: '#ffd36b' })}<h2>Niveau terminé !</h2>
       <p>${gotHTML(CONFIG.BREAKER_REWARD, 'breaker')} ajoutés à ton solde.<br>Solde : ${money(wallet.balance)}</p>
-      <button class="btn btn-gold btn-lg" id="bk-next">Niveau suivant</button> <button class="btn btn-ghost" data-go="lobby">Retour au casino</button></div>`);
+      <button class="btn btn-gold btn-lg" id="bk-next">Nouveau niveau</button> <button class="btn btn-ghost" data-go="lobby">Retour au casino</button></div>`);
     overlay.querySelectorAll('[data-go]').forEach((b) => (b.onclick = () => navigate(b.dataset.go)));
     const nx = $('#bk-next', view);
     if (nx) nx.onclick = () => { buildLevel(); hideOverlay(); state = 'serve'; };

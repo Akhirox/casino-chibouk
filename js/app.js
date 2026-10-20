@@ -31,13 +31,15 @@ import * as Tango from './games/tango.js';
 import * as Pinpoint from './games/pinpoint.js';
 import * as Sudoku from './games/sudoku.js';
 import * as Snake from './games/snake.js';
+import * as Geo from './games/geo.js';
+import * as Typing from './games/typing.js';
 import * as Demineur from './games/demineur.js';
 import * as Farm from './farm.js';
 import * as Scratch from './games/scratch.js';
 import * as Jungle from './games/jungle.js';
 import * as Memory from './games/memory.js';
 import * as Crossword from './games/crossword.js';
-import { scratchArtSVG, memoryArtSVG, crosswordArtSVG, jungleArtSVG } from './art.js';
+import { scratchArtSVG, memoryArtSVG, crosswordArtSVG, jungleArtSVG, geoArtSVG, typingArtSVG } from './art.js';
 import * as FarmCore from './farm-core.js';
 import { queensArtSVG, tangoArtSVG, pinpointArtSVG, sudokuArtSVG, snakeArtSVG, demineurArtSVG } from './art.js';
 import * as Shop from './shop.js';
@@ -68,6 +70,7 @@ import { createTips } from './tips.js';
 import { setRewardWallet, bonusHTML, questInfo, challengeInfo } from './rewards.js';
 import { tagsHTML } from './tags.js';
 import { receiveGifts } from './gifts.js';
+import { mountGoals } from './goals.js';
 
 const app = $('#app');
 let backend = null;
@@ -114,6 +117,8 @@ const ROUTES = {
   flags: { label: 'Drapeaux', icon: 'flag', mount: Flags.mount, group: 'free', sub: 'quiz' },
   movies: { label: 'Quiz ciné', icon: 'film', mount: Movies.mount, group: 'free', sub: 'quiz' },
   higher: { label: 'Plus ou moins', icon: 'higher', mount: Higher.mount, group: 'free', sub: 'quiz' },
+  geo: { label: 'Géographie', icon: 'globe', mount: Geo.mount, group: 'free', sub: 'quiz' },
+  typing: { label: 'Frappe éclair', icon: 'keyboard', mount: Typing.mount, group: 'free', sub: 'arcade' },
   motus: { label: 'Mot du jour', icon: 'motus', mount: Motus.mount, group: 'free', sub: 'puzzle' },
   queens: { label: 'Queens', icon: 'queens', mount: Queens.mount, group: 'free', sub: 'puzzle' },
   tango: { label: 'Tango', icon: 'tango', mount: Tango.mount, group: 'free', sub: 'puzzle' },
@@ -578,7 +583,16 @@ function route() {
     view.innerHTML = '<div class="with-board"><div class="game-main"></div><aside class="game-board"></aside></div>';
     const c1 = r.mount($('.game-main', view), ctx);
     const c2 = mountBoard($('.game-board', view), key, boardTitle, ctx);
-    cleanupView = () => { try { c1 && c1(); } finally { c2(); } };
+    // défis à relever : à côté de la machine, sous le classement
+    const gb = document.createElement('div'); gb.className = 'game-goals'; $('.game-board', view).append(gb);
+    const c3 = mountGoals(gb, key, { wallet, challenges });
+    cleanupView = () => { try { c1 && c1(); } finally { c2(); c3(); } };
+  } else if (ROUTES[key] && ROUTES[key].group === 'free') {
+    // mini-jeux : le jeu, puis les défis à relever en dessous
+    view.innerHTML = '<div class="game-solo"></div><div class="game-goals solo"></div>';
+    const c1 = r.mount($('.game-solo', view), ctx);
+    const c3 = mountGoals($('.game-goals', view), key, { wallet, challenges });
+    cleanupView = () => { try { c1 && c1(); } finally { c3(); } };
   } else {
     cleanupView = r.mount(view, ctx) || null;
   }
@@ -826,10 +840,12 @@ function mountLobby(view, { wallet: w }) {
       ${card('capitals', 'Quiz capitales', `${CONFIG.QUIZ_QUESTIONS} questions dans les deux sens, mode facile ou expert (gains doublés).`, 'Gratuit', capitalsArtSVG())}
       ${card('flags', 'Quiz drapeaux', `${CONFIG.QUIZ_QUESTIONS} drapeaux à reconnaître parmi ${Flags.FLAGS.length} pays, mode facile ou expert.`, 'Gratuit', flagsArtSVG())}
       ${card('movies', 'Quiz ciné', `${CONFIG.QUIZ_QUESTIONS} questions sur 800 films cultes : réalisateurs, acteurs, années. +${CONFIG.QUIZ_PER_CORRECT} ${CUR} par bonne réponse.`, 'Gratuit', moviesArtSVG())}
+      ${card('geo', 'Quiz géographie', `Nouveau ! ${CONFIG.QUIZ_QUESTIONS} pays à trouver en cliquant sur la carte du monde (${Geo.GEO_COUNT} pays), carte zoomable.`, '+15 à +40 / pays', geoArtSVG())}
       ${card('higher', 'Plus ou moins', 'Quel film a coûté le plus cher ? Enchaîne jusqu\'à 15 bonnes réponses.', 'Gratuit', higherArtSVG())}
     </section>
     <h3 class="sub-cat">Adresse<small>réflexes et précision</small></h3>
     <section class="games-grid free-grid">
+      ${card('typing', 'Frappe éclair', 'Nouveau ! 60 secondes pour taper un maximum de mots. Combien de mots par minute ?', `+2 à +5 ${CUR} par mot`, typingArtSVG())}
       ${card('snake', 'Snake', 'Le serpent de la jungle a faim : mange un max de bananes sans te mordre la queue.', `+1 à +4 ${CUR} par banane`, snakeArtSVG())}
       ${card('breaker', 'Casse-briques', `Casse toutes les briques d'un niveau : +${CONFIG.BREAKER_REWARD} ${CUR}. Gratuit, sans mise.`, 'Gratuit',
         `<div class="mini-bricks">${Array.from({ length: 15 }, (_, i) => `<i style="--h:${(i * 37) % 360}"></i>`).join('')}</div>`)}

@@ -15,11 +15,11 @@ const GAME_NAMES = { slots: 'la Chibouk Slot', jungle: 'à la Jungle Connect', b
 const AT = (g) => (g === 'slots' ? 'à la Chibouk Slot' : GAME_NAMES[g] || '');
 const mx = (m) => '×' + m.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
 
-const QUIZ_LABEL = { quiz: 'au calcul mental', capitals: 'au quiz capitales', movies: 'au quiz ciné', flags: 'au quiz drapeaux', higher: 'au Plus ou moins' };
-const QUIZ_ROUTE = { quiz: 'quiz', capitals: 'capitals', movies: 'movies', flags: 'flags', higher: 'higher' };
+const QUIZ_LABEL = { quiz: 'au calcul mental', capitals: 'au quiz capitales', movies: 'au quiz ciné', flags: 'au quiz drapeaux', higher: 'au Plus ou moins', geo: 'au quiz géographie' };
+const QUIZ_ROUTE = { quiz: 'quiz', capitals: 'capitals', movies: 'movies', flags: 'flags', higher: 'higher', geo: 'geo' };
 // Jeux de réflexion : exploits publiés avec un texte (« a résolu un » + lien vers le jeu + « difficile en 5 min »)
 const BIG_MIN = { plinko: 100 };
-export const FEAT_GAMES = { queens: 'Queens', tango: 'Tango', pinpoint: 'Pinpoint', sudoku: 'Sudoku', demineur: 'Démineur', snake: 'Snake', memory: 'Memory', crossword: 'mots croisés' };
+export const FEAT_GAMES = { queens: 'Queens', tango: 'Tango', pinpoint: 'Pinpoint', sudoku: 'Sudoku', demineur: 'Démineur', snake: 'Snake', memory: 'Memory', crossword: 'mots croisés', typing: 'Frappe éclair' };
 // Qui est le sujet du message (pour la semaine : le vainqueur, pas celui qui a publié)
 export const feedWho = (e) => (e.kind === 'week' && e.winner ? e.winner : e.pseudo);
 // Texte d'un message du fil (le pseudo est ajouté à l'affichage)
@@ -104,7 +104,7 @@ export function groupFeed(list, windowMs = 6 * 3600000) {
   }
   return out;
 }
-// Ligne affichée pour un groupe : le message le plus récent (ou le plus gros gain), les succès fusionnés
+// Ligne affichée pour un groupe : le message le plus récent, les succès fusionnés
 export function groupRich(g) {
   const items = g.items, e = items[0];
   if (items.length === 1) return feedRich(e);
@@ -116,7 +116,8 @@ export function groupRich(g) {
     }
     return feedRich({ ...e, kind: 'achs', ids, names });
   }
-  if (e.kind === 'bigwin') return feedRich(items.reduce((a, b) => ((b.amount || 0) > (a.amount || 0) ? b : a), e));
+  // gros gains regroupés : on affiche le plus récent (avec son heure) ; avant la V30, le plus gros du groupe s'affichait
+  // avec l'heure du plus récent, et un gain d'il y a plusieurs heures semblait tout frais
   return feedRich(e);
 }
 export const FEED_ICON = { bigwin: 'bolt', ach: 'medal', achs: 'medal', jackpot: 'trophy', vip: 'star', motus: 'motus', shop: 'shop', week: 'trophy', quests: 'check', perfect: 'quiz', wheel: 'wheel', streak: 'higher', feat: 'bulb', farm: 'banana', replant: 'banana', prestige: 'star', challenge: 'flag', loot: 'crate' };

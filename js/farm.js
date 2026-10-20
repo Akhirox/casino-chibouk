@@ -449,7 +449,7 @@ export function mount(view, { wallet, backend }) {
       <li>Les <b>parcelles</b> autour de ta ferme s'achètent en ${CUR}.</li>
       <li><b>Prestige</b> : après 2 millions de bananes vendues, tu peux remettre ta ferme à zéro contre <b>+100 % de production pour toujours</b> (×2, puis ×3, ×4…). Tu gardes tes parcelles, tes bâtisseurs et tes graines d'or. Le palier double à chaque fois : 2 M, 4 M, 8 M de bananes vendues…</li>
       <li><b>Graines d'or</b> (caisses) : +5 % de production chacune, pour toujours.</li>
-      <li><b>Boosts de récolte</b> (caisses) : ils se cumulent, mais de moins en moins (le 2e compte à moitié, le 3e au quart…), jusqu'à ×5.</li>
+      <li><b>Boosts de récolte</b> (caisses) : ils se cumulent, de moins en moins (le 2e compte pour 1/2, le 3e pour 1/3, le 4e pour 1/4…) mais chacun ajoute toujours un peu, jusqu'à ×5.</li>
       <li>Onglet <b>Les voisins</b> : visite les fermes des autres joueurs et compare vos productions.</li></ul>`, buttons: [{ label: 'Compris', value: true, primary: true }] });
   }
 
