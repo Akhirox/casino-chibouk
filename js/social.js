@@ -11,7 +11,7 @@ import { esc, fmt, money, toast, modal, coinRain } from './ui.js';
 import { goldMonkeySVG } from './art.js';
 import { sfx } from './sfx.js';
 
-const GAME_NAMES = { slots: 'la Chibouk Slot', jungle: 'à la Jungle Connect', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au Plinkoko', crash: 'au Crashibouk', tower: 'à la Tower', mines: 'aux Mines', dice: 'au Dice', hilo: 'au Hi-Lo', keno: 'au Keno', wheel: 'à la Roue du Singe', limbo: 'au Limbo', scratch: 'aux jeux à gratter' };
+const GAME_NAMES = { slots: 'la Chibouk Slot', jungle: 'à la Jungle Connect', craps: 'au Craps', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au Plinkoko', crash: 'au Crashibouk', tower: 'à la Tower', mines: 'aux Mines', dice: 'au Dice', hilo: 'au Hi-Lo', keno: 'au Keno', wheel: 'à la Roue du Singe', limbo: 'au Limbo', scratch: 'aux jeux à gratter' };
 const AT = (g) => (g === 'slots' ? 'à la Chibouk Slot' : GAME_NAMES[g] || '');
 const mx = (m) => '×' + m.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
 
@@ -48,7 +48,7 @@ export function feedText(e) {
   }
 }
 // Version enrichie (liens vers le jeu, survol des succès, fiche du joueur)
-const GAME_ROUTE = { slots: 'slots', jungle: 'jungle', blackjack: 'blackjack', roulette: 'roulette', plinko: 'plinko', crash: 'crash', tower: 'tower', mines: 'mines', dice: 'dice', hilo: 'hilo', keno: 'keno', wheel: 'wheel', limbo: 'limbo', scratch: 'scratch' };
+const GAME_ROUTE = { slots: 'slots', jungle: 'jungle', craps: 'craps', blackjack: 'blackjack', roulette: 'roulette', plinko: 'plinko', crash: 'crash', tower: 'tower', mines: 'mines', dice: 'dice', hilo: 'hilo', keno: 'keno', wheel: 'wheel', limbo: 'limbo', scratch: 'scratch' };
 function achLink(id, name) {
   const a = ACHIEVEMENTS.find((x) => x.id === id) || ACHIEVEMENTS.find((x) => x.name === name);
   const tk = a ? a.tier : 'gold';

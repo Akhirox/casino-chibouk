@@ -28,6 +28,7 @@ export function emptyStats() {
       wheel: { ...g() },
       limbo: { ...g() },
       jungle: { ...g(), bonuses: 0 },
+      craps: { ...g() },
     },
   };
 }

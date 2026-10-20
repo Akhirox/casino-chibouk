@@ -6,7 +6,7 @@ import { getPlayers } from './players.js';
 import { CONFIG } from './config.js';
 import { avatarHTML } from './profile.js';
 
-const CAT_ICON = { global: 'trophy', slots: 'slots', jungle: 'jungle', blackjack: 'blackjack', roulette: 'roulette', plinko: 'plinko', crash: 'crash', tower: 'tower', mines: 'mines', dice: 'dice', hilo: 'hilo', keno: 'keno', wheel: 'wheel', limbo: 'limbo', scratch: 'scratch', free: 'gift', farm: 'banana', progress: 'star' };
+const CAT_ICON = { global: 'trophy', slots: 'slots', jungle: 'jungle', craps: 'craps', blackjack: 'blackjack', roulette: 'roulette', plinko: 'plinko', crash: 'crash', tower: 'tower', mines: 'mines', dice: 'dice', hilo: 'hilo', keno: 'keno', wheel: 'wheel', limbo: 'limbo', scratch: 'scratch', free: 'gift', farm: 'banana', progress: 'star' };
 const dateFmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
 const dateTimeFmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit', timeZone: CONFIG.TIMEZONE });
 

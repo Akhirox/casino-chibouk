@@ -19,7 +19,7 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 - **Succès** : 157 défis (globaux et par jeu) qui rapportent de +100 à +10 000 Brundles, avec une page dédiée et une notification à chaque déblocage. Un clic sur un succès montre qui l'a débloqué, et qui l'a eu en premier (avec la date).
 - **Profils** : photo (ou un des 12 singes) et petite bio, visibles en cliquant sur un pseudo dans les classements. La photo est réduite à quelques Ko et stockée dans Firestore (pas besoin de Firebase Storage, donc ça reste gratuit).
 - **Singe conseiller** : petites astuces contextuelles sur chaque page, désactivables depuis le menu du pseudo.
-- **Paris automatiques** sur les 14 jeux de casino (tickets automatiques pour les jeux à gratter) : nombre de paris libre ou infini, arrêt sur objectif de gain, limite de perte ou solde minimum, et mise qui augmente ou baisse d'un pourcentage après chaque perte (retour à la mise de départ après une victoire ; pas sur le blackjack, la roulette et les tickets, dont la mise ne se résume pas à un seul montant).
+- **Paris automatiques** sur les 15 jeux de casino (tickets automatiques pour les jeux à gratter) : nombre de paris libre ou infini, arrêt sur objectif de gain, limite de perte ou solde minimum, et mise qui augmente ou baisse d'un pourcentage après chaque perte (retour à la mise de départ après une victoire ; pas sur le blackjack, la roulette et les tickets, dont la mise ne se résume pas à un seul montant).
 - **Mode turbo** sur les jeux de casino à enchaîner (Jungle Connect, Plinkoko, Dice, Limbo, Keno, Roue, Mines, Tower, Hi-Lo, tickets, roulette, Crash) : animations raccourcies et auto quasi sans pause, mêmes maths. Les écritures locales sont regroupées (`js/lazysave.js`) pour rester fluide.
 - **Chat et direct** (`js/chat.js`) : sur ordinateur, panneau fixé à droite avec le fil « En direct » et le chat ; sur mobile, sur l'accueil. Le chat a sa propre collection `chat` (1 écriture par message, triée par l'heure du serveur `ts`) : les 80 derniers messages, gardés dans le navigateur puis complétés par les nouveaux ; au plus 1 message par minute ; lecture toutes les 45 s quand le chat est ouvert, 2 min sinon.
 - **Coffre-fort** : 5 % d'intérêts par jour au prorata du temps (calculés à la volée, ajoutés au coffre à chaque sauvegarde : aucune écriture en plus).
@@ -58,6 +58,7 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 | **Roue du Singe** | 30 cases équiprobables, 3 niveaux de risque (jusqu'à ×29,7). | 99 % |
 | **Quiz géographie** | Gratuit : 10 pays à trouver en cliquant sur la carte du monde (195 pays, Natural Earth via world-atlas, `js/games/geo-data.js`), zoom et déplacement, 3 niveaux. | — |
 | **Frappe éclair** | Gratuit : 60 s pour taper un maximum de mots (`js/games/typing-data.js`), 3 niveaux, +2 à +5 par mot juste. | — |
+| **Craps** | Pass Line / Don't Pass (1:1), cote réelle jusqu'à 3×, Place 4 à 10, Field, Any 7, Any Craps. Mises en jeu sauvegardées dans le profil (`p.craps`). Règles dans `js/games/craps-math.js`. | 98,6 % (100 % sur la cote) |
 | **Jungle Connect** | Grille 7×7 à clusters (5+ symboles reliés), cascades infinies, multiplicateurs ×2 qui se multiplient dans un cluster (×256 max), 3 Masques Tribaux = 10 tours gratuits avec ×2 / ×4 plus fréquents. Maths dans `js/games/jungle-math.js` (réglées par simulation, gain max ×5 000). | 98,5 % |
 | **Limbo** | Cible de ×1,01 à ×1 000 000 : on gagne mise × cible si le tirage l'atteint (chance = 99 ÷ cible). | 99 % |
 | **Jeux à gratter** | 3 tickets : Banane Express (10, jusqu'à ×500), Singe d'Or (100, jusqu'à ×1 000), Trésor de la Jungle (1 000, jusqu'à ×10 000). 3 montants identiques = gagné. Grattage à la souris ou au doigt, case par case, « Tout gratter » ou tickets automatiques. Le gain est tiré à l'achat. Tables dans `js/games/scratch-math.js`. | 98 % |
@@ -274,6 +275,7 @@ js/history.js              historique des parties
 js/games/hilo.js           Hi-Lo
 js/games/keno.js           Keno (+ keno-math.js)
 js/games/wheel.js          Roue du Singe
+js/games/craps.js          Craps (+ craps-math.js : règles et paiements)
 js/games/jungle.js         Jungle Connect (+ jungle-math.js : grille, cascades, tables à 98,5 %)
 js/games/limbo.js          Limbo
 js/games/flags.js          Quiz drapeaux (+ flags-data.js)

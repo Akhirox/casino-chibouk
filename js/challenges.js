@@ -41,6 +41,8 @@ const CASINO = [
   { id: 'plinko25', tier: 1, game: 'plinko', text: 'Obtiens ×25 ou plus au Plinkoko', ev: multWin('plinko', 25) },
   { id: 'plinko100', tier: 2, game: 'plinko', text: 'Obtiens ×100 ou plus au Plinkoko', ev: multWin('plinko', 100) },
   { id: 'slots20', tier: 1, game: 'slots', text: 'Gagne ×20 ta mise en un spin à la Chibouk Slot', ev: multWin('slots', 20) },
+  { id: 'craps2', tier: 1, game: 'craps', n: 2, text: 'Refais ton point 2 fois au Craps (Pass Line)', ev: (e) => (e.type === 'round' && e.game === 'craps' && e.info && e.info.made && e.payout > 0 && e.info.bet >= MIN_BET ? 1 : 0) },
+  { id: 'craps8', tier: 2, game: 'craps', text: 'Gagne ×8 ou plus ta mise en un lancer de Craps', ev: multWin('craps', 8) },
   { id: 'jungle30', tier: 1, game: 'jungle', text: 'Gagne ×30 ta mise en un tour à la Jungle Connect', ev: multWin('jungle', 30) },
   { id: 'slots50', tier: 2, game: 'slots', text: 'Gagne ×50 ta mise en un spin à la Chibouk Slot', ev: multWin('slots', 50) },
   { id: 'crash20', tier: 1, game: 'crash', text: 'Encaisse à ×20 ou plus au Crashibouk', ev: multWin('crash', 20) },

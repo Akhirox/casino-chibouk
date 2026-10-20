@@ -60,7 +60,7 @@ export function claimRake(wallet) {
 // Rakeback proportionnel à l'avantage du casino de chaque jeu (référence : 1 %, les jeux à 99 %) :
 // blackjack bien joué ~0,5 % → ×0,4 ; tickets 2 % → ×2,3 ; roulette 2,7 % → ×3,7. Ainsi, aux rangs élevés,
 // chaque jeu reste entre 99,5 et 99,9 % de retour effectif. La slot (RTP ≥ 100 % avec le jackpot) garde ×1 pour l'instant.
-export const RAKE_WEIGHT = { blackjack: 0.4, scratch: 2.3, roulette: 3.7 };
+export const RAKE_WEIGHT = { blackjack: 0.4, scratch: 2.3, roulette: 3.7, craps: 0.4 }; // craps : la cote est à 0 % d'avantage
 
 // Suivi des rangs : rakeback sur chaque mise de casino + bonus de passage de rang (une seule fois par rang)
 export function initVip(wallet, onUp) {
@@ -111,8 +111,8 @@ export function spinDaily(wallet, bonus = false) {
 }
 
 /* ------------------------------ Quêtes du jour ------------------------------ */
-const CASINO = { slots: 'à la Chibouk Slot', jungle: 'à la Jungle Connect', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au Plinkoko', crash: 'au Crashibouk', tower: 'à la Tower', mines: 'aux Mines', dice: 'au Dice', hilo: 'au Hi-Lo', keno: 'au Keno', wheel: 'à la Roue', limbo: 'au Limbo', scratch: 'aux jeux à gratter' };
-const ROUNDS = { slots: 40, jungle: 30, blackjack: 12, roulette: 15, plinko: 40, crash: 15, tower: 10, mines: 10, dice: 40, hilo: 10, keno: 20, wheel: 30, limbo: 30, scratch: 15 };
+const CASINO = { slots: 'à la Chibouk Slot', jungle: 'à la Jungle Connect', craps: 'au Craps', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au Plinkoko', crash: 'au Crashibouk', tower: 'à la Tower', mines: 'aux Mines', dice: 'au Dice', hilo: 'au Hi-Lo', keno: 'au Keno', wheel: 'à la Roue', limbo: 'au Limbo', scratch: 'aux jeux à gratter' };
+const ROUNDS = { slots: 40, jungle: 30, craps: 20, blackjack: 12, roulette: 15, plinko: 40, crash: 15, tower: 10, mines: 10, dice: 40, hilo: 10, keno: 20, wheel: 30, limbo: 30, scratch: 15 };
 const QUIZ = { quiz: 'au calcul mental', capitals: 'au quiz capitales', movies: 'au quiz ciné', flags: 'au quiz drapeaux', geo: 'au quiz géographie' };
 
 // Modèles : tier 0 = facile, 1 = moyen, 2 = difficile. n = objectif, ev(e, q) = progression apportée par l'événement

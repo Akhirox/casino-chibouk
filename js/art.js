@@ -158,6 +158,7 @@ const ICONS = {
   shop: `<path d="M4.5 8h15l-1.3 12h-12.4z" ${D}/><path d="M8.5 10V7a3.5 3.5 0 0 1 7 0v3" stroke-width="1.6"/>`,
   chev: `<path d="m6 9 6 6 6-6" stroke-width="2"/>`,
   fire: `<path d="M12 21c-4 0-7-2.8-7-6.6 0-3.4 2.6-5.4 3.7-8.4.5 2 1.6 3 2.6 3.5C11.6 6 13 4 15 3c-.3 3 1.5 4.6 2.8 6.6A7 7 0 0 1 19 14.4C19 18.2 16 21 12 21z" ${D}/>`,
+  craps: `<rect x="2.5" y="7" width="11" height="11" rx="2.5" ${D} transform="rotate(-12 8 12.5)"/><rect x="11" y="4" width="10.5" height="10.5" rx="2.5" ${D} transform="rotate(10 16 9)"/><g fill="currentColor" stroke="none"><circle cx="6" cy="11" r="1.1"/><circle cx="10" cy="15" r="1.1"/><circle cx="14" cy="7" r="1.1"/><circle cx="16.3" cy="9.3" r="1.1"/><circle cx="18.6" cy="11.6" r="1.1"/></g>`,
   keyboard: `<rect x="2.5" y="6" width="19" height="12" rx="2.5" ${D}/><path d="M6 9.5h1M9.5 9.5h1M13 9.5h1M16.5 9.5h1M6 12.5h1M9.5 12.5h1M13 12.5h1M16.5 12.5h1M8 15.5h8" stroke-width="1.8" stroke-linecap="round"/>`,
   globe: `<circle cx="12" cy="12" r="8.5" ${D}/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.2 3.8 8.5s-1.2 6.1-3.8 8.5M12 3.5C9.4 5.9 8.2 8.7 8.2 12s1.2 6.1 3.8 8.5" stroke-width="1.5"/>`,
   jungle: `<rect x="3" y="3" width="18" height="18" rx="3" ${D}/><path d="M9 3v18M15 3v18M3 9h18M3 15h18" stroke-width="1" opacity=".6"/><path d="M6 6h6v6h6v6" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/>`,
@@ -305,6 +306,13 @@ export function jungleArtSVG() {
   return `<svg viewBox="0 0 200 145" class="art-jungle" aria-hidden="true"><rect x="31" y="4" width="138" height="104" rx="10" fill="#0d2010" stroke="#6b4a1e" stroke-width="3"/>${cells}
     <text x="100" y="134" text-anchor="middle" font-family="Bungee, sans-serif" font-size="20" fill="#ffd23f" stroke="#6b4400" stroke-width="1">×256</text>
     <g transform="translate(160 96)"><rect x="-17" y="-12" width="34" height="22" rx="7" fill="#c2185b"/><text y="5" text-anchor="middle" font-family="Bungee, sans-serif" font-size="12" fill="#fff">×4</text></g></svg>`;
+}
+export function crapsArtSVG() {
+  const die = (x, y, r, pips) => `<g transform="translate(${x} ${y}) rotate(${r})"><rect x="-22" y="-22" width="44" height="44" rx="9" fill="#fff8ec" stroke="#c9b48a" stroke-width="2"/>${pips.map(([a, b]) => `<circle cx="${a}" cy="${b}" r="4.6" fill="#c8102e"/>`).join('')}</g>`;
+  return `<svg viewBox="0 0 200 145" class="art-craps" aria-hidden="true"><rect x="8" y="8" width="184" height="128" rx="14" fill="#0d5a37" stroke="#7a4a1e" stroke-width="5"/>
+    <path d="M20 112h160" stroke="#f5c542" stroke-width="2"/><text x="100" y="128" text-anchor="middle" font-family="Bungee, sans-serif" font-size="11" fill="#f5c542">PASS LINE</text>
+    <text x="100" y="32" text-anchor="middle" font-family="Bungee, sans-serif" font-size="11" fill="#fff" opacity=".8">4 · 5 · SIX · 8 · NINE · 10</text>
+    ${die(78, 72, -14, [[-11, -11], [0, 0], [11, 11]])}${die(124, 66, 18, [[-11, -11], [11, -11], [-11, 11], [11, 11]])}</svg>`;
 }
 export function geoArtSVG() {
   return `<svg viewBox="0 0 200 145" class="art-geo" aria-hidden="true"><defs><radialGradient id="geoS" cx=".4" cy=".35" r=".8"><stop offset="0" stop-color="#3a7bd5"/><stop offset="1" stop-color="#0b2c5a"/></radialGradient></defs>

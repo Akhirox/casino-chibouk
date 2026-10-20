@@ -1,9 +1,23 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '30';
+export const VERSION = '31';
 
 export const CHANGELOG = [
+  {
+    v: '31', date: '20 octobre 2026', title: 'Craps',
+    groups: [
+      ['Nouveau jeu de casino : Craps', [
+        'La table de dés : Pass Line et Don\'t Pass, cote réelle jusqu\'à 3× (sans avantage pour le casino), mises Place sur 4, 5, 6, 8, 9 et 10, Field, Any 7 et Any Craps.',
+        'Les jetons posés depuis le dernier lancer sont payés au lancer suivant ; les mises en jeu restent sur la table, même si tu quittes la page.',
+        'Lancers automatiques (ta mise de départ est remise à chaque nouveau tour) et mode turbo.',
+        'RTP de 98,6 % sur la Pass Line, 100 % sur la cote. 5 succès, 2 défis de la jungle et des quêtes du jour.',
+      ]],
+      ['Correctif', [
+        'Frappe éclair : la première ligne de mots était cachée au début de la partie.',
+      ]],
+    ],
+  },
   {
     v: '30', date: '20 octobre 2026', title: 'Géographie et Frappe éclair',
     groups: [

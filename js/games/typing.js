@@ -68,8 +68,10 @@ export function mount(view, { wallet }) {
     s.classList.add('cur');
     // la ligne en cours reste en haut de la zone visible
     const box = $('#ty-words', stage);
-    const top = s.offsetTop;
-    box.style.transform = `translateY(${-Math.max(0, top - 4)}px)`;
+    // position de la ligne par rapport au 1er mot (offsetTop dépend du conteneur positionné le plus proche, qui change selon la page)
+    const first = box.firstElementChild, top = s.getBoundingClientRect().top - first.getBoundingClientRect().top;
+    const line = Math.round(top / Math.max(1, s.offsetHeight)) ? top : 0;
+    box.style.transform = `translateY(${-Math.max(0, Math.round(line))}px)`;
   }
   function onInput(e) {
     if (state === 'done') return;

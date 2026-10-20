@@ -37,9 +37,10 @@ import * as Demineur from './games/demineur.js';
 import * as Farm from './farm.js';
 import * as Scratch from './games/scratch.js';
 import * as Jungle from './games/jungle.js';
+import * as Craps from './games/craps.js';
 import * as Memory from './games/memory.js';
 import * as Crossword from './games/crossword.js';
-import { scratchArtSVG, memoryArtSVG, crosswordArtSVG, jungleArtSVG, geoArtSVG, typingArtSVG } from './art.js';
+import { scratchArtSVG, memoryArtSVG, crosswordArtSVG, jungleArtSVG, geoArtSVG, typingArtSVG, crapsArtSVG } from './art.js';
 import * as FarmCore from './farm-core.js';
 import { queensArtSVG, tangoArtSVG, pinpointArtSVG, sudokuArtSVG, snakeArtSVG, demineurArtSVG } from './art.js';
 import * as Shop from './shop.js';
@@ -100,6 +101,7 @@ const ROUTES = {
   lobby: { label: 'Accueil', icon: 'home', mount: mountLobby },
   slots: { label: 'Chibouk Slot', icon: 'slots', mount: Slots.mount, group: 'casino' },
   jungle: { label: 'Jungle Connect', icon: 'jungle', mount: Jungle.mount, group: 'casino' },
+  craps: { label: 'Craps', icon: 'craps', mount: Craps.mount, group: 'casino' },
   blackjack: { label: 'Blackjack', icon: 'blackjack', mount: Blackjack.mount, group: 'casino' },
   roulette: { label: 'Roulette', icon: 'roulette', mount: Roulette.mount, group: 'casino' },
   plinko: { label: 'Plinkoko', icon: 'plinko', mount: Plinko.mount, group: 'casino' },
@@ -143,7 +145,7 @@ const GROUPS = { casino: { label: 'Casino', icon: 'chip' }, free: { label: 'Mini
 const SUBS = { puzzle: 'Puzzle', quiz: 'Quiz', arcade: 'Adresse' };
 
 // Jeux qui affichent leur classement à côté (clé de stats -> nom affiché)
-const BOARD_GAMES = { slots: 'Chibouk Slot', jungle: 'Jungle Connect', blackjack: 'Blackjack', roulette: 'Roulette', plinko: 'Plinkoko', crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice', hilo: 'Hi-Lo', keno: 'Keno', wheel: 'Roue du Singe', limbo: 'Limbo', scratch: 'Jeux à gratter' };
+const BOARD_GAMES = { slots: 'Chibouk Slot', jungle: 'Jungle Connect', craps: 'Craps', blackjack: 'Blackjack', roulette: 'Roulette', plinko: 'Plinkoko', crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice', hilo: 'Hi-Lo', keno: 'Keno', wheel: 'Roue du Singe', limbo: 'Limbo', scratch: 'Jeux à gratter' };
 
 // Menu : Accueil | Casino ▾ · Mini-jeux ▾ · Ferme | Boutique · Succès · Classements · Stats
 function navHTML() {
@@ -784,6 +786,7 @@ function mountLobby(view, { wallet: w }) {
     card('slots', 'Chibouk Slot', 'Machine à sous 5×3, 99 lignes, WILD ×2. 3 SCATTER = tours gratuits ×2. Jackpot commun !', 'RTP ≈ 100 %',
       `<div class="mini-reels">${['S', 'F', 'S'].map((x) => `<div>${symbolSVG(x)}</div>`).join('')}</div>`),
     card('jungle', 'Jungle Connect', 'Nouveau ! Grille 7×7 : 5 symboles reliés = gain, cascades à l\'infini, multiplicateurs jusqu\'à ×256 et tours gratuits du Masque Tribal.', 'RTP 99,5 %', jungleArtSVG()),
+    card('craps', 'Craps', 'Nouveau ! La table de dés : Pass Line et Don\'t Pass avec cote réelle, Field, mises Place, Any 7…', 'RTP 98,6 à 100 %', crapsArtSVG()),
     card('blackjack', 'Blackjack du Singe', 'Blackjack 6 jeux, paie 3:2, mises annexes Perfect Pairs et 21+3, cartes en 3D.', 'RTP ≈ 99,5 %',
       `<div class="mini-cards"><div class="mc mc1">A<span>♠</span></div><div class="mc mc2 red">K<span>♥</span></div></div>`),
     card('roulette', 'Roulette Banane', 'Roulette européenne à un zéro, roue et bille animées.', 'RTP 97,3 %', `<div class="mini-wheel"></div>`),

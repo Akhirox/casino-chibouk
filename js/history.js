@@ -38,6 +38,7 @@ function detail(g, i) {
   const m = (x) => '×' + (+x).toLocaleString('fr-FR', { maximumFractionDigits: 2 });
   switch (g) {
     case 'dice': return i.roll !== undefined ? `${String(i.roll.toFixed(2)).replace('.', ',')} (${i.mode === 'over' ? '>' : '<'} ${i.mode === 'over' ? (100 - i.chance).toFixed(2).replace('.', ',') : i.chance.toFixed(2).replace('.', ',')})` : '';
+    case 'craps': return i.dice ? `${i.dice[0]} + ${i.dice[1]} = ${i.sum}${i.point ? ` (point ${i.point})` : ''}` : '';
     case 'jungle': return i.mult !== undefined ? `${m(i.mult)}${i.cascades > 1 ? ` · ${i.cascades} cascades` : ''}${i.bonus ? ' · bonus' : ''}` : '';
     case 'limbo': return i.result ? `${m(i.result)} / cible ${m(i.target)}` : '';
     case 'keno': return i.picks ? `${i.hits}/${i.picks} touchés` : '';

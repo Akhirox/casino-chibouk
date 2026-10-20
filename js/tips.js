@@ -3,7 +3,7 @@ import { CONFIG } from './config.js';
 import { monkeySVG } from './art.js';
 import { $, esc } from './ui.js';
 
-const CASINO = ['slots', 'jungle', 'blackjack', 'roulette', 'plinko', 'crash', 'tower', 'mines', 'dice', 'hilo', 'keno', 'wheel', 'limbo'];
+const CASINO = ['slots', 'jungle', 'craps', 'blackjack', 'roulette', 'plinko', 'crash', 'tower', 'mines', 'dice', 'hilo', 'keno', 'wheel', 'limbo'];
 const CUR = CONFIG.CURRENCY;
 
 // route : page où l'astuce a du sens ('*' = partout) ; when : condition facultative ; go : bouton vers une page

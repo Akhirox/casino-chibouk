@@ -10,12 +10,12 @@ export const TIERS = {
 };
 
 export const CATEGORIES = {
-  global: 'Global', slots: 'Chibouk Slot', jungle: 'Jungle Connect', blackjack: 'Blackjack', roulette: 'Roulette', plinko: 'Plinkoko',
+  global: 'Global', slots: 'Chibouk Slot', jungle: 'Jungle Connect', craps: 'Craps', blackjack: 'Blackjack', roulette: 'Roulette', plinko: 'Plinkoko',
   crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice', hilo: 'Hi-Lo', keno: 'Keno', wheel: 'Roue du Singe', limbo: 'Limbo', scratch: 'Jeux à gratter',
   free: 'Jeux gratuits', farm: 'Ferme', progress: 'Progression',
 };
 
-const CASINO_GAMES = ['slots', 'jungle', 'blackjack', 'roulette', 'plinko', 'crash', 'tower', 'mines', 'dice', 'hilo', 'keno', 'wheel', 'limbo', 'scratch'];
+const CASINO_GAMES = ['slots', 'jungle', 'craps', 'blackjack', 'roulette', 'plinko', 'crash', 'tower', 'mines', 'dice', 'hilo', 'keno', 'wheel', 'limbo', 'scratch'];
 const st = (w) => w.p.stats;
 const g = (w, k) => st(w).games[k] || {};
 const parisHour = () => +new Intl.DateTimeFormat('en-GB', { timeZone: CONFIG.TIMEZONE, hour: '2-digit', hourCycle: 'h23' }).format(new Date());
@@ -142,6 +142,11 @@ export const ACHIEVEMENTS = [
   { id: 'lb-100', cat: 'limbo', tier: 'silver', name: 'Plus bas que terre', desc: 'Gagner au Limbo avec une cible d\'au moins ×100.', test: (e) => isRound(e, 'limbo') && I(e).win && I(e).target >= 100 },
   { id: 'lb-1000', cat: 'limbo', tier: 'gold', name: 'Limbo céleste', desc: 'Gagner au Limbo avec une cible d\'au moins ×1 000.', test: (e) => isRound(e, 'limbo') && I(e).win && I(e).target >= 1000 },
   { id: 'lb-200', cat: 'limbo', tier: 'silver', name: 'Danseur de limbo', desc: 'Jouer 200 parties de Limbo.', test: (e, w) => g(w, 'limbo').rounds >= 200, progress: (w) => [g(w, 'limbo').rounds || 0, 200] },
+  { id: 'cr-1', cat: 'craps', tier: 'bronze', name: 'Premier lancer', desc: 'Gagner une mise au Craps.', test: (e) => isRound(e, 'craps') && e.payout > 0 },
+  { id: 'cr-point', cat: 'craps', tier: 'bronze', name: 'Point fait', desc: 'Refaire le point au Craps avec une mise sur la Pass Line.', test: (e) => isRound(e, 'craps') && I(e).made && e.payout > 0 },
+  { id: 'cr-craps', cat: 'craps', tier: 'silver', name: 'Coup de dés', desc: 'Gagner au moins ×8 ta mise en un lancer de Craps (Any Craps…).', test: (e) => isRound(e, 'craps') && I(e).mult >= 8 },
+  { id: 'cr-200', cat: 'craps', tier: 'silver', name: 'Roi des dés', desc: 'Jouer 200 lancers décisifs au Craps.', test: (e, w) => g(w, 'craps').rounds >= 200, progress: (w) => [g(w, 'craps').rounds || 0, 200] },
+  { id: 'cr-big', cat: 'craps', tier: 'gold', name: 'Table brûlante', desc: 'Gagner au moins 100 000 Brundles en un lancer de Craps.', test: (e) => e.type === 'win' && e.game === 'craps' && e.amount >= 100000 },
   { id: 'jc-1', cat: 'jungle', tier: 'bronze', name: 'Première connexion', desc: 'Gagner un tour à la Jungle Connect.', test: (e) => isRound(e, 'jungle') && e.payout > 0 },
   { id: 'jc-casc5', cat: 'jungle', tier: 'silver', name: 'Effet domino', desc: 'Enchaîner 5 cascades en un tour à la Jungle Connect.', test: (e) => isRound(e, 'jungle') && I(e).cascades >= 5 },
   { id: 'jc-bonus', cat: 'jungle', tier: 'silver', name: 'Esprit du masque', desc: 'Déclencher les tours gratuits de la Jungle Connect.', test: (e) => isRound(e, 'jungle') && I(e).bonus },

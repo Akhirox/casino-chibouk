@@ -71,7 +71,7 @@ export async function resizeImage(file) {
 }
 
 const dateFmt = new Intl.DateTimeFormat('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' });
-const GAME_NAMES = { slots: 'Chibouk Slot', jungle: 'Jungle Connect', blackjack: 'Blackjack', roulette: 'Roulette', plinko: 'Plinkoko', crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice', hilo: 'Hi-Lo', keno: 'Keno', wheel: 'Roue du Singe', limbo: 'Limbo' };
+const GAME_NAMES = { slots: 'Chibouk Slot', jungle: 'Jungle Connect', craps: 'Craps', blackjack: 'Blackjack', roulette: 'Roulette', plinko: 'Plinkoko', crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice', hilo: 'Hi-Lo', keno: 'Keno', wheel: 'Roue du Singe', limbo: 'Limbo' };
 
 // Trophées de la semaine (palmarès chargé par weekly.js)
 let WEEKS = [];
