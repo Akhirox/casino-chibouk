@@ -2,6 +2,28 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V32 — Records et Culture G (21 octobre 2026)
+
+### Nouveau mini-jeu : Culture G
+
+- 10 questions de culture générale à écrire, tirées de 1 718 questions sur 26 thèmes (cinéma, histoire, sciences, sport, jeux vidéo, manga, gastronomie…).
+- Accents, majuscules, articles (le, la, un…), tirets, fautes de frappe (selon la longueur du mot) et nombres en lettres ou en chiffres sont tolérés. Les années et les nombres doivent être exacts.
+- 30 secondes par question, +40 Brundles par bonne réponse, +300 pour un sans-faute. Les questions déjà vues sur ton appareil ne reviennent pas avant longtemps.
+
+### Records
+
+- Le meilleur joueur de chaque catégorie détient le record : moyenne aux quiz, meilleur temps aux puzzles (niveau le plus dur), record au Snake, à Frappe éclair, au Plus ou moins, série au Mot du jour… et plus gros multiplicateur de chaque jeu de casino.
+- Chaque record détenu affiche un tag doré sur ton profil et donne +5 % sur les gains des mini-jeux et des défis de la jungle (jusqu'à +50 %). Une notification te prévient quand tu en gagnes ou en perds un.
+
+### Craps : stratégie de l'auto
+
+- Prévois tes décisions avant de lancer l'auto : mise de ligne (Pass ou Don't Pass), cote automatique (1×, 2× ou 3×) dès que le point est établi, mises Place (6 et 8, 5-6-8-9, 4 à 10, ou tout sauf le point), reprise des mises Place quand le point est fait, et Field / Any 7 / Any Craps à chaque lancer.
+
+### Coffres royaux
+
+- Les bonus sont maintenant proportionnels au prix : le Comte vaut 4 Barons, le Duc 20, le Prince 100 et le Roi Singe 500. Même rendement par Brundle pour tous les coffres.
+- Ce qui dépasse un plafond (coffre, roue, défis, bananes, gains gratuits +50 %, 60 graines par lot) n'est plus perdu : 80 % de la part du prix correspondante est rendue en Brundles.
+
 ## V31 — Craps (20 octobre 2026)
 
 ### Nouveau jeu de casino : Craps

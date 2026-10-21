@@ -32,6 +32,7 @@ import * as Pinpoint from './games/pinpoint.js';
 import * as Sudoku from './games/sudoku.js';
 import * as Snake from './games/snake.js';
 import * as Geo from './games/geo.js';
+import * as Culture from './games/culture.js';
 import * as Typing from './games/typing.js';
 import * as Demineur from './games/demineur.js';
 import * as Farm from './farm.js';
@@ -40,7 +41,7 @@ import * as Jungle from './games/jungle.js';
 import * as Craps from './games/craps.js';
 import * as Memory from './games/memory.js';
 import * as Crossword from './games/crossword.js';
-import { scratchArtSVG, memoryArtSVG, crosswordArtSVG, jungleArtSVG, geoArtSVG, typingArtSVG, crapsArtSVG } from './art.js';
+import { scratchArtSVG, memoryArtSVG, crosswordArtSVG, jungleArtSVG, geoArtSVG, typingArtSVG, crapsArtSVG, cultureArtSVG } from './art.js';
 import * as FarmCore from './farm-core.js';
 import { queensArtSVG, tangoArtSVG, pinpointArtSVG, sudokuArtSVG, snakeArtSVG, demineurArtSVG } from './art.js';
 import * as Shop from './shop.js';
@@ -72,6 +73,7 @@ import { setRewardWallet, bonusHTML, questInfo, challengeInfo } from './rewards.
 import { tagsHTML } from './tags.js';
 import { receiveGifts } from './gifts.js';
 import { mountGoals } from './goals.js';
+import { onRecords, recordsOf, RECORD_CATS } from './records.js';
 
 const app = $('#app');
 let backend = null;
@@ -120,6 +122,7 @@ const ROUTES = {
   movies: { label: 'Quiz ciné', icon: 'film', mount: Movies.mount, group: 'free', sub: 'quiz' },
   higher: { label: 'Plus ou moins', icon: 'higher', mount: Higher.mount, group: 'free', sub: 'quiz' },
   geo: { label: 'Géographie', icon: 'globe', mount: Geo.mount, group: 'free', sub: 'quiz' },
+  culture: { label: 'Culture G', icon: 'bulb', mount: Culture.mount, group: 'free', sub: 'quiz' },
   typing: { label: 'Frappe éclair', icon: 'keyboard', mount: Typing.mount, group: 'free', sub: 'arcade' },
   motus: { label: 'Mot du jour', icon: 'motus', mount: Motus.mount, group: 'free', sub: 'puzzle' },
   queens: { label: 'Queens', icon: 'queens', mount: Queens.mount, group: 'free', sub: 'puzzle' },
@@ -398,7 +401,21 @@ function renderShell() {
     if (bonus > 0) { toast(`<span class="ach-toast">${icon('star')}<span><small>Nouveau rang VIP</small><b>${esc(v.name)}</b><em>+${fmt(bonus)} ${CUR} de bonus</em></span></span>`, 'ach', 6000); sfx.bonus(); coinRain(40); }
   });
   syncWeeks(backend, wallet);
-  weeksTimer = setInterval(() => wallet && !isIdle() && syncWeeks(backend, wallet), 15 * 60000); // sans lecture tant que la semaine n'a pas changé
+  weeksTimer = setInterval(() => { if (wallet && !isIdle()) { syncWeeks(backend, wallet); getPlayers(backend, wallet).catch(() => {}); } }, 15 * 60000); // sans lecture tant que la semaine n'a pas changé
+  // records (tags et bonus de +5 %) : liste des joueurs relue au démarrage (cache de 10 min), puis toutes les 15 min
+  setTimeout(() => wallet && getPlayers(backend, wallet).catch(() => {}), 6000);
+  let myRecs = null;
+  onRecords(() => {
+    if (!wallet) return;
+    const now = recordsOf(wallet.uid).map((c) => c.k);
+    if (myRecs) {
+      const won = now.filter((k) => !myRecs.includes(k)), lost = myRecs.filter((k) => !now.includes(k));
+      const nameOf = (k) => (RECORD_CATS.find((c) => c.k === k) || {}).name || k;
+      if (won.length) { toast(`<span class="ach-toast">${icon('trophy')}<span><small>Nouveau record !</small><b>${won.map((k) => esc(nameOf(k))).join(', ')}</b><em>+5 % sur tes gains de mini-jeux et de défis</em></span></span>`, 'ach', 6000); sfx.bonus(); }
+      if (lost.length) toast(`Record perdu : <b>${lost.map((k) => esc(nameOf(k))).join(', ')}</b>. Va le reprendre !`, 'info', 6000);
+    }
+    myRecs = now;
+  });
   tips = createTips(wallet);
   const tipToggle = $('.tip-toggle', shell);
   const tipLabel = () => { tipToggle.textContent = `Conseils automatiques : ${tips.off ? 'non' : 'oui'}`; };
@@ -843,6 +860,7 @@ function mountLobby(view, { wallet: w }) {
       ${card('capitals', 'Quiz capitales', `${CONFIG.QUIZ_QUESTIONS} questions dans les deux sens, mode facile ou expert (gains doublés).`, 'Gratuit', capitalsArtSVG())}
       ${card('flags', 'Quiz drapeaux', `${CONFIG.QUIZ_QUESTIONS} drapeaux à reconnaître parmi ${Flags.FLAGS.length} pays, mode facile ou expert.`, 'Gratuit', flagsArtSVG())}
       ${card('movies', 'Quiz ciné', `${CONFIG.QUIZ_QUESTIONS} questions sur 800 films cultes : réalisateurs, acteurs, années. +${CONFIG.QUIZ_PER_CORRECT} ${CUR} par bonne réponse.`, 'Gratuit', moviesArtSVG())}
+      ${card('culture', 'Culture G', `Nouveau ! ${CONFIG.QUIZ_QUESTIONS} questions de culture générale à écrire, parmi ${Culture.CULTURE_COUNT.toLocaleString('fr-FR')} questions sur 26 thèmes. Petites fautes tolérées.`, '+40 / bonne réponse', cultureArtSVG())}
       ${card('geo', 'Quiz géographie', `Nouveau ! ${CONFIG.QUIZ_QUESTIONS} pays à trouver en cliquant sur la carte du monde (${Geo.GEO_COUNT} pays), carte zoomable.`, '+15 à +40 / pays', geoArtSVG())}
       ${card('higher', 'Plus ou moins', 'Quel film a coûté le plus cher ? Enchaîne jusqu\'à 15 bonnes réponses.', 'Gratuit', higherArtSVG())}
     </section>

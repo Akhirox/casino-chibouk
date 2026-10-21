@@ -13,6 +13,7 @@ import { randInt } from './games/slots-math.js';
 import * as F from './farm-core.js';
 import { ITEMS, LOOT_ITEMS } from './shop.js';
 import { cosBonus } from './bonus.js';
+import { recordBonus } from './records.js';
 
 const COS_CAT = { frame: 'Cadre', title: 'Titre', cardback: 'Dos de cartes', theme: 'Thème de slot', effect: 'Effet de victoire' };
 
@@ -40,6 +41,10 @@ export const TICKETS = { banane: ['Banane Express', 10], singe: ['Singe d\'Or', 
 // Plafonds des bonus permanents (gains gratuits : sans plafond)
 export const PERM_MAX = Infinity;
 export const PERM_CAP = { vault: 1, sell: 1, wheel: 3, chalp: 2 };
+export const PERM_GAINS_CAP = 0.5; // gains gratuits : plafonné à +50 % à l'usage (progress.permBonus)
+const capOf = (k) => (k === 'perm' ? PERM_GAINS_CAP : PERM_CAP[k]);
+export const ROYAL_REFUND = 0.8;
+const SEED_LOT_MAX = 60; // part du prix rendue en Brundles pour la partie d'un bonus qui dépasse son plafond
 export const PERM_LABEL = { perm: 'gains gratuits', vault: 'intérêts du coffre', sell: 'vente des bananes', wheel: 'roue du jour', chalp: 'défis de la jungle' };
 
 // Empilement des boosts temporaires : le plus fort compte en entier, le 2e aux 3/4, le 3e au quart, puis de moins en moins.
@@ -135,10 +140,12 @@ export const CASES = [
     pool: [{ r: 'blue', w: 1, kind: 'br', x: 0 }, { r: 'red', w: 1, kind: 'br', x: 2 }] },
   /* ---------------- Royales : uniquement des bonus permanents ---------------- */
   { id: 'baron', fam: 'royal', name: 'Coffre du Baron', price: 50000, f: 1, hue: '#c9a227', desc: 'Bonus permanents sur tes gains.' },
-  { id: 'comte', fam: 'royal', name: 'Coffre du Comte', price: 200000, f: 3, hue: '#d4a017', desc: 'Bonus permanents 3 fois plus gros.' },
-  { id: 'duc', fam: 'royal', name: 'Coffre du Duc', price: 1000000, f: 10, hue: '#e8b923', desc: 'Bonus permanents 10 fois plus gros.' },
-  { id: 'prince', fam: 'royal', name: 'Coffre du Prince', price: 5000000, f: 35, hue: '#f5c542', desc: 'Bonus permanents 35 fois plus gros.' },
-  { id: 'roisinge', fam: 'royal', name: 'Coffre du Roi Singe', price: 25000000, f: 120, hue: '#fff0a8', desc: 'Les plus gros bonus permanents du casino.' },
+  // V32 : bonus proportionnels au prix (×4, ×20, ×100, ×500 du Baron) : même rendement par Brundle que le Baron.
+  // Ce qui dépasse un plafond est rendu en Brundles (80 % de la part du prix correspondante).
+  { id: 'comte', fam: 'royal', name: 'Coffre du Comte', price: 200000, f: 4, hue: '#d4a017', desc: 'Bonus 4 fois plus gros que le Baron, pour 4 fois le prix.' },
+  { id: 'duc', fam: 'royal', name: 'Coffre du Duc', price: 1000000, f: 20, hue: '#e8b923', desc: 'Bonus 20 fois plus gros que le Baron.' },
+  { id: 'prince', fam: 'royal', name: 'Coffre du Prince', price: 5000000, f: 100, hue: '#f5c542', desc: 'Bonus 100 fois plus gros que le Baron.' },
+  { id: 'roisinge', fam: 'royal', name: 'Coffre du Roi Singe', price: 25000000, f: 500, hue: '#fff0a8', desc: 'Bonus 500 fois plus gros que le Baron.' },
 ];
 export const FAMILIES = [
   ['farm', 'Caisses du Fermier', 'Boosts temporaires de la ferme (récolte et vente), chantiers terminés ; graines d\'or et vitesse de construction dans la Grange.'],
@@ -159,8 +166,8 @@ const ROYAL = {
 };
 const r4 = (x) => Math.round(x * 10000) / 10000;
 function buildRoyal(c) {
-  const seedF = Math.ceil(c.f ** 0.6);
-  return R_ORDER.flatMap((r) => ROYAL[r].map(([kind, v]) => (kind === 'seed' ? { r, w: 1, kind, n: v * seedF } : { r, w: 1, kind, v: r4(Math.min(PERM_CAP[kind] ?? Infinity, v * c.f)) })));
+  // graines : proportionnelles aussi (arrondies) ; bonus : valeur brute × f, le plafond est appliqué au tirage (concrete)
+  return R_ORDER.flatMap((r) => ROYAL[r].map(([kind, v]) => (kind === 'seed' ? { r, w: 1, kind, n: Math.max(1, Math.round(v * c.f)) } : { r, w: 1, kind, v: r4(v * c.f) })));
 }
 // Coffrets cosmétiques : chaque objet de la gamme de prix, avec une chance inversement proportionnelle à sa valeur.
 // Prix du coffret = valeur moyenne d'un tirage ÷ 0,88 (un peu plus cher en moyenne que d'acheter en boutique).
@@ -222,16 +229,31 @@ function concrete(c, it, p) {
   if (it.kind === 'br') d.amount = brAmount(c, it.x);
   else if (it.kind === 'boost') { d.game = it.game; d.m = it.m; d.h = it.h; }
   else if (it.kind === 'farm') { d.m = it.m; d.h = it.h; }
-  else if (it.kind === 'seed' || it.kind === 'spin') d.n = it.n;
+  else if (it.kind === 'seed' || it.kind === 'spin') {
+    d.n = it.n;
+    // graines d'or d'un coffre royal : au plus 60 par lot (le reste rendu en Brundles), pour éviter une ferme ×300 sur un seul coup de chance
+    if (it.kind === 'seed' && c.fam === 'royal' && d.n > SEED_LOT_MAX) { d.refund = Math.round(c.price * (1 - SEED_LOT_MAX / d.n) * ROYAL_REFUND); d.n = SEED_LOT_MAX; }
+  }
   else if (it.kind === 'speed') {
     d.s = it.s;
     if (p && ((p.farm && p.farm.spd) || 0) >= F.SPEED_MAX - 1e-9) { d.kind = 'perm'; d.v = r4(0.002 * (R_ORDER.indexOf(it.r) + 1)); d.capped = 'speed'; }
   } else if (PERM_LABEL[it.kind]) {
     d.v = it.v;
+    const cur = (k) => (p && p.loot && p.loot[k]) || 0;
+    if (c.fam === 'royal') {
+      // coffres royaux : le bonus est ajouté jusqu'à son plafond ; s'il y est déjà, il devient un bonus de gains gratuits
+      // de même rareté ; ce qui dépasse encore est rendu en Brundles (pour que chaque coffre vaille son prix)
+      if (!p) { d.v = r4(Math.min(capOf(it.kind) ?? Infinity, it.v)); return d; }
+      let k = it.kind, want = it.v;
+      if (capOf(k) != null && cur(k) >= capOf(k) - 1e-9 && k !== 'perm') { d.capped = k; k = 'perm'; want = r4(ROYAL[it.r].find((x) => x[0] === 'perm')[1] * c.f); }
+      const room = capOf(k) != null ? Math.max(0, capOf(k) - cur(k)) : Infinity, add = r4(Math.min(room, want));
+      d.kind = k; d.v = add;
+      if (add < want - 1e-9) d.refund = Math.round(c.price * (1 - add / want) * ROYAL_REFUND);
+      return d;
+    }
     // bonus déjà au plafond : remplacé par un bonus de gains gratuits (sans plafond) de même rareté
-    if (p && PERM_CAP[it.kind] && ((p.loot && p.loot[it.kind]) || 0) >= PERM_CAP[it.kind] - 1e-9) {
-      const base = c.fam === 'royal' ? ROYAL[it.r].find((x) => x[0] === 'perm')[1] * c.f : 0.003 * (R_ORDER.indexOf(it.r) + 1);
-      d.kind = 'perm'; d.v = r4(base); d.capped = it.kind;
+    if (p && PERM_CAP[it.kind] && cur(it.kind) >= PERM_CAP[it.kind] - 1e-9) {
+      d.kind = 'perm'; d.v = r4(0.003 * (R_ORDER.indexOf(it.r) + 1)); d.capped = it.kind;
     }
   } else if (it.kind === 'cos') {
     const item = ITEMS.find((x) => x.id === it.id);
@@ -257,19 +279,25 @@ export function labelOf(d) {
       return { title: `${fx(d.m)} ${BOOST_GAMES[d.game] ? BOOST_GAMES[d.game][0] : d.game}`, sub: durTxt(d.h), icon: BOOST_GAMES[d.game] ? BOOST_GAMES[d.game][1] : 'gift' };
     case 'farm': return { title: `Récolte ${fx(d.m)}`, sub: `ferme · ${durTxt(d.h)}`, icon: 'banana' };
     case 'rush': return { title: 'Chantiers terminés', sub: 'tous tes chantiers en cours', icon: 'bolt' };
-    case 'seed': return { title: d.n > 1 ? `${d.n} graines d'or` : 'Graine d\'or', sub: `+${5 * d.n} % de récolte, pour toujours`, icon: 'seed' };
+    case 'seed': return refundSub(d, { title: d.n > 1 ? `${d.n} graines d'or` : 'Graine d\'or', sub: `+${5 * d.n} % de récolte, pour toujours`, icon: 'seed' });
     case 'speed': return { title: `Chantiers −${pc(d.s)}`, sub: 'durée de construction, pour toujours', icon: 'hourglass' };
     case 'spin': return { title: d.n > 1 ? `${d.n} tours de roue` : 'Tour de roue', sub: 'roue du jour en plus', icon: 'wheel' };
-    case 'perm': return { title: `Gains gratuits +${pc(d.v)}`, sub: d.capped ? 'pour toujours (à la place d\'un bonus au maximum)' : 'pour toujours', icon: 'star' };
-    case 'vault': return { title: `Coffre +${pc(d.v)}`, sub: 'd\'intérêts, pour toujours', icon: 'vault' };
-    case 'sell': return { title: `Bananes +${pc(d.v)}`, sub: 'prix de vente, pour toujours', icon: 'banana' };
-    case 'wheel': return { title: `Roue du jour +${pc(d.v)}`, sub: 'gains de la roue, pour toujours', icon: 'wheel' };
-    case 'chalp': return { title: `Défis +${pc(d.v)}`, sub: 'récompenses des défis, pour toujours', icon: 'flag' };
+    case 'perm': return refundSub(d, { title: `Gains gratuits +${pc(d.v)}`, sub: d.capped ? 'pour toujours (à la place d\'un bonus au maximum)' : 'pour toujours', icon: 'star' });
+    case 'vault': return refundSub(d, { title: `Coffre +${pc(d.v)}`, sub: 'd\'intérêts, pour toujours', icon: 'vault' });
+    case 'sell': return refundSub(d, { title: `Bananes +${pc(d.v)}`, sub: 'prix de vente, pour toujours', icon: 'banana' });
+    case 'wheel': return refundSub(d, { title: `Roue du jour +${pc(d.v)}`, sub: 'gains de la roue, pour toujours', icon: 'wheel' });
+    case 'chalp': return refundSub(d, { title: `Défis +${pc(d.v)}`, sub: 'récompenses des défis, pour toujours', icon: 'flag' });
     case 'cos': return { title: d.name, sub: d.dup ? `déjà possédé · remboursé ${Math.round(d.amount).toLocaleString('fr-FR')}` : `${COS_CAT[d.cat] || 'Cosmétique'} · valeur ${Math.round(d.val).toLocaleString('fr-FR')}`, icon: { frame: 'user', title: 'medal', cardback: 'blackjack', theme: 'slots', effect: 'bolt' }[d.cat] || 'gift' };
   }
   return { title: '?', sub: '', icon: 'gift' };
 }
 export const poolLabel = (c, it) => labelOf(concrete(c, it, null));
+// bonus au plafond : la part en trop est rendue en Brundles
+function refundSub(d, l) {
+  if (!d.refund) return l;
+  if (!(d.v > 0)) return { title: Math.round(d.refund).toLocaleString('fr-FR'), sub: `Brundles (${PERM_LABEL[d.kind] || 'bonus'} déjà au maximum)`, icon: 'coin' };
+  return { ...l, sub: `${l.sub} · + ${Math.round(d.refund).toLocaleString('fr-FR')} Brundles (plafond atteint)` };
+}
 
 /* ------------------------------------------------------------------------------------------------ */
 const lootOf = (p) => (p.loot = p.loot && typeof p.loot === 'object' ? p.loot : { boosts: [], perm: 0 });
@@ -292,6 +320,7 @@ export function applyDrop(wallet, c, d) {
   const p = wallet.p, l = lootOf(p), now = Date.now();
   l.opened = (l.opened || 0) + 1;
   if (R_ORDER.indexOf(d.r) > R_ORDER.indexOf(l.best || 'blue')) l.best = d.r;
+  if (d.refund > 0) wallet.credit('loot', d.refund, { case: c.id, r: d.r, refund: true });
   if (d.kind === 'br' || d.dup) { if (d.amount > 0) wallet.credit('loot', d.amount, { case: c.id, r: d.r }); }
   else if (d.kind === 'boost') { l.boosts = activeBoosts(p, now); l.boosts.push({ g: d.game, m: d.m, u: now + d.h * 3600000 }); }
   else if (['farm', 'seed', 'speed', 'rush'].includes(d.kind)) {
@@ -341,6 +370,9 @@ export function initLoot(wallet) {
     if (m > 1) { const x = Math.round(amount * (m - 1)); wallet.credit('lootfree', x, { game, mult: m }); extra += x; }
     const cb = cosBonus(wallet.p, 'free');
     if (cb > 0) { const x = Math.round(amount * cb); if (x > 0) { wallet.credit('cosmetic', x, { game }); extra += x; } }
+    // records détenus : +5 % chacun (V32)
+    const rb = recordBonus();
+    if (rb > 0) { const x = Math.round(amount * rb); if (x > 0) { wallet.credit('record', x, { game }); extra += x; } }
     return extra;
   };
   return { destroy() { wallet.lootBonus = null; } };

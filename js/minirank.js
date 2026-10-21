@@ -36,6 +36,7 @@ export const MINI_GAMES = [
     ['Essais moyens', (s) => (S(s, 'motusWon') ? S(s, 'motusTries') / S(s, 'motusWon') : Infinity), (s) => (S(s, 'motusWon') ? n1(S(s, 'motusTries') / S(s, 'motusWon')) : '—'), -1],
     ['Meilleure série', (s) => S(s, 'motusBestStreak'), (s) => fmt(S(s, 'motusBestStreak')), 1], gains('motus')] },
   { k: 'geo', name: 'Géographie', cols: quizCols('geo') },
+  { k: 'culture', name: 'Culture G', cols: quizCols('culture') },
   { k: 'typing', name: 'Frappe éclair', cols: [rounds('typing'), ['Mots / min moyen', (s) => (S(s, 'typingRounds') ? S(s, 'typingWords') / S(s, 'typingRounds') : 0), (s) => (S(s, 'typingRounds') ? n1(S(s, 'typingWords') / S(s, 'typingRounds')) : '—'), 1],
     ['Record', (s) => { const b = bestOf(s, ['typingBest0', 'typingBest1', 'typingBest2'], LV); return b ? LV.indexOf(b.lv) * 1e4 + b.v : -1; },
       (s) => { const b = bestOf(s, ['typingBest0', 'typingBest1', 'typingBest2'], LV); return b ? `${fmt(b.v)} <small class="muted">${b.lv}</small>` : '—'; }, 1],

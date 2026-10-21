@@ -2671,3 +2671,22 @@ body.cb-coco, .sh-cards.cb-coco { --cb-bg: #3d2611; --cb-a: #6b4423; --cb-b: #4e
   .cr-row3 { grid-template-columns: 1fr 1fr; }
   .cr-table { min-height: 0; padding: 10px; }
 }
+
+/* ---------- V32 : tags de records ---------- */
+.rec-tags { display: flex; flex-wrap: wrap; gap: 5px; margin: 6px 0 2px; }
+.rec-tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px 2px 6px; border-radius: 999px; font-size: 11.5px; font-weight: 700; color: #2a1a00; background: linear-gradient(180deg, #fff1a8, #f5c542 60%, #d39b14); box-shadow: 0 1px 0 #7a5000, 0 0 10px #f5c54244; }
+.rec-tag .ic { width: 12px; height: 12px; }
+.rec-tag.casino { color: #fff; background: linear-gradient(180deg, #ff8a8a, #c8102e); box-shadow: 0 1px 0 #5a0010, 0 0 10px #ff4d5e44; }
+.rec-tag.more { background: #ffffff22; color: var(--text); box-shadow: none; }
+.cr-plan { display: grid; gap: 7px; padding: 10px; margin-bottom: 8px; border-radius: 12px; background: #0004; border: 1px solid var(--line); }
+.cr-plan-h { font-weight: 700; font-size: .85rem; display: flex; justify-content: space-between; gap: 6px; flex-wrap: wrap; } .cr-plan-h small { font-weight: 400; }
+.cr-plan label { display: grid; gap: 3px; font-size: .76rem; color: var(--muted); }
+.cr-plan .bet-input { height: 32px; font-size: .82rem; padding: 4px 8px; text-align: left; }
+.cr-plan-row { display: grid; grid-template-columns: 1.4fr 1fr; gap: 6px; }
+.cr-plan-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; }
+.cr-plan-chk { display: flex !important; align-items: center; gap: 6px; }
+.cr-plan-sum { font-size: .74rem; line-height: 1.35; }
+.mcq.culture .mcq-big { font-size: clamp(17px, 2.4vw, 22px); line-height: 1.35; font-family: var(--font); font-weight: 600; max-width: 720px; margin: 0 auto; }
+.mcq.culture .mcq-label { color: var(--gold); text-transform: uppercase; letter-spacing: 1px; font-size: .78rem; }
+.mcq.culture .mcq-img img { max-height: 260px; width: auto; max-width: 100%; border-radius: 12px; }
+.cg-anec { margin: 0 0 8px; font-size: .85rem; color: var(--muted); font-style: italic; }

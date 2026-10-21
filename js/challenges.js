@@ -9,6 +9,7 @@
 import { freeMult } from './progress.js';
 import { isIdle } from './activity.js';
 import { chalBoost, lootPerm } from './loot.js';
+import { recordBonus, recordCount } from './records.js';
 
 export const SLOT_MS = 12 * 60000;
 export const PODIUM = [1, 0.6, 0.35]; // part du prix pour la 1re, 2e et 3e place
@@ -78,6 +79,9 @@ const MINI = [
   { id: 'flagsX8', tier: 1, game: 'flags', text: 'Fais au moins 8/10 au quiz drapeaux en mode expert', ev: free('flags', (x) => x.ExpertCorrect >= 8) },
   { id: 'movies9', tier: 1, game: 'movies', text: 'Fais au moins 9/10 au quiz ciné', ev: free('movies', (x) => x.Correct >= 9) },
   { id: 'higher12', tier: 1, game: 'higher', text: 'Fais une série de 12 au Plus ou moins', ev: free('higher', (x) => x.Correct >= 12) },
+  { id: 'culture5', tier: 0, game: 'culture', text: 'Fais au moins 5/10 au quiz Culture G', ev: free('culture', (x) => x.Correct >= 5) },
+  { id: 'culture7', tier: 1, game: 'culture', text: 'Fais au moins 7/10 au quiz Culture G', ev: free('culture', (x) => x.Correct >= 7) },
+  { id: 'culture9', tier: 2, game: 'culture', text: 'Fais au moins 9/10 au quiz Culture G', ev: free('culture', (x) => x.Correct >= 9) },
   { id: 'geo7', tier: 0, game: 'geo', text: 'Trouve au moins 7 pays sur 10 au quiz géographie', ev: free('geo', (x) => x.Correct >= 7) },
   { id: 'geoMed8', tier: 1, game: 'geo', text: 'Trouve au moins 8 pays sur 10 au quiz géographie en moyen ou difficile', ev: free('geo', (x) => (x.MediumCorrect || x.HardCorrect || 0) >= 8) },
   { id: 'geoHard8', tier: 2, game: 'geo', text: 'Trouve au moins 8 pays sur 10 au quiz géographie en difficile', ev: free('geo', (x) => (x.HardCorrect || 0) >= 8) },
@@ -131,7 +135,7 @@ export function initChallenges(wallet, backend, social, { onWin, onLost, onNew }
   const current = () => challengeFor(st.slot);
   const notify = () => subs.forEach((cb) => { try { cb(view()); } catch (e) { console.error(e); } });
   // bonus VIP réduit × bonus permanent « défis » des coffres royaux × boosts « défis » des caisses (empilés)
-  const multNow = () => challengeMult(wallet) * (1 + lootPerm(wallet.p, 'chalp')) * chalBoost(wallet.p);
+  const multNow = () => challengeMult(wallet) * (1 + lootPerm(wallet.p, 'chalp')) * chalBoost(wallet.p) * (1 + recordBonus());
   const prizeAt = (c, place) => Math.round(c.prize * PODIUM[place - 1] * multNow());
   const nextPlace = () => { for (let k = 1; k <= 3; k++) if (!st.podium.some((x) => x.place === k)) return k; return 0; };
   const view = () => {

@@ -3,6 +3,7 @@ import { CONFIG } from './config.js';
 import { monkeySVG, icon } from './art.js';
 import { $, $$, fmt, money, esc, toast, modal, CUR } from './ui.js';
 import { getPlayers } from './players.js';
+import { recordTagsHTML } from './records.js';
 import { ACHIEVEMENTS, TIERS } from './achievements.js';
 import { frameClass, titleHTML } from './shop.js';
 import { vipBadge } from './progress.js';
@@ -111,6 +112,7 @@ export function cardHTML(p, { me = false } = {}) {
     <div class="pf-top">${avatarHTML(p, 'av-xl')}
       <div class="pf-id"><h2>${esc(p.pseudo)}${me ? ' <small>(toi)</small>' : ''}</h2>
         <div class="pf-badges">${vipBadge(p)}${titleHTML(p)}${trophies(p)}</div>
+        ${recordTagsHTML(p)}
         ${p.createdAt ? `<small class="muted">Membre depuis le ${dateFmt.format(new Date(p.createdAt))}</small>` : ''}
         ${seenHTML(p, me)}
         <p class="pf-bio ${p.bio ? '' : 'empty'}">${p.bio ? esc(p.bio) : me ? 'Pas encore de bio. Présente-toi en dessous !' : 'Ce singe n\'a rien écrit pour l\'instant.'}</p></div></div>

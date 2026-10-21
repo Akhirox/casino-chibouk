@@ -6,7 +6,7 @@ import { $, fmt, esc } from './ui.js';
 import { icon } from './art.js';
 
 // succès des mini-jeux (catégorie « free ») : préfixe de leur identifiant
-const FREE_PREFIX = { quiz: 'qz-', capitals: 'cap-', movies: 'mv-', flags: 'fl-', motus: 'mo-', higher: 'hi-', queens: 'qn-', tango: 'tg-', pinpoint: 'pp-', sudoku: 'sd-', demineur: 'ms-', snake: 'sn-', breaker: 'bk-', memory: 'mm-', crossword: 'cw-', geo: 'geo-', typing: 'ty-' };
+const FREE_PREFIX = { quiz: 'qz-', capitals: 'cap-', movies: 'mv-', flags: 'fl-', motus: 'mo-', higher: 'hi-', queens: 'qn-', tango: 'tg-', pinpoint: 'pp-', sudoku: 'sd-', demineur: 'ms-', snake: 'sn-', breaker: 'bk-', memory: 'mm-', crossword: 'cw-', geo: 'geo-', culture: 'cg-', typing: 'ty-' };
 export const achsOf = (game) => ACHIEVEMENTS.filter((a) => a.cat === game || (a.cat === 'free' && FREE_PREFIX[game] && a.id.startsWith(FREE_PREFIX[game])));
 const questGame = (q) => { const id = q.id || ''; const m = id.match(/^(?:play|win|quiz7)-(.+)$/); return m ? m[1] : id.replace(/\d+$/, ''); };
 const mmss = (ms) => { const t = Math.max(0, Math.ceil(ms / 1000)); return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, '0')}`; };

@@ -307,6 +307,12 @@ export function jungleArtSVG() {
     <text x="100" y="134" text-anchor="middle" font-family="Bungee, sans-serif" font-size="20" fill="#ffd23f" stroke="#6b4400" stroke-width="1">×256</text>
     <g transform="translate(160 96)"><rect x="-17" y="-12" width="34" height="22" rx="7" fill="#c2185b"/><text y="5" text-anchor="middle" font-family="Bungee, sans-serif" font-size="12" fill="#fff">×4</text></g></svg>`;
 }
+export function cultureArtSVG() {
+  const bub = (x, y, w, t, c) => `<g transform="translate(${x} ${y})"><rect width="${w}" height="26" rx="13" fill="${c}"/><text x="${w / 2}" y="17.5" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="800" font-size="12" fill="#10180f">${t}</text></g>`;
+  return `<svg viewBox="0 0 200 145" class="art-culture" aria-hidden="true">
+    <circle cx="100" cy="66" r="40" fill="#f5c542" opacity=".18"/><text x="100" y="88" text-anchor="middle" font-family="Bungee, sans-serif" font-size="60" fill="#f5c542">?</text>
+    ${bub(14, 18, 66, 'Cinéma', '#ff8a8a')}${bub(124, 26, 62, 'Sport', '#5fe08a')}${bub(10, 100, 70, 'Histoire', '#36c2ff')}${bub(118, 104, 74, 'Manga', '#c77dff')}${bub(64, 118, 70, 'Sciences', '#ffd36b')}</svg>`;
+}
 export function crapsArtSVG() {
   const die = (x, y, r, pips) => `<g transform="translate(${x} ${y}) rotate(${r})"><rect x="-22" y="-22" width="44" height="44" rx="9" fill="#fff8ec" stroke="#c9b48a" stroke-width="2"/>${pips.map(([a, b]) => `<circle cx="${a}" cy="${b}" r="4.6" fill="#c8102e"/>`).join('')}</g>`;
   return `<svg viewBox="0 0 200 145" class="art-craps" aria-hidden="true"><rect x="8" y="8" width="184" height="128" rx="14" fill="#0d5a37" stroke="#7a4a1e" stroke-width="5"/>

@@ -35,7 +35,15 @@ export function mount(view, { wallet }) {
         <div class="plk-info"><span>À payer au lancer</span><b id="cr-pend"></b></div>
         <button class="btn btn-gold btn-lg wide" id="cr-roll">Lancer les dés</button>
         <div class="cr-btns"><button class="btn btn-ghost btn-sm" id="cr-clear">Effacer</button><button class="btn btn-ghost btn-sm" id="cr-rebet">Remettre</button><button class="btn btn-ghost btn-sm" id="cr-take" title="Reprendre les mises Place et les cotes">Retirer</button></div>
-        ${autoHTML('cr-auto', 'Lancers automatiques', '<p class="ab-note">L\'auto relance les dés et remet ta dernière mise de départ à chaque nouveau tour.</p>')}
+        ${autoHTML('cr-auto', 'Lancers automatiques', `<div class="cr-plan">
+          <div class="cr-plan-h">Stratégie de l'auto <small class="muted">appliquée avant chaque lancer</small></div>
+          <label>Mise de ligne<span class="cr-plan-row"><select class="bet-input" data-p="line"><option value="pass">Pass Line</option><option value="dpass">Don't Pass</option><option value="">aucune</option></select><input class="bet-input" type="number" min="0" step="1" data-p="lineAmt" placeholder="0"></span></label>
+          <label>Cote quand le point est établi<select class="bet-input" data-p="odds"><option value="0">aucune</option><option value="1">1× la ligne</option><option value="2">2× la ligne</option><option value="3">3× la ligne (max)</option></select></label>
+          <label>Mises Place (avec un point)<span class="cr-plan-row"><select class="bet-input" data-p="place"><option value="">aucune</option><option value="68">6 et 8</option><option value="5689">5, 6, 8 et 9</option><option value="all">4 à 10</option><option value="nopoint">4 à 10 sauf le point</option></select><input class="bet-input" type="number" min="0" step="1" data-p="placeAmt" placeholder="par case"></span></label>
+          <label class="cr-plan-chk"><input type="checkbox" data-p="takeDown"> Reprendre les mises Place quand le point est fait</label>
+          <div class="cr-plan-3"><label>Field<input class="bet-input" type="number" min="0" step="1" data-p="field" placeholder="0"></label><label>Any 7<input class="bet-input" type="number" min="0" step="1" data-p="any7" placeholder="0"></label><label>Any Craps<input class="bet-input" type="number" min="0" step="1" data-p="craps" placeholder="0"></label></div>
+          <small class="muted cr-plan-sum" id="cr-plan-sum"></small>
+        </div>`)}
         <div class="plk-info"><span>RTP</span><b>98,6 à 100 %</b></div>
       </aside>
       <div class="cr-stage">
@@ -133,7 +141,7 @@ export function mount(view, { wallet }) {
 
   async function roll() {
     if (busy) return false;
-    if (autoLeft && !point && !sum(pending) && !bets.pass && !bets.dpass && lastLayout) { if (!rebet()) return false; }
+    if (autoLeft) { if (!applyPlan()) return false; }
     const pay = sum(pending);
     if (!(sum(bets) + pay)) { toast('Pose une mise d\'abord', 'error'); return false; }
     if (pay && !wallet.bet('craps', pay)) { toast(`Solde insuffisant pour miser ${fmt(pay)} ${CUR}`, 'error'); return false; }
@@ -144,6 +152,7 @@ export function mount(view, { wallet }) {
     const d1 = 1 + randInt(6), d2 = 1 + randInt(6);
     const res = C.resolve(point, bets, d1, d2);
     const before = point;
+    const takeDown = autoLeft && plan.takeDown && before && res.sum === before;
     point = res.point; bets = res.bets;
     save();
     const reveal = wallet.deferEvents(() => {
@@ -159,6 +168,8 @@ export function mount(view, { wallet }) {
     for (const k of Object.keys(res.won)) { const s = view.querySelector(`.cr-spot[data-k="${k}"]`); if (s) { s.classList.add('won'); setTimeout(() => s.classList.remove('won'), 1400); } }
     for (const k of res.lost) { const s = view.querySelector(`.cr-spot[data-k="${k}"]`); if (s) { s.classList.add('lost'); setTimeout(() => s.classList.remove('lost'), 1100); } }
     const gain = res.ret;
+    // stratégie : mises Place reprises quand le point est fait
+    if (takeDown) { let back = 0; for (const n of C.POINTS) if (bets['p' + n]) { back += bets['p' + n]; delete bets['p' + n]; } if (back) { wallet.refund('craps', back); save(); } }
     busy = false;
     render();
     $('#cr-msg', view).innerHTML = `<b class="cr-sum">${d1} + ${d2} = ${res.sum}</b> ${res.msg}${gain ? ` <span class="pos">+${money(gain)}</span>` : res.lost.length ? ' <span class="neg">mise perdue</span>' : ''}`;
@@ -166,6 +177,43 @@ export function mount(view, { wallet }) {
     else if (res.lost.length && !isTurbo('craps')) sfx.lose();
     history.unshift({ s: res.sum, p: before, made: before && res.sum === before, seven: before && res.sum === 7 }); history = history.slice(0, 18);
     $('#cr-hist', view).innerHTML = history.map((h) => `<span class="${h.made ? 'good' : h.seven ? 'bad' : h.s === 7 || h.s === 11 ? 'gold' : ''}">${h.s}</span>`).join('');
+    return true;
+  }
+
+  /* ---------- stratégie de l'auto : les décisions prévues à l'avance ---------- */
+  let plan = { line: 'pass', lineAmt: 100, odds: 0, place: '', placeAmt: 0, takeDown: false, field: 0, any7: 0, craps: 0 };
+  try { plan = { ...plan, ...(JSON.parse(localStorage.getItem('chibouk_craps_plan') || 'null') || {}) }; } catch {}
+  const planEl = (k) => view.querySelector(`[data-p="${k}"]`);
+  Object.keys(plan).forEach((k) => { const el = planEl(k); if (!el) return; if (el.type === 'checkbox') el.checked = !!plan[k]; else el.value = plan[k] || (el.tagName === 'SELECT' ? (k === 'odds' ? '0' : '') : ''); });
+  if (planEl('line')) planEl('line').value = plan.line;
+  const PLACE_SETS = { 68: [6, 8], 5689: [5, 6, 8, 9], all: C.POINTS, nopoint: C.POINTS };
+  function readPlan() {
+    const num = (k) => Math.max(0, Math.floor(+planEl(k).value || 0));
+    plan = { line: planEl('line').value, lineAmt: num('lineAmt'), odds: +planEl('odds').value || 0, place: planEl('place').value, placeAmt: num('placeAmt'), takeDown: planEl('takeDown').checked, field: num('field'), any7: num('any7'), craps: num('craps') };
+    try { localStorage.setItem('chibouk_craps_plan', JSON.stringify(plan)); } catch {}
+    const parts = [];
+    if (plan.line && plan.lineAmt) parts.push(`${plan.line === 'pass' ? 'Pass Line' : 'Don\'t Pass'} ${fmt(plan.lineAmt)}${plan.odds ? ` + cote ${plan.odds}×` : ''}`);
+    if (plan.place && plan.placeAmt) parts.push(`Place ${plan.place === '68' ? '6/8' : plan.place === '5689' ? '5/6/8/9' : plan.place === 'all' ? '4 à 10' : '4 à 10 sauf le point'} à ${fmt(plan.placeAmt)}${plan.takeDown ? ' (reprises au point fait)' : ''}`);
+    ['field', 'any7', 'craps'].forEach((k) => plan[k] && parts.push(`${LABEL[k]} ${fmt(plan[k])} à chaque lancer`));
+    $('#cr-plan-sum', view).textContent = parts.length ? 'Prévu : ' + parts.join(' · ') : 'Rien de prévu : l\'auto remettra ta dernière mise de départ.';
+  }
+  view.querySelectorAll('[data-p]').forEach((el) => (el.onchange = el.oninput = readPlan));
+  readPlan();
+  // ajoute aux jetons à jouer ce que la stratégie prévoit pour ce lancer (false si le solde ne suffit pas)
+  function applyPlan() {
+    const want = { ...pending };
+    const add = (k, v) => { if (v > 0) want[k] = (want[k] || 0) + v; };
+    const empty = !(plan.line && plan.lineAmt) && !(plan.place && plan.placeAmt) && !plan.field && !plan.any7 && !plan.craps;
+    if (empty) { if (!point && !sum(pending) && !bets.pass && !bets.dpass && lastLayout) return rebet(); return true; }
+    if (!point && plan.line && plan.lineAmt && !bets[plan.line] && !want[plan.line]) add(plan.line, plan.lineAmt);
+    if (point && plan.odds) {
+      const k = bets.pass ? 'odds' : bets.dpass ? 'lay' : null, line = bets.pass || bets.dpass || 0;
+      if (k) add(k, Math.max(0, Math.min(C.ODDS_MAX, plan.odds) * line - (bets[k] || 0) - (want[k] || 0)));
+    }
+    if (point && plan.place && plan.placeAmt) for (const n of PLACE_SETS[plan.place]) { if (plan.place === 'nopoint' && n === point) continue; const k = 'p' + n; if (!bets[k] && !want[k]) add(k, plan.placeAmt); }
+    ['field', 'any7', 'craps'].forEach((k) => { if (plan[k] && !want[k]) add(k, plan[k]); });
+    if (!wallet.canAfford(sum(want))) { toast('Auto arrêtée : solde insuffisant pour la stratégie prévue', 'error'); return false; }
+    pending = want; render();
     return true;
   }
 

@@ -6,6 +6,7 @@
 //    soit en pratique les quelques joueurs en train de jouer, et 1 seule lecture si personne n'a bougé ;
 //  - une relecture complète n'a lieu qu'au plus toutes les PLAYERS_FULL_MS (suspensions, comptes supprimés…).
 import { CONFIG } from './config.js';
+import { setRecordPlayers } from './records.js';
 
 const LS = 'chibouk_players_v2';
 const MARGIN = 3 * 60000; // marge pour les horloges un peu décalées entre joueurs
@@ -52,7 +53,9 @@ export async function getPlayers(backend, wallet, force = false) {
     try { await cache.pending; } catch (e) { if (!cache.rows) throw e; console.warn('Liste des joueurs : on garde la version en cache', e); }
   }
   // comptes suspendus : hors classements
-  return withMe(cache.rows.filter((r) => !r.banned), wallet);
+  const rows = withMe(cache.rows.filter((r) => !r.banned), wallet);
+  setRecordPlayers(rows, wallet.uid); // records (tags et bonus) recalculés à chaque relecture
+  return rows;
 }
 
 // Remplace ses propres données par l'état local (toujours à jour)

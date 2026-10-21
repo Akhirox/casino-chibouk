@@ -120,7 +120,9 @@ export function mountMCQ(view, { wallet }, opt) {
       }
       if (!alive) return;
     }
-    questions = opt.build(data, N, mode.key);
+    state = 'loading';
+    questions = await opt.build(data, N, mode.key); // peut être asynchrone (préchargement des images)
+    if (!alive) return;
     qi = 0; correct = 0; results = []; credited = false;
     guard && guard.destroy(); guard = createGuard(view); rts = [];
     ask();
@@ -132,7 +134,7 @@ export function mountMCQ(view, { wallet }, opt) {
     body.innerHTML = `
       <div class="qz-q mcq-q"><span class="qz-num">Question ${qi + 1}/${N}</span>
         <div class="mcq-label">${esc(q.label)}</div>
-        ${q.img || q.imgP ? `<div class="mcq-img"><img ${q.img ? `src="${esc(q.img)}"` : ''} alt="Drapeau à deviner"></div>` : `<div class="mcq-big">${esc(q.big)}</div>`}${q.sub ? `<div class="mcq-sub">${esc(q.sub)}</div>` : ''}
+        ${q.big || !(q.img || q.imgP) ? `<div class="mcq-big">${esc(q.big || '')}</div>` : ''}${q.img || q.imgP ? `<div class="mcq-img"><img ${q.img ? `src="${esc(q.img)}"` : ''} alt="${esc(q.alt || 'Image de la question')}" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></div>` : ''}${q.sub ? `<div class="mcq-sub">${esc(q.sub)}</div>` : ''}
         <div class="qz-verdict" id="qz-verdict"></div></div>
       <div class="qz-timer"><div class="qz-bar" id="qz-bar"></div><span id="qz-sec">${SECS()}</span></div>
       ${q.type === 'map' ? '<div class="mcq-map" id="mcq-map"></div>' : q.type === 'text' ? `<form class="qz-form mcq-text" id="mcq-form" autocomplete="off">
@@ -181,7 +183,7 @@ export function mountMCQ(view, { wallet }, opt) {
     const timeout = i === null;
     const text = q.type === 'text';
     const isMap = q.type === 'map';
-    const ok = !timeout && (text ? matches(i, q.accept, q.reject) : i === q.answer);
+    const ok = !timeout && (text ? (q.match ? q.match(i) : matches(i, q.accept, q.reject)) : i === q.answer);
     if (!timeout) rts.push(performance.now() - shownAt);
     const right = text ? q.accept[0] : isMap ? q.right : q.choices[q.answer];
     if (isMap && opt.map) opt.map.reveal(q, i, ok);

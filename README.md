@@ -56,6 +56,7 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 | **Hi-Lo** | Plus haut ou plus bas que la carte affichée ? Paquet infini, chaque bonne réponse multiplie le gain (0,99 ÷ probabilité), encaissement quand on veut. | 99 % |
 | **Keno** | 1 à 10 numéros sur 40, 10 tirés, 3 niveaux de risque, jusqu'à ×10 000. Tables calculées exactement (`tools/keno-rtp.mjs`). | 99 % |
 | **Roue du Singe** | 30 cases équiprobables, 3 niveaux de risque (jusqu'à ×29,7). | 99 % |
+| **Culture G** | Gratuit : 10 questions à écrire parmi 1 718 (26 thèmes, `js/games/culture-data.js`, généré depuis le fichier Excel), correcteur tolérant (`cultureMatch` dans `js/games/culture.js`). | — |
 | **Quiz géographie** | Gratuit : 10 pays à trouver en cliquant sur la carte du monde (195 pays, Natural Earth via world-atlas, `js/games/geo-data.js`), zoom et déplacement, 3 niveaux. | — |
 | **Frappe éclair** | Gratuit : 60 s pour taper un maximum de mots (`js/games/typing-data.js`), 3 niveaux, +2 à +5 par mot juste. | — |
 | **Craps** | Pass Line / Don't Pass (1:1), cote réelle jusqu'à 3×, Place 4 à 10, Field, Any 7, Any Craps. Mises en jeu sauvegardées dans le profil (`p.craps`). Règles dans `js/games/craps-math.js`. | 98,6 % (100 % sur la cote) |
@@ -226,6 +227,7 @@ js/wallet.js               solde, stats, sauvegarde groupée
 js/farm-core.js            ferme à bananes : règles, coûts, production (sans affichage)
 js/farm.js                 ferme à bananes : page, dessins, marché, voisins
 js/loot.js                 caisses : contenu, probabilités, application des lots et des boosts
+js/records.js              records par catégorie : tags du profil et +5 % par record sur les gains gratuits
 js/goals.js                défis à relever affichés sur la page de chaque jeu
 js/rewards.js              affichage « base → avec bonus » des récompenses gratuites et détail des bonus
 js/cases.js                caisses : page d'ouverture (bande animée)

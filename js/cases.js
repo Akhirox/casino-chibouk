@@ -182,7 +182,7 @@ export function mount(view, { wallet, social }) {
 
   function finish(c, drops) {
     const best = drops.reduce((a, d) => (L.R_ORDER.indexOf(d.r) > L.R_ORDER.indexOf(a.r) ? d : a), drops[0]);
-    const br = drops.reduce((a, d) => a + (d.kind === 'br' || d.dup ? d.amount : 0), 0);
+    const br = drops.reduce((a, d) => a + (d.kind === 'br' || d.dup ? d.amount : 0) + (d.refund || 0), 0);
     const bi = L.R_ORDER.indexOf(best.r);
     if (bi >= 3) { sfx.bonus(); coinRain(bi === 4 ? 90 : 50); } else if (bi === 2) { sfx.win(true); coinRain(20); } else if (br >= c.price * count) sfx.win(false); else sfx.coin();
     if (drops.some((d) => d.kind === 'cos' && !d.dup)) applyCosmetics(wallet);

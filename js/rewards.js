@@ -2,6 +2,7 @@
 import { vipOf, permBonus, wheelPerm } from './progress.js';
 import { boostMult, chalBoost, lootPerm } from './loot.js';
 import { cosBonus } from './bonus.js';
+import { recordBonus, recordCount } from './records.js';
 import { fmt, esc } from './ui.js';
 import { coinSVG } from './art.js';
 
@@ -20,7 +21,9 @@ export function freeInfo(game = '') {
   if (perm > 0) parts.push(['Bonus permanent des caisses', pf(perm)]);
   if (boost > 1) parts.push(['Boosts mini-jeux en cours', xf(boost)]);
   if (cb > 0) parts.push(['Cadre équipé', pf(cb)]);
-  return { mult: fm * (boost + cb), parts };
+  const rb = recordBonus();
+  if (rb > 0) parts.push([`Records détenus (${recordCount()})`, pf(rb)]);
+  return { mult: fm * (boost + cb + rb), parts };
 }
 // Quêtes du jour : VIP × bonus permanent × titre équipé
 export function questInfo() {
@@ -40,7 +43,9 @@ export function challengeInfo(chMult) {
   if (chMult > 1) parts.push(['Bonus VIP (réduit sur les défis)', xf(chMult)]);
   if (cp > 0) parts.push(['Coffres royaux : défis', pf(cp)]);
   if (cb > 1) parts.push(['Boosts défis en cours', xf(cb)]);
-  return { mult: chMult * (1 + cp) * cb, parts };
+  const rb = recordBonus();
+  if (rb > 0) parts.push([`Records détenus (${recordCount()})`, pf(rb)]);
+  return { mult: chMult * (1 + cp) * cb * (1 + rb), parts };
 }
 // Roue du jour : VIP × bonus permanent × (titre + coffres royaux)
 export function wheelInfo() {
