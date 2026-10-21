@@ -1,6 +1,7 @@
 // Ferme à bananes : page, tuiles dessinées, marché, fermes des voisins, et minuterie globale (chantiers, stock plein).
 import { cosBonus } from './bonus.js';
-import { lootPerm, sellBoost } from './loot.js';
+import { lootPerm, sellBoost, activeBoosts, stackMult, STACK_CAP } from './loot.js';
+import { openBoostDetail, boostDetailHTML } from './boostdetail.js';
 import * as F from './farm-core.js';
 import { $, $$, fmt, money, esc, toast, modal, coinRain, CUR } from './ui.js';
 import { icon } from './art.js';
@@ -178,6 +179,8 @@ export function mount(view, { wallet, backend }) {
     $('#fm-hire', view).onclick = () => { const c = F.hireCost(f().w); act(c, () => F.hire(f(), wallet.balance), 'hire', 'Un singe de plus au travail !'); };
     const bb = $('#fm-builder', view); if (bb) bb.onclick = buyBuilder;
     $('#fm-sell', view).onclick = () => sell();
+    // détail des boosts (bouton redessiné chaque seconde : on écoute sur le conteneur)
+    $('#fm-rate', view).onclick = (e) => { const b = e.target.closest('[data-boostd]'); if (b) boostDetail(b.dataset.boostd); };
     $('#fm-replant', view).onclick = replant;
     side(); numbers();
   }
@@ -195,7 +198,7 @@ export function mount(view, { wallet, backend }) {
     el('fm-bar').style.width = Math.min(100, (fm.b / Math.max(1, cap)) * 100) + '%';
     el('fm-bar').classList.toggle('full', fm.b >= cap - 0.5);
     el('fm-full').textContent = fm.b >= cap - 0.5 ? 'Entrepôt plein : la récolte est à l\'arrêt !' : rate > 0 ? `Plein dans ${dur(((cap - fm.b) / rate) * F.HOUR)}` : 'Aucun singe au travail';
-    el('fm-rate').innerHTML = `${fmt(Math.round(rate))} <small>/ h</small>${bm > 1 ? ` <span class="fm-boost" title="${F.activeFarmBoosts(fm).map((b) => `×${String(b.m).replace('.', ',')} encore ${dur(b.u - Date.now())}`).join(' · ')} (cumul dégressif, ×${F.FARM_BOOST_CAP} max)">×${String(bm).replace('.', ',')}${F.activeFarmBoosts(fm).length > 1 ? ` (${F.activeFarmBoosts(fm).length} boosts)` : ''} · ${dur(F.boostEnd(fm) - Date.now())}</span>` : ''}`;
+    el('fm-rate').innerHTML = `${fmt(Math.round(rate))} <small>/ h</small>${bm > 1 ? ` <span class="fm-boost" title="${F.activeFarmBoosts(fm).map((b) => `×${String(b.m).replace('.', ',')} encore ${dur(b.u - Date.now())}`).join(' · ')} (cumul dégressif, ×${F.FARM_BOOST_CAP} max)">×${String(bm).replace('.', ',')}${F.activeFarmBoosts(fm).length > 1 ? ` (${F.activeFarmBoosts(fm).length} boosts)` : ''} · ${dur(F.boostEnd(fm) - Date.now())}</span> <button type="button" class="fm-bd" data-boostd="farm">Voir le détail</button>` : ''}${sellBoost(wallet.p) > 1 ? ` <button type="button" class="fm-bd sell" data-boostd="sell">Vente ×${String(sellBoost(wallet.p)).replace('.', ',')} · détail</button>` : ''}`;
     el('fm-value').textContent = `≈ ${fmt(Math.round(rate * F.sellRate(fm)))} ${CUR}/h à la vente`;
     el('fm-seeds').innerHTML = [fm.pr ? `${STAR} Prestige ${fm.pr} · ×${F.prestigeMult(fm)}` : '', fm.seeds ? `${SEED} ${fm.seeds} graine${fm.seeds > 1 ? 's' : ''} d'or · +${Math.round(F.SEED_BONUS * fm.seeds * 100)} %` : ''].filter(Boolean).join(' · ');
     const rb = el('fm-replant');
@@ -379,6 +382,10 @@ export function mount(view, { wallet, backend }) {
     // la minuterie globale termine le chantier dans la seconde (message + sauvegarde)
     setTimeout(() => { refreshBoard(); side(); }, 1100);
   }
+  function boostDetail(kind) {
+    if (kind === 'farm') openBoostDetail('Boosts de récolte de la ferme', F.activeFarmBoosts(f()), (ms) => F.farmStack(ms), { cap: F.FARM_BOOST_CAP });
+    else openBoostDetail('Boosts de vente des bananes', activeBoosts(wallet.p).filter((b) => b.g === 'sell'), (ms) => stackMult(ms, STACK_CAP.sell), { cap: STACK_CAP.sell });
+  }
   // Marché : vendre des bananes contre des Brundles
   async function sell() {
     const fm = f();
@@ -389,6 +396,7 @@ export function mount(view, { wallet, backend }) {
     let amount = 0;
     const res = await modal({ title: 'Marché aux bananes', cls: 'fm-market', html: `
       <p>Prix de vente : <b>${frN(rate)} ${CUR}</b> la banane${cb || sb > 1 ? ` <small class="sh-bonus">bonus +${Math.round(cb * 100)} %${sb > 1 ? ` et boost ×${String(sb).replace('.', ',')}` : ''}</small>` : ''}${F.findType(fm, 'M') ? (F.findType(fm, 'M').l < F.B.M.max ? ' (améliore ton marché pour vendre plus cher, jusqu\'à 1 ' + CUR + ')' : ' (prix maximum)') : ' (construis un marché pour vendre plus cher)'}.</p>
+      ${sb > 1 ? `<details class="bd-inline"><summary>Voir le détail des boosts de vente</summary><div class="bd">${boostDetailHTML(activeBoosts(wallet.p).filter((b) => b.g === 'sell'), (ms) => stackMult(ms, STACK_CAP.sell), { cap: STACK_CAP.sell })}</div></details>` : ''}
       ${have < 10 ? '<p class="muted">Il faut au moins 10 bananes pour vendre.</p>' : `<div class="fm-sell-pick">${[25, 50, 75, 100].map((p) => `<button type="button" class="btn btn-ghost btn-sm" data-p="${p}">${p} %</button>`).join('')}</div>
       <input type="range" id="fm-sell-r" min="10" max="${have}" value="${have}" step="1">
       <p class="fm-sell-sum"><span id="fm-sell-b"></span> → <b id="fm-sell-v"></b></p>`}`,

@@ -6,6 +6,8 @@ import { $, $$, fmt, money, esc, toast, modal, coinRain, setWinFx, CUR } from '.
 import { avatarHTML } from './profile.js';
 import { sfx } from './sfx.js';
 import { bonusText, BONUS_KIND, CAT_KIND } from './bonus.js';
+import { POKER_CATS, POKER_ITEMS, pokerEq, ownsPoker } from './poker/server.js';
+import { jpState, onJP, jpHTML } from './jp.js';
 
 export const SHOP_CATS = {
   frame: { name: 'Cadres d\'avatar', icon: 'user', desc: 'Autour de ta photo, partout où elle apparaît. Bonus du cadre équipé : gains des mini-jeux.' },
@@ -13,6 +15,7 @@ export const SHOP_CATS = {
   cardback: { name: 'Dos de cartes', icon: 'blackjack', desc: 'Le dos des cartes au blackjack et au Hi-Lo. Bonus du dos équipé : rakeback.' },
   theme: { name: 'Thèmes de la slot', icon: 'slots', desc: 'L\'habillage de la Chibouk Slot. Bonus du thème équipé : vente des bananes de la ferme.' },
   effect: { name: 'Effets de victoire', icon: 'bolt', desc: 'Ce qui tombe du ciel quand tu gagnes gros. Bonus de l\'effet équipé : intérêts du coffre.' },
+  poker: { name: 'Poker', icon: 'poker', desc: 'Cosmétiques de la table de poker, payés en Jetons Poker (JP). Purement visuels : aucun bonus.' },
 };
 
 // price 0 = offert à tout le monde (choix par défaut)
@@ -110,7 +113,18 @@ function previewHTML(it, wallet) {
   return '';
 }
 
-export function mount(view, { wallet }) {
+// aperçu d'un objet poker
+function pokerPreviewHTML(it, wallet) {
+  switch (it.cat) {
+    case 'ptitle': return `<div class="sh-title-prev"><b>${esc(wallet.pseudo)}</b>${it.id === 'pt-none' ? '<span class="pl-title muted">—</span>' : `<span class="pl-title">${esc(it.name)}</span>`}</div>`;
+    case 'pframe': return `<span class="pk-av ${it.id}">${avatarHTML({ ...wallet.p, shop: { eq: {}, owned: {} } }, 'av-lg')}</span>`;
+    case 'pback': return `<div class="sh-pkcards"><span class="pk-card back ${it.id}"></span><span class="pk-card back ${it.id}"></span></div>`;
+    case 'pfelt': return `<div class="sh-felt pk-felt ${it.id}"><span class="pk-card"><b>A</b><i>♠</i></span></div>`;
+  }
+  return '';
+}
+
+export function mount(view, { wallet, backend }) {
   let alive = true, cat = 'frame';
   try { const c = localStorage.getItem('chibouk_shop_cat'); if (SHOP_CATS[c]) cat = c; } catch {}
   view.innerHTML = `<div class="sh-wrap">
@@ -120,8 +134,43 @@ export function mount(view, { wallet }) {
     <p class="muted sh-desc" id="sh-desc"></p>
     <div class="sh-grid" id="sh-grid"></div></div>`;
 
+  function renderPoker() {
+    const jp = jpState();
+    $('#sh-desc', view).innerHTML = `${esc(SHOP_CATS.poker.desc)} Ton solde : ${jpHTML(jp.jp)}`;
+    $('#sh-grid', view).innerHTML = Object.entries(POKER_CATS).map(([c, info]) => `<h3 class="sh-sub">${esc(info.name)} <small class="muted">${esc(info.desc)}</small></h3>
+      ${POKER_ITEMS.filter((i) => i.cat === c).map((it) => {
+        const own = ownsPoker(jp, it.id), on = pokerEq(jp, c) === it.id;
+        const btn = on ? `<button class="btn btn-ghost btn-sm" disabled>${icon('check')}Équipé</button>`
+          : own ? `<button class="btn btn-ghost btn-sm" data-peq="${it.id}">Équiper</button>`
+            : `<button class="btn btn-gold btn-sm" data-pbuy="${it.id}" ${jp.jp < it.price ? 'disabled' : ''}>Acheter</button>`;
+        return `<div class="sh-item ${on ? 'on' : ''} ${own ? 'own' : ''}"><div class="sh-prev">${pokerPreviewHTML(it, wallet)}</div><b>${esc(it.name)}</b>
+          <span class="sh-price">${it.price ? (own ? 'Possédé' : jpHTML(it.price)) : 'Offert'}</span>${btn}</div>`;
+      }).join('')}`).join('');
+  }
+  async function pokerShop(op, id) {
+    if (!backend || !backend.pokerCall) return;
+    const it = POKER_ITEMS.find((x) => x.id === id);
+    if (op === 'buy') {
+      const ok = await modal({ title: 'Confirmer l\'achat', html: `<p>Acheter <b>${esc(it.name)}</b> (${esc(POKER_CATS[it.cat].name.toLowerCase())}) pour ${jpHTML(it.price)} ?</p><p class="muted">Ton solde après achat : ${jpHTML(jpState().jp - it.price)}</p>`,
+        buttons: [{ label: 'Annuler', value: false }, { label: 'Acheter et équiper', value: true, primary: true }] });
+      if (!ok || !alive) return;
+    }
+    $$('[data-pbuy], [data-peq]', view).forEach((b) => (b.disabled = true));
+    const r = await backend.pokerCall(op, null, { item: id });
+    if (!r || !r.ok) { toast(esc((r && r.error) || 'Erreur, réessaie'), 'error'); if (alive && cat === 'poker') renderPoker(); return; }
+    if (op === 'buy') { sfx.win(true); toast(`<b>${esc(it.name)}</b> est à toi !`, 'win'); } else { sfx.click(); toast(`${esc(it.name)} équipé`); }
+  }
+
   function render() {
     if (!alive) return;
+    if (cat === 'poker') {
+      $('#sh-bal', view).innerHTML = money(wallet.balance);
+      $('#sh-owned', view).textContent = `${ownedCount(wallet.p)} / ${PAID_ITEMS.length}`;
+      $('#sh-spent', view).innerHTML = money(wallet.stats.shopSpent || 0);
+      $$('.sh-tabs button', view).forEach((b) => b.classList.toggle('on', b.dataset.c === cat));
+      renderPoker();
+      return;
+    }
     $('#sh-bal', view).innerHTML = money(wallet.balance);
     $('#sh-owned', view).textContent = `${ownedCount(wallet.p)} / ${PAID_ITEMS.length}`;
     $('#sh-spent', view).innerHTML = money(wallet.stats.shopSpent || 0);
@@ -145,6 +194,8 @@ export function mount(view, { wallet }) {
 
   $$('.sh-tabs button', view).forEach((b) => (b.onclick = () => { cat = b.dataset.c; try { localStorage.setItem('chibouk_shop_cat', cat); } catch {} sfx.click(); render(); }));
   $('#sh-grid', view).onclick = async (e) => {
+    const pb = e.target.closest('[data-pbuy]'), pe = e.target.closest('[data-peq]');
+    if (pb || pe) { pokerShop(pb ? 'buy' : 'equip', (pb || pe).dataset[pb ? 'pbuy' : 'peq']); return; }
     const t = e.target.closest('[data-fx]');
     if (t) { const old = equipped(wallet.p, 'effect').slice(3); setWinFx(t.dataset.fx); coinRain(30); setWinFx(old); return; }
     const eqB = e.target.closest('[data-eq]');
@@ -174,7 +225,8 @@ export function mount(view, { wallet }) {
     render();
   }
 
-  const off = wallet.on((e) => { if (e && e.type !== 'shop') render(); });
+  const off = wallet.on((e) => { if (e && e.type !== 'shop' && cat !== 'poker') render(); });
+  const offJP = onJP(() => { if (alive && cat === 'poker') render(); });
   render();
-  return () => { alive = false; off(); };
+  return () => { alive = false; off(); offJP(); };
 }

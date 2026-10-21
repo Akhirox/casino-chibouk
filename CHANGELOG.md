@@ -2,6 +2,28 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V36 — Boutique poker et table plus vivante (22 octobre 2026)
+
+### Poker
+
+- C'est à toi de jouer : petit carillon, halo qui pulse autour de ta place, « À toi de jouer ! » au-dessus de ton pseudo, et l'onglet du navigateur clignote si tu regardes ailleurs.
+- « Parole » devient « Check ».
+- Nouvelles animations : les cartes sont distribuées depuis le centre, le flop se retourne carte par carte puis la turn et la river, et les cartes se dévoilent à l'abattage.
+- 8 secondes de pause entre deux mains, avec un compte à rebours : le temps de voir les cartes, ou de te recaver si tu as tout perdu.
+
+### Boutique : onglet Poker (en JP)
+
+- Titres et cadres de table (vus par tous à côté de ton pseudo), dos de cartes (ce que les autres voient de tes cartes cachées) et couleurs de tapis (ta vue de la table).
+- Payés en Jetons Poker, purement visuels : aucun bonus.
+
+### Roue du jour
+
+- Les deux roues tournent ensemble : Brundles à gauche, Jetons Poker à droite.
+
+### Boosts
+
+- Bouton « Voir le détail » sur les boosts de la ferme (récolte et vente) et sur la page des caisses : tous les paliers à venir, par exemple ×5 encore 20 min, puis ×4,5 pendant 1 h, puis ×2…
+
 ## V35 — Poker et Jetons Poker (21 octobre 2026)
 
 ### Nouvelle monnaie : les Jetons Poker (JP)

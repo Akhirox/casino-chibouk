@@ -3,6 +3,7 @@ import { $, $$, fmt, money, esc, toast, modal, coinRain, CUR } from './ui.js';
 import { icon, coinSVG } from './art.js';
 import { sfx } from './sfx.js';
 import * as L from './loot.js';
+import { openBoostDetail } from './boostdetail.js';
 import * as F from './farm-core.js';
 import { applyCosmetics } from './shop.js';
 import { permBonus, xMult, freeMult } from './progress.js';
@@ -48,11 +49,19 @@ export function mount(view, { wallet, social }) {
     <section class="panel"><h2 class="cs-h2">${icon('crate')}<span>Contenu de la caisse</span><small class="muted" id="cs-val"></small></h2><div class="cs-pool" id="cs-pool"></div></section>
     <section class="panel"><h2 class="cs-h2">${icon('scroll')}<span>Mes derniers lots</span></h2><div class="cs-hist" id="cs-hist"></div></section></div>`;
   $('#cs-help', view).onclick = help;
+  // détail des boosts empilés : paliers successifs (×5 encore 20 min, puis ×4,5…)
+  $('#cs-kpis', view).onclick = (e) => {
+    const b = e.target.closest('[data-bd]'); if (!b) return;
+    const g = b.dataset.bd, p = wallet.p;
+    if (g === 'farm') { openBoostDetail('Boosts de récolte de la ferme', p.farm ? F.activeFarmBoosts(p.farm) : [], (ms) => F.farmStack(ms), { cap: F.FARM_BOOST_CAP }); return; }
+    const names = { all: 'Boosts de tous les mini-jeux', chal: 'Boosts des défis de la jungle', sell: 'Boosts de vente des bananes' };
+    openBoostDetail(names[g] || 'Boosts', L.activeBoosts(p).filter((x) => x.g === g), (ms) => L.stackMult(ms, L.STACK_CAP[g] ?? 3), { cap: L.STACK_CAP[g] ?? 3 });
+  };
 
   function kpis() {
     const p = wallet.p, now = Date.now(), fbs = p.farm ? F.activeFarmBoosts(p.farm, now) : [], fb = fbs.length ? { m: F.boostAt(p.farm, now), u: F.boostEnd(p.farm, now), n: fbs.length } : null;
     const boosts = L.activeBoosts(p, now), by = (g) => boosts.filter((b) => b.g === g);
-    const stackLine = (g, label) => { const list = by(g); if (!list.length) return ''; const m = g === 'all' ? L.boostMult(p, 'all') : g === 'chal' ? L.chalBoost(p) : L.sellBoost(p); const end = Math.max(...list.map((b) => b.u)); return `<li title="${list.map((b) => `×${String(b.m).replace('.', ',')} encore ${left(b.u - now)}`).join(' · ')}"><b>${xMult(m)}</b> ${label}${list.length > 1 ? ` <small>(${list.length} boosts empilés)</small>` : ''} <small data-u="${end}">${left(end - now)}</small></li>`; };
+    const stackLine = (g, label) => { const list = by(g); if (!list.length) return ''; const m = g === 'all' ? L.boostMult(p, 'all') : g === 'chal' ? L.chalBoost(p) : L.sellBoost(p); const end = Math.max(...list.map((b) => b.u)); return `<li title="${list.map((b) => `×${String(b.m).replace('.', ',')} encore ${left(b.u - now)}`).join(' · ')}"><b>${xMult(m)}</b> ${label}${list.length > 1 ? ` <small>(${list.length} boosts empilés)</small>` : ''} <small data-u="${end}">${left(end - now)}</small> <button type="button" class="fm-bd" data-bd="${g}">détail</button></li>`; };
     const perms = [
       permBonus(p) ? `gains gratuits +${pc(permBonus(p))}` : '',
       L.lootPerm(p, 'vault') ? `coffre +${pc(L.lootPerm(p, 'vault'))} (${pc(wallet.vaultRate)}/jour)` : '',
@@ -63,7 +72,7 @@ export function mount(view, { wallet, social }) {
       p.farm && p.farm.spd ? `chantiers −${pc(p.farm.spd)}` : '',
     ].filter(Boolean);
     const lines = [stackLine('all', 'tous les mini-jeux'), stackLine('chal', 'récompenses des défis'), stackLine('sell', 'vente des bananes'),
-      fb ? `<li title="${fbs.map((b) => `×${String(b.m).replace('.', ',')} encore ${left(b.u - now)}`).join(' · ')}"><b>${xMult(fb.m)}</b> récolte de la ferme${fb.n > 1 ? ` <small>(${fb.n} boosts empilés)</small>` : ''} <small data-u="${fb.u}">${left(fb.u - now)}</small></li>` : '',
+      fb ? `<li title="${fbs.map((b) => `×${String(b.m).replace('.', ',')} encore ${left(b.u - now)}`).join(' · ')}"><b>${xMult(fb.m)}</b> récolte de la ferme${fb.n > 1 ? ` <small>(${fb.n} boosts empilés)</small>` : ''} <small data-u="${fb.u}">${left(fb.u - now)}</small> <button type="button" class="fm-bd" data-bd="farm">détail</button></li>` : '',
       ...boosts.filter((b) => L.BOOST_GAMES[b.g]).map((b) => `<li><b>${xMult(b.m)}</b> ${esc(L.BOOST_GAMES[b.g][0])} <small data-u="${b.u}">${left(b.u - now)}</small></li>`),
       p.loot && p.loot.spins ? `<li><b>${p.loot.spins}</b> tour${p.loot.spins > 1 ? 's' : ''} de roue bonus</li>` : ''].filter(Boolean);
     $('#cs-kpis', view).innerHTML = `

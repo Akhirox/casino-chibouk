@@ -6,8 +6,8 @@
 
 export const TURN_MS = 30000;        // temps pour jouer
 export const AWAY_TURN_MS = 1500;    // joueur absent : il passe ou se couche tout de suite
-export const END_MS = 4000;          // pause après un coup gagné sans abattage
-export const SHOWDOWN_MS = 7500;     // pause après un abattage (le temps de voir les cartes)
+export const END_MS = 8000;          // pause entre deux mains (V36 : 8 s, le temps de voir les cartes et de se recaver)
+export const SHOWDOWN_MS = 8000;
 export const START_MS = 3000;        // 2 joueurs prêts : la première main démarre 3 s plus tard (le temps que d'autres s'assoient)
 export const AWAY_KICK_MS = 10 * 60000;  // absent plus de 10 min : retiré de la table (son tapis lui est rendu)
 export const BUST_KICK_MS = 3 * 60000;   // tapis vide sans recave pendant 3 min : place libérée
@@ -88,13 +88,13 @@ const fmtN = (n) => Math.round(n).toLocaleString('fr-FR');
 const updatePot = (t) => { t.pot = t.seats.reduce((a, s) => a + (s && s.in ? s.contrib : 0), 0) + (t.dead || 0); };
 
 // Assoit un joueur (tapis = cave). Renvoie l'index de la place, ou -1 si la table est pleine.
-export function sit(t, p, stack, now) {
+export function sit(t, p, stack, now, cos = null) {
   let i = seatOf(t, p.uid);
   if (i >= 0) return i;
   i = t.seats.findIndex((s) => !s);
   if (i < 0) return -1;
   t.seats[i] = { uid: p.uid, name: p.name, stack, bet: 0, contrib: 0, in: false, folded: false, allin: false, acted: false, noRaise: false,
-    out: false, outAt: 0, to: 0, bust: false, bustAt: 0, left: false, shown: null, last: '', joinedAt: now };
+    out: false, outAt: 0, to: 0, bust: false, bustAt: 0, left: false, shown: null, last: '', joinedAt: now, ...(cos ? { cos } : {}) };
   log(t, `${p.name} s'assoit (${fmtN(stack)} JP)`);
   return i;
 }
@@ -238,7 +238,7 @@ export function act(t, sec, i, a, to, now) {
   if (a === 'allin') { if (o.maxTo > t.curBet && o.canRaise) { a = 'raise'; to = o.maxTo; } else a = 'call'; }
   if (a === 'call' && o.toCall === 0) a = 'check';
   if (a === 'fold') { s.folded = true; s.last = 'Se couche'; }
-  else if (a === 'check') { if (!o.canCheck) return 'Impossible de passer : il faut suivre ou se coucher'; s.last = 'Parole'; }
+  else if (a === 'check') { if (!o.canCheck) return 'Impossible de checker : il faut suivre ou se coucher'; s.last = 'Check'; }
   else if (a === 'call') { pay(o.toCall); s.last = s.allin ? `Tapis ${fmtN(s.bet)}` : `Suit ${fmtN(o.toCall)}`; }
   else if (a === 'raise') {
     to = Math.floor(+to || 0);
@@ -260,7 +260,7 @@ export function act(t, sec, i, a, to, now) {
   return null;
 }
 
-// Temps écoulé : parole si possible, sinon on se couche. Deux fois de suite : le joueur passe absent.
+// Temps écoulé : check si possible, sinon on se couche. Deux fois de suite : le joueur passe absent.
 export function timeout(t, sec, now) {
   if (!BETTING.includes(t.stage) || t.toAct < 0 || now < t.deadline) return false;
   const i = t.toAct, s = t.seats[i];

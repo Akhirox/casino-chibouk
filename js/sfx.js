@@ -65,6 +65,8 @@ export const sfx = {
   reelStop(i = 0) { tone(180 + i * 25, 0.08, { type: 'square', vol: 0.06 }); noise(0.03, { vol: 0.06, freq: 800 }); },
   spinStart() { tone(300, 0.25, { type: 'sawtooth', vol: 0.04, slide: 400 }); },
   tick() { tone(1200, 0.02, { type: 'square', vol: 0.025 }); },
+  // poker : c'est à toi de jouer (petit carillon bien audible)
+  turn() { tone(784, 0.12, { type: 'triangle', vol: 0.13 }); tone(1175, 0.18, { type: 'triangle', vol: 0.13, delay: 0.12 }); tone(1568, 0.22, { type: 'sine', vol: 0.08, delay: 0.24 }); },
   win(big = false) {
     const notes = big ? [523, 659, 784, 1047, 1319, 1568] : [523, 659, 784, 1047];
     notes.forEach((n, i) => tone(n, 0.16, { type: 'triangle', vol: 0.1, delay: i * 0.09 }));

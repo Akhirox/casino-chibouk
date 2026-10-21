@@ -81,6 +81,15 @@ export function createDemoPoker(session) {
         if (r.amount) { Object.assign(x, r.set, { jp: (x.jp || 0) + r.amount, earned: (x.earned || 0) + r.amount }); j[s.uid] = x; write(KJ, j); notify(); }
         return { ok: true, amount: r.amount, wait: r.wait || 0 };
       }
+      if (op === 'buy' || op === 'equip') {
+        const j = jps(), x = j[s.uid] || { jp: DEMO_START_JP };
+        const r = S.shopOp(x, op, data.item);
+        if (r.err) return { ok: false, error: r.err };
+        Object.assign(x, r.set, { jp: (x.jp || 0) - r.cost, spent: (x.spent || 0) + r.cost }); j[s.uid] = x; write(KJ, j);
+        if (x.room) run('cos', x.room, s.uid, s.pseudo); // ta place affiche tout de suite tes nouveaux cosmétiques
+        notify();
+        return { ok: true, cost: r.cost };
+      }
       if (!S.roomCfg(room)) return { ok: false, error: 'Table inconnue' };
       const res = run(op, room, s.uid, s.pseudo, data);
       // démo : des robots viennent s'asseoir pour qu'on puisse jouer seul
