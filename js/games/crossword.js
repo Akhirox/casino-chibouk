@@ -7,6 +7,7 @@ import { monkeySVG } from '../art.js';
 import { sfx } from '../sfx.js';
 import { createGuard, judge, punish, tooFast, refusedHTML, lockBannerHTML, lockedUntil } from '../fairplay.js';
 import { makeTimer, modesHTML, bindModes, savedLevel, saveLevel, endCardHTML, fmtTimeLong } from './free-common.js';
+import { submitRecord, recordEndHTML, fmtCs } from '../records.js';
 
 export const CW_LEVELS = [
   { name: 'Facile', desc: '7 mots, la 1re lettre de chaque mot est donnée', words: 7, maxSize: 11, reward: 40, firstLetters: true },
@@ -53,7 +54,7 @@ export function mount(view, { wallet }) {
     const first = pz.words[0];
     sel = { r: first.r, c: first.c }; dir = first.dir;
     const clueList = (d) => pz.words.filter((w) => w.dir === d).sort((a, b) => a.n - b.n).map((w) => `<li data-w="${pz.words.indexOf(w)}"><b>${w.n}.</b> ${esc(w.clue)} <small>(${w.word.length})</small></li>`).join('');
-    stage.innerHTML = `<div class="fg-bar"><span class="fg-timer" id="fg-time">0:00</span><span class="fg-info" id="cw-info"></span>
+    stage.innerHTML = `<div class="fg-bar"><span class="fg-timer" id="fg-time">0:00,00</span><span class="fg-info" id="cw-info"></span>
         <span class="fg-tools"><button class="btn btn-ghost btn-sm" id="cw-check">Vérifier</button><button class="btn btn-ghost btn-sm" id="cw-hint">Révéler une lettre</button></span></div>
       <div class="cw-clue" id="cw-clue"></div>
       <div class="cw-layout"><div class="cw-gridwrap"><div class="cw-grid" id="cw-grid" style="--cols:${pz.cols};--rows:${pz.rows}">${pz.grid.map((row, r) => row.map((ch, c) => ch ? `<div class="cw-cell" data-r="${r}" data-c="${c}">${pz.numbers[key(r, c)] ? `<i>${pz.numbers[key(r, c)]}</i>` : ''}<span></span></div>` : '<div class="cw-cell blk"></div>').join('')).join('')}</div>
@@ -188,12 +189,13 @@ export function mount(view, { wallet }) {
     const s = wallet.stats, k = 'crosswordBest' + lv, record = !hints && (!s[k] || sec < s[k]);
     if (record) s[k] = sec;
     wallet.freeReward('crossword', amount, { Won: 1, ['Won' + lv]: 1, Hints: hints, ...(hints ? {} : { Clean: 1, ...(lv === 2 ? { CleanHard: 1 } : {}) }) }, { ...(lv === 2 && record ? { feed: { txt: 'a battu son record aux', tail: `(difficile) : ${fmtTimeLong(sec)}` } } : {}), log: { lv, sec: v.sec, actions: v.actions, hints } });
+    const recRes = hints ? null : submitRecord(wallet, 'crossword', { l: lv, t: timer.elapsed * 1000 }); // record : au centième de seconde
     $('#cw-grid', stage).classList.add('solved');
     sfx.win(true); coinRain(20);
     setTimeout(() => {
       if (!alive) return;
       stage.insertAdjacentHTML('beforeend', endCardHTML({ win: true, title: 'Grille complète !', amount,
-        text: `${L.name} en <b>${fmtTimeLong(sec)}</b>${hints ? ` avec ${hints} lettre${hints > 1 ? 's' : ''} révélée${hints > 1 ? 's' : ''}` : ' sans aide'}.${record ? ' Nouveau record !' : ''}`,
+        text: `${L.name} en <b>${fmtCs(timer.elapsed * 1000)}</b>${hints ? ` avec ${hints} lettre${hints > 1 ? 's' : ''} révélée${hints > 1 ? 's' : ''} (pas de record avec de l'aide)` : ' sans aide'}.${recRes ? `<br>${recordEndHTML('crossword', recRes, wallet)}` : ''}`,
         extraBtn: '<button class="btn btn-ghost" data-modes>Changer de niveau</button>' }));
       $('[data-again]', stage).onclick = start;
       $('[data-modes]', stage).onclick = intro;

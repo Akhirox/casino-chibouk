@@ -2,6 +2,7 @@
 // Espace (ou Entrée) valide le mot. Des Brundles par mot juste ; le score = mots justes par minute.
 import { WORDS_EASY, WORDS_NORMAL, WORDS_HARD } from './typing-data.js';
 import { modesHTML, bindModes, savedLevel, saveLevel, endCardHTML } from './free-common.js';
+import { submitRecord, recordEndHTML, fmtCs } from '../records.js';
 import { randInt } from './slots-math.js';
 import { $, $$, esc, fmt, coinRain, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
@@ -17,7 +18,7 @@ const norm = (s) => s.normalize('NFC');
 
 export function mount(view, { wallet }) {
   let alive = true, lv = savedLevel('chibouk_typing_lv'), state = 'intro';
-  let words = [], idx = 0, ok = 0, ko = 0, keys = 0, t0 = 0, iv = null, guard = null, results = [];
+  let words = [], idx = 0, ok = 0, ko = 0, keys = 0, t0 = 0, iv = null, guard = null, results = [], lastOk = 0; // lastOk : moment du dernier mot juste (départage les records)
   view.innerHTML = `<div class="ty-wrap">
     <div class="game-head"><h1>Frappe <span>éclair</span></h1><div class="actions"><span class="gc-tag">Gratuit · +2 à +5 ${CUR} par mot juste</span></div></div>
     <div class="ty-stage" id="ty-stage"></div></div>`;
@@ -46,7 +47,7 @@ export function mount(view, { wallet }) {
 
   function start() {
     if (lockedUntil(wallet, 'typing')) { intro(); return; }
-    state = 'ready'; words = draw(); idx = 0; ok = 0; ko = 0; keys = 0; t0 = 0; results = [];
+    state = 'ready'; words = draw(); idx = 0; ok = 0; ko = 0; keys = 0; t0 = 0; results = []; lastOk = 0;
     clearInterval(iv);
     stage.innerHTML = `<div class="ty-play">
       <div class="ty-hud"><div><span>Temps</span><b id="ty-time">${DURATION}</b></div><div><span>Mots justes</span><b id="ty-ok" class="pos">0</b></div><div><span>Fautes</span><b id="ty-ko" class="neg">0</b></div><div><span>Gain</span><b id="ty-gain" class="gold">0</b></div></div>
@@ -92,7 +93,7 @@ export function mount(view, { wallet }) {
     const s = span(idx);
     if (s) { s.classList.remove('cur', 'err'); s.classList.add(good ? 'ok' : 'ko'); }
     results.push(good);
-    if (good) { ok++; sfx.tick(); } else ko++;
+    if (good) { ok++; lastOk = performance.now() - t0; sfx.tick(); } else ko++;
     idx++;
     $('#ty-ok', stage).textContent = ok; $('#ty-ko', stage).textContent = ko;
     $('#ty-gain', stage).textContent = fmt(ok * TYPING_LEVELS[lv].per);
@@ -119,10 +120,11 @@ export function mount(view, { wallet }) {
     if (v.flag === 'fast') { tooFast(wallet, 'typing', lv, v); stage.innerHTML = refusedHTML(v); $('[data-again]', stage).onclick = start; return; }
     const s = wallet.stats, key = 'typingBest' + lv, record = ok > (s[key] || 0);
     if (record) s[key] = ok;
+    const recRes = ok > 0 ? submitRecord(wallet, 'typing', { l: lv, v: ok, t: lastOk }) : null; // record : mots, puis moment du dernier mot juste
     wallet.freeReward('typing', amount, { Words: ok, Errors: ko, Keys: keys, ['Words' + lv]: ok, ['Rounds' + lv]: 1 },
       { ...(record && ok >= 40 ? { feed: { txt: `a tapé ${ok} mots en une minute à la`, tail: `(${L.name.toLowerCase()})` } } : {}), log: { lv, sec: DURATION, actions: r.actions } });
     stage.innerHTML = (endCardHTML({ win: record && ok > 0, title: `${ok} mots par minute${record && ok ? ' : record !' : ''}`, amount,
-      text: `Précision : <b>${acc} %</b> (${ok} justes, ${ko} faute${ko > 1 ? 's' : ''}) · niveau ${L.name.toLowerCase()}${s[key] ? ` · record ${s[key]}` : ''}.`, extraBtn: '<button class="btn btn-ghost" data-modes>Changer de niveau</button>' }));
+      text: `Précision : <b>${acc} %</b> (${ok} justes, ${ko} faute${ko > 1 ? 's' : ''}) · niveau ${L.name.toLowerCase()}${ok ? ` · dernier mot juste à ${fmtCs(lastOk)}` : ''}.${recRes ? `<br>${recordEndHTML('typing', recRes, wallet)}` : ''}`, extraBtn: '<button class="btn btn-ghost" data-modes>Changer de niveau</button>' }));
     $('[data-again]', stage).onclick = start;
     $('[data-modes]', stage).onclick = intro;
     if (amount) { sfx.win(record); coinRain(Math.min(40, 8 + ok / 3)); }

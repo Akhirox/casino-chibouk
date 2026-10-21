@@ -3,9 +3,10 @@
 import { CONFIG } from '../config.js';
 import { gotHTML, withFreeBonus } from '../rewards.js';
 import { randInt } from './slots-math.js';
-import { monkeySVG } from '../art.js';
+import { monkeySVG, icon } from '../art.js';
 import { $, $$, fmt, money, coinRain, toast, esc, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
+import { submitRecord, recordEndHTML, fmtCs } from '../records.js';
 import { createGuard, judgeReactions, punish, tooFast, refusedHTML, lockBannerHTML, lockedUntil } from '../fairplay.js';
 
 export const shuffle = (arr) => { const a = [...arr]; for (let i = a.length - 1; i > 0; i--) { const j = randInt(i + 1); [a[i], a[j]] = [a[j], a[i]]; } return a; };
@@ -67,6 +68,7 @@ export function mountMCQ(view, { wallet }, opt) {
   const BONUS = () => mode.perfectBonus || CONFIG.QUIZ_PERFECT_BONUS;
   let deadline = 0, raf = null, nextTimer = null, credited = false, tickFn = null;
   let guard = null, rts = [], shownAt = 0; // fair-play : temps de réponse de chaque question
+  let spent = 0, recRes = null; // chrono de la partie (somme des temps de réponse, au centième) pour les records
 
   view.innerHTML = `
   <div class="qz-wrap mcq ${opt.kind}">
@@ -123,7 +125,7 @@ export function mountMCQ(view, { wallet }, opt) {
     state = 'loading';
     questions = await opt.build(data, N, mode.key); // peut être asynchrone (préchargement des images)
     if (!alive) return;
-    qi = 0; correct = 0; results = []; credited = false;
+    qi = 0; correct = 0; results = []; credited = false; spent = 0; recRes = null;
     guard && guard.destroy(); guard = createGuard(view); rts = [];
     ask();
   }
@@ -132,7 +134,7 @@ export function mountMCQ(view, { wallet }, opt) {
     state = 'ask';
     const q = questions[qi];
     body.innerHTML = `
-      <div class="qz-q mcq-q"><span class="qz-num">Question ${qi + 1}/${N}</span>
+      <div class="qz-q mcq-q"><span class="qz-num">Question ${qi + 1}/${N} <span class="qz-chrono" title="Chrono de la partie (sert à départager les records)">${icon('hourglass')}<b id="qz-chrono">${fmtCs(spent)}</b></span></span>
         <div class="mcq-label">${esc(q.label)}</div>
         ${q.big || !(q.img || q.imgP) ? `<div class="mcq-big">${esc(q.big || '')}</div>` : ''}${q.img || q.imgP ? `<div class="mcq-img"><img ${q.img ? `src="${esc(q.img)}"` : ''} alt="${esc(q.alt || 'Image de la question')}" referrerpolicy="no-referrer" onerror="this.parentNode.remove()"></div>` : ''}${q.sub ? `<div class="mcq-sub">${esc(q.sub)}</div>` : ''}
         <div class="qz-verdict" id="qz-verdict"></div></div>
@@ -162,6 +164,7 @@ export function mountMCQ(view, { wallet }, opt) {
       const bar = $('#qz-bar', view), sec = $('#qz-sec', view);
       if (bar) { bar.style.width = (left / (SECS() * 1000)) * 100 + '%'; bar.classList.toggle('hurry', left < 3000); }
       if (sec) sec.textContent = Math.ceil(left / 1000);
+      const ch = $('#qz-chrono', view); if (ch) ch.textContent = fmtCs(spent + Math.min(SECS() * 1000, now - shownAt));
       if (left <= 0) { answer(null); return; }
       raf = requestAnimationFrame(tick);
     };
@@ -199,6 +202,8 @@ export function mountMCQ(view, { wallet }, opt) {
       }
     }
     if (!timeout) rts.push(performance.now() - shownAt);
+    spent += timeout ? SECS() * 1000 : Math.min(SECS() * 1000, performance.now() - shownAt);
+    { const ch = $('#qz-chrono', view); if (ch) ch.textContent = fmtCs(spent); }
     const right = text ? q.accept[0] : isMap ? q.right : q.choices[q.answer];
     if (isMap && opt.map) opt.map.reveal(q, i, ok);
     results.push(ok);
@@ -238,7 +243,10 @@ export function mountMCQ(view, { wallet }, opt) {
     const amount = correct * PER() + (perfect ? BONUS() : 0);
     const extra = { Correct: correct, Perfect: perfect ? 1 : 0 };
     if (mode.stat) { extra[mode.stat + 'Correct'] = correct; extra[mode.stat + 'Perfect'] = perfect ? 1 : 0; }
-    return settle(amount, extra);
+    const res = settle(amount, extra);
+    // record : niveau, puis bonnes réponses, puis chrono au centième
+    if (!res.refused && correct > 0) recRes = submitRecord(wallet, opt.kind, { l: opt.modes ? Math.max(0, opt.modes.indexOf(mode)) : 0, v: correct, t: spent });
+    return res;
   }
 
   function finish() {
@@ -256,6 +264,7 @@ export function mountMCQ(view, { wallet }, opt) {
     body.innerHTML = `<div class="qz-card">${monkeySVG(perfect ? { crown: true, fur: '#c98a00', face: '#ffe6a6', ear: '#ffd36b' } : { wink: correct >= N / 2 })}
       <h2>${correct}/${N} bonnes réponses${perfect ? ' : sans-faute !' : ''}</h2>
       <p>${amount > 0 ? `${gotHTML(amount)} ajoutés à ton solde${perfect ? ` (dont ${BONUS()} de bonus)` : ''}.` : 'Pas de Brundles cette fois, retente ta chance !'}</p>
+      <p class="qz-time">Chrono : <b>${fmtCs(spent)}</b>${recRes ? `<br>${recordEndHTML(opt.kind, recRes, wallet)}` : ''}</p>
       <div class="qz-end-btns"><button class="btn btn-gold btn-lg" id="qz-again">Rejouer${opt.modes ? ` (${mode.label})` : ''}</button>${opt.modes ? '<button class="btn btn-ghost" id="qz-modes">Changer de mode</button>' : ''}</div></div>`;
     $('#qz-again', view).onclick = start;
     if (opt.modes) $('#qz-modes', view).onclick = intro;

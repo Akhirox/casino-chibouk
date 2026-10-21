@@ -73,7 +73,7 @@ import { setRewardWallet, bonusHTML, questInfo, challengeInfo } from './rewards.
 import { tagsHTML } from './tags.js';
 import { receiveGifts } from './gifts.js';
 import { mountGoals } from './goals.js';
-import { onRecords, recordsOf, RECORD_CATS } from './records.js';
+import { onRecords, recordsOf, RECORD_CATS, trackCounters } from './records.js';
 
 const app = $('#app');
 let backend = null;
@@ -86,6 +86,7 @@ let tracker = null;
 let achievements = null;
 let inboxTimer = null;
 let tips = null;
+let offCounters = null; // suivi des records « compteurs » (séries, Pinpoint, casse-briques)
 let updater = null;
 let quests = null;
 let vip = null;
@@ -405,6 +406,7 @@ function renderShell() {
   // records (tags et bonus de +5 %) : liste des joueurs relue au démarrage (cache de 10 min), puis toutes les 15 min
   setTimeout(() => wallet && getPlayers(backend, wallet).catch(() => {}), 6000);
   let myRecs = null;
+  offCounters && offCounters(); offCounters = trackCounters(wallet); // séries et compteurs : date à laquelle le record est atteint
   onRecords(() => {
     if (!wallet) return;
     const now = recordsOf(wallet.uid).map((c) => c.k);

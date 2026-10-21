@@ -6,6 +6,7 @@ import { monkeySVG } from '../art.js';
 import { sfx } from '../sfx.js';
 import { createGuard, judge, punish, tooFast, refusedHTML, lockBannerHTML, lockedUntil } from '../fairplay.js';
 import { makeTimer, modesHTML, bindModes, savedLevel, saveLevel, endCardHTML, speedBonus, fmtTimeLong } from './free-common.js';
+import { submitRecord, recordEndHTML, fmtCs } from '../records.js';
 
 export const QUEENS_LEVELS = [
   { n: 7, name: '7 × 7', desc: 'Pour s\'échauffer', reward: 60, par: 120 },
@@ -52,7 +53,7 @@ export function mount(view, { wallet }) {
     history = [];
     state = 'play';
     const n = L.n, R = puzzle.regions;
-    stage.innerHTML = `<div class="fg-bar"><span class="fg-timer" id="fg-time">0:00</span><span class="fg-info" id="fg-info">0 / ${n} reines</span>
+    stage.innerHTML = `<div class="fg-bar"><span class="fg-timer" id="fg-time">0:00,00</span><span class="fg-info" id="fg-info">0 / ${n} reines</span>
         <span class="fg-tools"><button class="btn btn-ghost btn-sm" id="fg-undo">Annuler</button><button class="btn btn-ghost btn-sm" id="fg-clear">Tout effacer</button><button class="btn btn-ghost btn-sm" id="fg-rules">Règles</button></span></div>
       <div class="qn-board" id="qn-board" style="--n:${n}">${R.map((row, r) => row.map((g, c) => {
         const b = [r === 0 || R[r - 1][c] !== g ? 't' : '', c === n - 1 || R[r][c + 1] !== g ? 'r' : '', r === n - 1 || R[r + 1][c] !== g ? 'b' : '', c === 0 || R[r][c - 1] !== g ? 'l' : ''].filter(Boolean).map((x) => 'w' + x).join(' ');
@@ -144,12 +145,13 @@ export function mount(view, { wallet }) {
     const s = wallet.stats, key = 'queensBest' + L.n, record = !s[key] || sec < s[key];
     if (record) s[key] = sec;
     wallet.freeReward('queens', amount, { Won: 1, ['Won' + L.n]: 1 }, { ...(L.n === 9 && record ? { feed: { txt: `a battu son record en 9×9 à`, tail: `: ${fmtTimeLong(sec)}` } } : {}), log: { lv, sec: v.sec, actions: v.actions, fastShare: v.fastShare } });
+    const recRes = submitRecord(wallet, 'queens', { l: lv, t: timer.elapsed * 1000 }); // record : au centième de seconde
     $('#qn-board', stage).classList.add('solved');
     sfx.win(true); coinRain(25);
     setTimeout(() => {
       if (!alive) return;
       stage.insertAdjacentHTML('beforeend', endCardHTML({ win: true, title: 'Grille résolue !', amount,
-        text: `${L.name} en <b>${fmtTimeLong(sec)}</b>${bonus ? ` (bonus de vitesse +${fmt(bonus)})` : ''}.${record ? ' Nouveau record !' : ` Record : ${fmtTimeLong(s[key])}.`}`,
+        text: `${L.name} en <b>${fmtCs(timer.elapsed * 1000)}</b>${bonus ? ` (bonus de vitesse +${fmt(bonus)})` : ''}.<br>${recordEndHTML('queens', recRes, wallet)}`,
         extraBtn: '<button class="btn btn-ghost" data-modes>Changer de taille</button>' }));
       $('[data-again]', stage).onclick = start;
       $('[data-modes]', stage).onclick = intro;

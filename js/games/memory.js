@@ -4,6 +4,7 @@ import { icon, monkeySVG } from '../art.js';
 import { sfx } from '../sfx.js';
 import { createGuard, judge, punish, tooFast, refusedHTML, lockBannerHTML, lockedUntil } from '../fairplay.js';
 import { makeTimer, modesHTML, bindModes, savedLevel, saveLevel, endCardHTML, fmtTimeLong } from './free-common.js';
+import { submitRecord, recordEndHTML, fmtCs } from '../records.js';
 
 export const MEMORY_LEVELS = [
   { name: 'Facile', cols: 4, rows: 4, reward: 30, desc: '8 paires' },
@@ -46,7 +47,7 @@ export function mount(view, { wallet }) {
     const faces = shuffle([...FACES]).slice(0, pairs);
     deck = shuffle([...faces, ...faces].map((f, i) => ({ id: i, face: f[0], color: f[1], done: false })));
     open = []; found = 0; moves = 0; lock = false; state = 'play';
-    stage.innerHTML = `<div class="fg-bar"><span class="fg-timer" id="fg-time">0:00</span><span class="fg-info" id="mm-info"></span>
+    stage.innerHTML = `<div class="fg-bar"><span class="fg-timer" id="fg-time">0:00,00</span><span class="fg-info" id="mm-info"></span>
         <span class="fg-tools"><button class="btn btn-ghost btn-sm" id="mm-restart">Recommencer</button></span></div>
       <div class="mm-board" style="--cols:${L.cols}">${deck.map((c, i) => `<button type="button" class="mm-card" data-i="${i}" aria-label="carte"><span class="mm-inner"><span class="mm-back">${monkeySVG({})}</span><span class="mm-front" style="--fc:${c.color}">${icon(c.face)}</span></span></button>`).join('')}</div>`;
     timer && timer.destroy();
@@ -105,9 +106,10 @@ export function mount(view, { wallet }) {
     const s = wallet.stats, key = 'memoryBest' + lv, record = !s[key] || moves < s[key];
     if (record) s[key] = moves;
     wallet.freeReward('memory', amount, { Won: 1, ['Won' + lv]: 1, Moves: moves }, { ...(lv === 2 && record ? { feed: { txt: 'a battu son record au', tail: `difficile : ${moves} coups` } } : {}), log: { lv, sec: v.sec, actions: v.actions, fastShare: v.fastShare, moves } });
+    const recRes = submitRecord(wallet, 'memory', { l: lv, v: moves, t: timer.elapsed * 1000 }); // record : coups, puis chrono au centième
     sfx.win(true); coinRain(20);
     stage.insertAdjacentHTML('beforeend', endCardHTML({ win: true, title: 'Toutes les paires !', amount,
-      text: `${L.name} en <b>${moves} coups</b> et ${fmtTimeLong(sec)}${bonus ? ` (bonus de précision +${fmt(bonus)})` : ''}.${record ? ' Nouveau record !' : ` Record : ${s[key]} coups.`}`,
+      text: `${L.name} en <b>${moves} coups</b> et <b>${fmtCs(timer.elapsed * 1000)}</b>${bonus ? ` (bonus de précision +${fmt(bonus)})` : ''}.<br>${recordEndHTML('memory', recRes, wallet)}`,
       extraBtn: '<button class="btn btn-ghost" data-modes>Changer de niveau</button>' }));
     $('[data-again]', stage).onclick = start;
     $('[data-modes]', stage).onclick = intro;

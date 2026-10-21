@@ -5,6 +5,7 @@ import { monkeySVG } from '../art.js';
 import { sfx } from '../sfx.js';
 import { createGuard, judge, punish, tooFast, refusedHTML, lockBannerHTML, lockedUntil } from '../fairplay.js';
 import { makeTimer, modesHTML, bindModes, savedLevel, saveLevel, endCardHTML, speedBonus, fmtTimeLong } from './free-common.js';
+import { submitRecord, recordEndHTML, fmtCs } from '../records.js';
 
 export const SUDOKU_INFO = [
   { ...SUDOKU_LEVELS[0], desc: '40 chiffres donnés', reward: 80, par: 360 },
@@ -50,7 +51,7 @@ export function mount(view, { wallet }) {
     g = [...pz.puzzle];
     notes = Array.from({ length: 81 }, () => new Set());
     sel = g.findIndex((v) => !v); noteMode = false; history = []; state = 'play';
-    stage.innerHTML = `<div class="fg-bar"><span class="fg-timer" id="fg-time">0:00</span><span class="fg-info">${SUDOKU_INFO[lv].name}</span>
+    stage.innerHTML = `<div class="fg-bar"><span class="fg-timer" id="fg-time">0:00,00</span><span class="fg-info">${SUDOKU_INFO[lv].name}</span>
         <span class="fg-tools"><button class="btn btn-ghost btn-sm" id="fg-undo">Annuler</button><button class="btn btn-ghost btn-sm" id="fg-rules">Aide</button></span></div>
       <div class="sd-layout"><div class="sd-board" id="sd-board">${[...Array(81).keys()].map((i) => `<div class="sd-cell ${pz.puzzle[i] ? 'given' : ''} ${i % 9 === 2 || i % 9 === 5 ? 'br' : ''} ${Math.floor(i / 9) === 2 || Math.floor(i / 9) === 5 ? 'bb' : ''}" data-i="${i}"></div>`).join('')}</div>
       <div class="sd-pad"><div class="sd-nums">${[1, 2, 3, 4, 5, 6, 7, 8, 9].map((d) => `<button type="button" data-d="${d}"><b>${d}</b><small></small></button>`).join('')}</div>
@@ -129,12 +130,13 @@ export function mount(view, { wallet }) {
     if (record) s[key] = sec;
     sel = -1; render();
     wallet.freeReward('sudoku', amount, { Won: 1, ['Won' + lv]: 1 }, { ...(lv === 2 && record ? { feed: { txt: 'a battu son record au', tail: `difficile : ${fmtTimeLong(sec)}` } } : {}), log: { lv, sec: v.sec, actions: v.actions, fastShare: v.fastShare } });
+    const recRes = submitRecord(wallet, 'sudoku', { l: lv, t: timer.elapsed * 1000 }); // record : au centième de seconde
     $('#sd-board', stage).classList.add('solved');
     sfx.win(true); coinRain(lv === 2 ? 45 : 25);
     setTimeout(() => {
       if (!alive) return;
       stage.insertAdjacentHTML('beforeend', endCardHTML({ win: true, title: 'Sudoku résolu !', amount,
-        text: `${L.name} en <b>${fmtTimeLong(sec)}</b>${bonus ? ` (bonus de vitesse +${fmt(bonus)})` : ''}.${record ? ' Nouveau record !' : ` Record : ${fmtTimeLong(s[key])}.`}`,
+        text: `${L.name} en <b>${fmtCs(timer.elapsed * 1000)}</b>${bonus ? ` (bonus de vitesse +${fmt(bonus)})` : ''}.<br>${recordEndHTML('sudoku', recRes, wallet)}`,
         extraBtn: '<button class="btn btn-ghost" data-modes>Changer de niveau</button>' }));
       $('[data-again]', stage).onclick = start;
       $('[data-modes]', stage).onclick = intro;

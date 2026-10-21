@@ -6,6 +6,7 @@ import { bombTileSVG, monkeySVG } from '../art.js';
 import { sfx } from '../sfx.js';
 import { createGuard, judge, punish, tooFast, refusedHTML, lockBannerHTML, lockedUntil } from '../fairplay.js';
 import { makeTimer, modesHTML, bindModes, savedLevel, saveLevel, endCardHTML, fmtTime, fmtTimeLong } from './free-common.js';
+import { submitRecord, recordEndHTML, fmtCs } from '../records.js';
 
 export const MS_LEVELS = [
   { name: 'Facile', rows: 9, cols: 9, mines: 10, limit: 180, reward: 100 },
@@ -183,13 +184,14 @@ export function mount(view, { wallet }) {
     const s = wallet.stats, key = 'demineurBest' + lv, record = !s[key] || sec < s[key];
     if (record) s[key] = sec;
     wallet.freeReward('demineur', amount, { Won: 1, ['Won' + lv]: 1 }, { ...(lv >= 1 && record ? { feed: { txt: `a battu son record en grille ${['facile', 'moyenne', 'difficile'][lv]} au`, tail: `: ${fmtTimeLong(sec)}` } } : {}), log: { lv, sec: v.sec, actions: v.actions, fastShare: v.fastShare } });
+    const recRes = submitRecord(wallet, 'demineur', { l: lv, t: timer.elapsed * 1000 }); // record : au centième de seconde
     render();
     $('#ms-board', stage).classList.add('solved');
     sfx.win(true); coinRain(lv === 2 ? 50 : 25);
     setTimeout(() => {
       if (!alive) return;
       stage.insertAdjacentHTML('beforeend', endCardHTML({ win: true, title: 'Terrain déminé !', amount,
-        text: `${L.name} en <b>${fmtTimeLong(sec)}</b> (bonus de temps +${fmt(bonus)}).${record ? ' Nouveau record !' : ` Record : ${fmtTimeLong(s[key])}.`}`,
+        text: `${L.name} en <b>${fmtCs(timer.elapsed * 1000)}</b> (bonus de temps +${fmt(bonus)}).<br>${recordEndHTML('demineur', recRes, wallet)}`,
         extraBtn: '<button class="btn btn-ghost" data-modes>Changer de niveau</button>' }));
       $('[data-again]', stage).onclick = start;
       $('[data-modes]', stage).onclick = intro;

@@ -5,29 +5,17 @@ export const VERSION = '33';
 
 export const CHANGELOG = [
   {
-    v: '33', date: '21 octobre 2026', title: 'Culture G plus souple, records absolus',
-    groups: [
-      ['Culture G', [
-        '3 essais par question : une mauvaise réponse ne passe plus directement à la suivante, tu peux retenter tant qu\'il reste du temps.',
-        '20 secondes par question (au lieu de 30).',
-        'Les réponses incomplètes mais claires sont acceptées : « crise des missiles » pour « La crise des missiles de Cuba », « seconde guerre » pour « Seconde Guerre mondiale ». Un mot isolé trop court (« Jules » pour « Jules César ») ne suffit pas.',
-      ]],
-      ['Records', [
-        'Plus de moyennes : seuls les records absolus comptent (meilleur temps, meilleur score, plus grand nombre). Aux quiz, le record est le nombre de sans-faute ; à Pinpoint, le nombre de mots trouvés dès le 1er indice.',
-        'Plus de records pour les jeux de casino : uniquement les mini-jeux.',
-      ]],
-    ],
-  },
-  {
-    v: '32', date: '21 octobre 2026', title: 'Records et Culture G',
+    v: '33', date: '21 octobre 2026', title: 'Records et Culture G',
     groups: [
       ['Nouveau mini-jeu : Culture G', [
         '10 questions de culture générale à écrire, tirées de 1 718 questions sur 26 thèmes (cinéma, histoire, sciences, sport, jeux vidéo, manga, gastronomie…).',
+        '20 secondes et 3 essais par question : une mauvaise réponse ne passe pas directement à la suivante, tu peux retenter tant qu\'il reste du temps.',
         'Accents, majuscules, articles (le, la, un…), tirets, fautes de frappe (selon la longueur du mot) et nombres en lettres ou en chiffres sont tolérés. Les années et les nombres doivent être exacts.',
-        '30 secondes par question, +40 Brundles par bonne réponse, +300 pour un sans-faute. Les questions déjà vues sur ton appareil ne reviennent pas avant longtemps.',
+        'Les réponses incomplètes mais claires sont acceptées : « crise des missiles » pour « La crise des missiles de Cuba ». Un mot isolé trop court (« Jules » pour « Jules César ») ne suffit pas.',
+        '+40 Brundles par bonne réponse, +300 pour un sans-faute. Les questions déjà vues sur ton appareil ne reviennent pas avant longtemps.',
       ]],
       ['Records', [
-        'Le meilleur joueur de chaque catégorie détient le record : moyenne aux quiz, meilleur temps aux puzzles (niveau le plus dur), record au Snake, à Frappe éclair, au Plus ou moins, série au Mot du jour… et plus gros multiplicateur de chaque jeu de casino.',
+        'Le meilleur joueur de chaque mini-jeu détient le record : uniquement des records absolus (meilleur score, meilleur temps ou plus grand nombre, jamais une moyenne). Pas de records pour les jeux de casino.',
         'Chaque record détenu affiche un tag doré sur ton profil et donne +5 % sur les gains des mini-jeux et des défis de la jungle (jusqu\'à +50 %). Une notification te prévient quand tu en gagnes ou en perds un.',
       ]],
       ['Craps : stratégie de l\'auto', [

@@ -5,6 +5,7 @@ import { randInt } from './slots-math.js';
 import { icon, monkeySVG } from '../art.js';
 import { $, $$, fmt, money, coinRain, CUR } from '../ui.js';
 import { sfx } from '../sfx.js';
+import { submitRecord, recordEndHTML, fmtCs } from '../records.js';
 import { createGuard, judgeReactions, punish, tooFast, refusedHTML, lockBannerHTML, lockedUntil } from '../fairplay.js';
 
 const r = (a, b) => a + randInt(b - a + 1);
@@ -90,10 +91,10 @@ export function mount(view, { wallet }) {
     renderDots();
   }
 
-  let guard = null, rts = [], shownAt = 0;
+  let guard = null, rts = [], shownAt = 0, spent = 0, recRes = null; // spent : chrono de la partie (records)
   function start() {
     if (lockedUntil(wallet, 'quiz')) { intro(); return; }
-    qi = 0; correct = 0; results = []; credited = false;
+    qi = 0; correct = 0; results = []; credited = false; spent = 0; recRes = null;
     guard && guard.destroy(); guard = createGuard(view); rts = [];
     sfx.click();
     ask();
@@ -103,7 +104,7 @@ export function mount(view, { wallet }) {
     state = 'ask';
     current = modeKey === 'easy' ? makeProblem(qi < 6 || randInt(3) > 0 ? 0 : 1) : modeKey === 'hard' ? (qi < 2 ? makeProblem(2) : makeHard()) : makeProblem(qi < 4 ? 0 : qi < 8 ? 1 : 2);
     body.innerHTML = `
-      <div class="qz-q"><span class="qz-num">Question ${qi + 1}/${N}</span><div class="qz-expr">${current.q} = <span class="qz-ans" id="qz-ans">?</span></div></div>
+      <div class="qz-q"><span class="qz-num">Question ${qi + 1}/${N} <span class="qz-chrono" title="Chrono de la partie (sert à départager les records)">${icon('hourglass')}<b id="qz-chrono">${fmtCs(spent)}</b></span></span><div class="qz-expr">${current.q} = <span class="qz-ans" id="qz-ans">?</span></div></div>
       <div class="qz-timer"><div class="qz-bar" id="qz-bar"></div><span id="qz-sec">${SECS}</span></div>
       <form class="qz-form" id="qz-form" autocomplete="off">
         <input id="qz-input" class="bet-input qz-input" type="text" inputmode="numeric" pattern="[0-9]*" maxlength="5" aria-label="Ta réponse" autofocus>
@@ -132,6 +133,7 @@ export function mount(view, { wallet }) {
       const bar = $('#qz-bar', view), sec = $('#qz-sec', view);
       if (bar) { bar.style.width = (left / (SECS * 1000)) * 100 + '%'; bar.classList.toggle('hurry', left < 3000); }
       if (sec) sec.textContent = Math.ceil(left / 1000);
+      const ch = $('#qz-chrono', view); if (ch) ch.textContent = fmtCs(spent + Math.min(SECS * 1000, now - shownAt));
       if (left <= 0) { answer(null); return; }
       raf = requestAnimationFrame(tick);
     };
@@ -145,6 +147,8 @@ export function mount(view, { wallet }) {
     const timeout = val === null;
     const ok = !timeout && val !== '' && +val === current.ans;
     if (!timeout) rts.push(performance.now() - shownAt);
+    spent += timeout ? SECS * 1000 : Math.min(SECS * 1000, performance.now() - shownAt);
+    { const ch = $('#qz-chrono', view); if (ch) ch.textContent = fmtCs(spent); }
     results.push(ok);
     if (ok) correct++;
     const q = $('.qz-q', view);
@@ -166,7 +170,10 @@ export function mount(view, { wallet }) {
     credited = true;
     const perfect = correct === N;
     const amount = correct * M().per + (perfect ? M().bonus : 0);
-    return settle(amount, { Correct: correct, Perfect: perfect ? 1 : 0, [M().stat + 'Correct']: correct, [M().stat + 'Perfect']: perfect ? 1 : 0 });
+    const res = settle(amount, { Correct: correct, Perfect: perfect ? 1 : 0, [M().stat + 'Correct']: correct, [M().stat + 'Perfect']: perfect ? 1 : 0 });
+    // record : niveau, puis bonnes réponses, puis chrono au centième
+    if (!res.refused && correct > 0) recRes = submitRecord(wallet, 'quiz', { l: Object.keys(QUIZ_MODES).indexOf(modeKey), v: correct, t: spent });
+    return res;
   }
   // contrôle fair-play (temps de réponse) avant la récompense
   function settle(amount, extra, partial = false) {
@@ -190,6 +197,7 @@ export function mount(view, { wallet }) {
     body.innerHTML = `<div class="qz-card">${monkeySVG(perfect ? { crown: true, fur: '#c98a00', face: '#ffe6a6', ear: '#ffd36b' } : { wink: correct >= N / 2 })}
       <h2>${correct}/${N} bonnes réponses${perfect ? ' : sans-faute !' : ''}</h2>
       <p>${amount > 0 ? `${gotHTML(amount)} ajoutés à ton solde${perfect ? ` (dont ${M().bonus} de bonus)` : ''}.` : 'Pas de Brundles cette fois, retente ta chance !'}</p>
+      <p class="qz-time">Chrono : <b>${fmtCs(spent)}</b>${recRes ? `<br>${recordEndHTML('quiz', recRes, wallet)}` : ''}</p>
       <div class="qz-end-btns"><button class="btn btn-gold btn-lg" id="qz-again">Rejouer (${M().label})</button><button class="btn btn-ghost" id="qz-modes">Changer de mode</button></div></div>`;
     $('#qz-again', view).onclick = start;
     $('#qz-modes', view).onclick = intro;

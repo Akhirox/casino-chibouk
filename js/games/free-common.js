@@ -6,6 +6,9 @@ import { withFreeBonus, gotHTML } from '../rewards.js';
 export const fmtTime = (sec) => { sec = Math.max(0, Math.round(sec)); const m = Math.floor(sec / 60), s = sec % 60; return `${m}:${String(s).padStart(2, '0')}`; };
 export const fmtTimeLong = (sec) => { sec = Math.max(0, Math.round(sec)); const m = Math.floor(sec / 60), s = sec % 60; return m ? `${m} min ${String(s).padStart(2, '0')}` : `${s} s`; };
 
+// Chrono au centième (« 1:02,35 ») : les records se départagent au centième de seconde
+export const fmtTimeCs = (sec) => { const cs = Math.max(0, Math.floor(sec * 100)), m = Math.floor(cs / 6000), x = Math.floor((cs % 6000) / 100); return `${m}:${String(x).padStart(2, '0')},${String(cs % 100).padStart(2, '0')}`; };
+
 // Chrono (ou compte à rebours si limit) affiché dans `el`, mis en pause quand l'onglet est caché
 export function makeTimer(el, { limit = 0, onEnd } = {}) {
   let start = 0, acc = 0, running = false, iv = null;
@@ -13,12 +16,14 @@ export function makeTimer(el, { limit = 0, onEnd } = {}) {
   const draw = () => {
     if (!el) return;
     const e = elapsed();
-    el.textContent = limit ? fmtTime(limit - e) : fmtTime(e);
+    el.textContent = limit ? fmtTime(limit - e) : fmtTimeCs(e);
     el.classList.toggle('low', !!limit && limit - e <= Math.min(30, limit * 0.15));
     if (limit && e >= limit && running) { stop(); onEnd && onEnd(); }
   };
-  function go() { if (running) return; running = true; start = performance.now(); iv = setInterval(draw, 250); draw(); }
-  function stop() { if (!running) return; acc += (performance.now() - start) / 1000; running = false; clearInterval(iv); draw(); }
+  // chrono : rafraîchi à chaque image (centièmes) ; compte à rebours : 4 fois par seconde
+  const loop = () => { if (!running) return; draw(); iv = requestAnimationFrame(loop); };
+  function go() { if (running) return; running = true; start = performance.now(); if (limit) iv = setInterval(draw, 250); else iv = requestAnimationFrame(loop); draw(); }
+  function stop() { if (!running) return; acc += (performance.now() - start) / 1000; running = false; if (limit) clearInterval(iv); else cancelAnimationFrame(iv); draw(); }
   const onVis = () => { if (document.visibilityState === 'hidden' && running) { stop(); paused = true; } else if (document.visibilityState === 'visible' && paused) { paused = false; go(); } };
   let paused = false;
   document.addEventListener('visibilitychange', onVis);

@@ -227,7 +227,7 @@ js/wallet.js               solde, stats, sauvegarde groupée
 js/farm-core.js            ferme à bananes : règles, coûts, production (sans affichage)
 js/farm.js                 ferme à bananes : page, dessins, marché, voisins
 js/loot.js                 caisses : contenu, probabilités, application des lots et des boosts
-js/records.js              records absolus des mini-jeux (pas de moyennes, pas de casino) : tags du profil et +5 % par record (max +50 %)
+js/records.js              records absolus des mini-jeux (stats.rec : niveau, score, chrono au centième, date) : un seul détenteur par jeu, tags du profil et +5 % par record (max +50 %)
 js/goals.js                défis à relever affichés sur la page de chaque jeu
 js/rewards.js              affichage « base → avec bonus » des récompenses gratuites et détail des bonus
 js/cases.js                caisses : page d'ouverture (bande animée)

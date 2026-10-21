@@ -7,6 +7,7 @@ import { monkeySVG } from '../art.js';
 import { sfx } from '../sfx.js';
 import { createGuard, judge, punish, tooFast, refusedHTML, lockBannerHTML, lockedUntil } from '../fairplay.js';
 import { makeTimer, modesHTML, bindModes, savedLevel, saveLevel, endCardHTML, speedBonus, fmtTimeLong } from './free-common.js';
+import { submitRecord, recordEndHTML, fmtCs } from '../records.js';
 
 export const TANGO_LEVELS = [
   { name: 'Facile', desc: 'Beaucoup de cases déjà remplies', reward: 40, par: 90 },
@@ -51,7 +52,7 @@ export function mount(view, { wallet }) {
     state = 'play';
     const signAt = {};
     for (const k of pz.cons) signAt[`${k.r1},${k.c1},${k.r2 === k.r1 ? 'h' : 'v'}`] = k;
-    stage.innerHTML = `<div class="fg-bar"><span class="fg-timer" id="fg-time">0:00</span><span class="fg-info" id="fg-info"></span>
+    stage.innerHTML = `<div class="fg-bar"><span class="fg-timer" id="fg-time">0:00,00</span><span class="fg-info" id="fg-info"></span>
         <span class="fg-tools"><button class="btn btn-ghost btn-sm" id="fg-undo">Annuler</button><button class="btn btn-ghost btn-sm" id="fg-clear">Tout effacer</button><button class="btn btn-ghost btn-sm" id="fg-rules">Règles</button></span></div>
       <div class="tg-board" id="tg-board">${[...Array(N * N).keys()].map((i) => {
         const r = Math.floor(i / N), c = i % N, h = signAt[`${r},${c},h`], v = signAt[`${r},${c},v`];
@@ -143,12 +144,13 @@ export function mount(view, { wallet }) {
     const s = wallet.stats, key = 'tangoBest' + lv, record = !s[key] || sec < s[key];
     if (record) s[key] = sec;
     wallet.freeReward('tango', amount, { Won: 1, ['Won' + lv]: 1 }, { ...(lv === 2 && record ? { feed: { txt: 'a battu son record au', tail: `difficile : ${fmtTimeLong(sec)}` } } : {}), log: { lv, sec: v.sec, actions: v.actions, fastShare: v.fastShare } });
+    const recRes = submitRecord(wallet, 'tango', { l: lv, t: timer.elapsed * 1000 }); // record : au centième de seconde
     $('#tg-board', stage).classList.add('solved');
     sfx.win(true); coinRain(20);
     setTimeout(() => {
       if (!alive) return;
       stage.insertAdjacentHTML('beforeend', endCardHTML({ win: true, title: 'Grille résolue !', amount,
-        text: `${L.name} en <b>${fmtTimeLong(sec)}</b>${bonus ? ` (bonus de vitesse +${fmt(bonus)})` : ''}.${record ? ' Nouveau record !' : ` Record : ${fmtTimeLong(s[key])}.`}`,
+        text: `${L.name} en <b>${fmtCs(timer.elapsed * 1000)}</b>${bonus ? ` (bonus de vitesse +${fmt(bonus)})` : ''}.<br>${recordEndHTML('tango', recRes, wallet)}`,
         extraBtn: '<button class="btn btn-ghost" data-modes>Changer de niveau</button>' }));
       $('[data-again]', stage).onclick = start;
       $('[data-modes]', stage).onclick = intro;

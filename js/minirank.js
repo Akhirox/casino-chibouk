@@ -4,6 +4,7 @@ import { $, $$, fmt, esc } from './ui.js';
 import { avatarHTML } from './profile.js';
 import { titleHTML } from './shop.js';
 import { icon } from './art.js';
+import { entryOf, entryText, entrySort, recordCat } from './records.js';
 
 const tm = (sec) => { if (!(sec > 0)) return '—'; sec = Math.round(sec); const m = Math.floor(sec / 60), s = sec % 60; return m ? `${m} min ${String(s).padStart(2, '0')}` : `${s} s`; };
 const n1 = (x) => (x > 0 ? x.toLocaleString('fr-FR', { maximumFractionDigits: 1 }) : '—');
@@ -11,19 +12,18 @@ const pct = (a, b) => (b > 0 ? Math.round((a / b) * 100) + ' %' : '—');
 const S = (s, k) => (s && s[k]) || 0;
 const avgTime = (s, g) => (S(s, g + 'Timed') ? S(s, g + 'Sec') / S(s, g + 'Timed') : 0);
 // meilleur temps : niveau le plus dur qui a un record
-const bestOf = (s, keys, labels) => { for (let i = keys.length - 1; i >= 0; i--) if (S(s, keys[i])) return { v: S(s, keys[i]), lv: labels[i] }; return null; };
 const LV = ['facile', 'moyen', 'difficile'];
+// record absolu du joueur (même calcul que les records : niveau, score, chrono au centième)
+const recCol = (k) => ['Record', (s) => entrySort(recordCat(k), entryOf(k, s)), (s) => { const e = entryOf(k, s); return e ? esc(entryText(k, e)) : '—'; }, 1];
 
 // Colonnes : [titre, valeur(s) pour le tri, texte affiché, ordre (1 = plus grand d'abord, -1 = plus petit d'abord)]
 const rounds = (g) => ['Parties', (s) => S(s, g + 'Rounds'), (s) => fmt(S(s, g + 'Rounds')), 1];
 const gains = (g) => ['Gagné', (s) => S(s, g + 'Total'), (s) => fmt(S(s, g + 'Total')), 1];
 const quizCols = (g) => [rounds(g), ['Moyenne', (s) => (S(s, g + 'Rounds') ? S(s, g + 'Correct') / S(s, g + 'Rounds') : 0), (s) => (S(s, g + 'Rounds') ? `${n1(S(s, g + 'Correct') / S(s, g + 'Rounds'))} / 10` : '—'), 1],
-  ['Sans-faute', (s) => S(s, g + 'Perfect'), (s) => fmt(S(s, g + 'Perfect')), 1], ['Temps moyen', (s) => avgTime(s, g) || Infinity, (s) => tm(avgTime(s, g)), -1], gains(g)];
+  ['Sans-faute', (s) => S(s, g + 'Perfect'), (s) => fmt(S(s, g + 'Perfect')), 1], ['Temps moyen', (s) => avgTime(s, g) || Infinity, (s) => tm(avgTime(s, g)), -1], recCol(g), gains(g)];
 const timed = (g, bestKeys, labels, unit = 'time') => [rounds(g), ['Réussies', (s) => S(s, g + 'Won'), (s) => `${fmt(S(s, g + 'Won'))} <small class="muted">${pct(S(s, g + 'Won'), S(s, g + 'Rounds'))}</small>`, 1],
   ['Temps moyen', (s) => avgTime(s, g) || Infinity, (s) => tm(avgTime(s, g)), -1],
-  ['Record', (s) => { const b = bestOf(s, bestKeys, labels); return b ? (bestKeys.length - labels.indexOf(b.lv)) * 1e7 - b.v : -Infinity; },
-    (s) => { const b = bestOf(s, bestKeys, labels); return b ? `${unit === 'time' ? tm(b.v) : `${fmt(b.v)} coups`} <small class="muted">${b.lv}</small>` : '—'; }, 1],
-  gains(g)];
+  recCol(g), gains(g)];
 
 export const MINI_GAMES = [
   { k: 'quiz', name: 'Calcul mental', cols: quizCols('quiz') },
@@ -31,15 +31,14 @@ export const MINI_GAMES = [
   { k: 'flags', name: 'Drapeaux', cols: quizCols('flags') },
   { k: 'movies', name: 'Quiz ciné', cols: quizCols('movies') },
   { k: 'higher', name: 'Plus ou moins', cols: [rounds('higher'), ['Moyenne', (s) => (S(s, 'higherRounds') ? S(s, 'higherCorrect') / S(s, 'higherRounds') : 0), (s) => (S(s, 'higherRounds') ? n1(S(s, 'higherCorrect') / S(s, 'higherRounds')) : '—'), 1],
-    ['Record', (s) => S(s, 'higherBest'), (s) => fmt(S(s, 'higherBest')), 1], ['Séries complètes', (s) => S(s, 'higherPerfect'), (s) => fmt(S(s, 'higherPerfect')), 1], gains('higher')] },
+    recCol('higher'), ['Séries complètes', (s) => S(s, 'higherPerfect'), (s) => fmt(S(s, 'higherPerfect')), 1], gains('higher')] },
   { k: 'motus', name: 'Mot du jour', cols: [rounds('motus'), ['Trouvés', (s) => S(s, 'motusWon'), (s) => `${fmt(S(s, 'motusWon'))} <small class="muted">${pct(S(s, 'motusWon'), S(s, 'motusRounds'))}</small>`, 1],
     ['Essais moyens', (s) => (S(s, 'motusWon') ? S(s, 'motusTries') / S(s, 'motusWon') : Infinity), (s) => (S(s, 'motusWon') ? n1(S(s, 'motusTries') / S(s, 'motusWon')) : '—'), -1],
     ['Meilleure série', (s) => S(s, 'motusBestStreak'), (s) => fmt(S(s, 'motusBestStreak')), 1], gains('motus')] },
   { k: 'geo', name: 'Géographie', cols: quizCols('geo') },
   { k: 'culture', name: 'Culture G', cols: quizCols('culture') },
   { k: 'typing', name: 'Frappe éclair', cols: [rounds('typing'), ['Mots / min moyen', (s) => (S(s, 'typingRounds') ? S(s, 'typingWords') / S(s, 'typingRounds') : 0), (s) => (S(s, 'typingRounds') ? n1(S(s, 'typingWords') / S(s, 'typingRounds')) : '—'), 1],
-    ['Record', (s) => { const b = bestOf(s, ['typingBest0', 'typingBest1', 'typingBest2'], LV); return b ? LV.indexOf(b.lv) * 1e4 + b.v : -1; },
-      (s) => { const b = bestOf(s, ['typingBest0', 'typingBest1', 'typingBest2'], LV); return b ? `${fmt(b.v)} <small class="muted">${b.lv}</small>` : '—'; }, 1],
+    recCol('typing'),
     ['Précision', (s) => { const t = S(s, 'typingWords') + S(s, 'typingErrors'); return t ? S(s, 'typingWords') / t : 0; }, (s) => pct(S(s, 'typingWords'), S(s, 'typingWords') + S(s, 'typingErrors')), 1], gains('typing')] },
   { k: 'pinpoint', name: 'Pinpoint', cols: [rounds('pinpoint'), ['Trouvées', (s) => S(s, 'pinpointWon'), (s) => `${fmt(S(s, 'pinpointWon'))} <small class="muted">${pct(S(s, 'pinpointWon'), S(s, 'pinpointRounds'))}</small>`, 1],
     ['Indices moyens', (s) => { const w = S(s, 'pinpointWon'); return w ? [1, 2, 3, 4, 5].reduce((a, k) => a + k * S(s, 'pinpointClue' + k), 0) / w : Infinity; },
@@ -52,8 +51,7 @@ export const MINI_GAMES = [
   { k: 'crossword', name: 'Mots croisés', cols: timed('crossword', ['crosswordBest0', 'crosswordBest1', 'crosswordBest2'], LV) },
   { k: 'memory', name: 'Memory', cols: timed('memory', ['memoryBest0', 'memoryBest1', 'memoryBest2'], LV, 'moves') },
   { k: 'snake', name: 'Snake', cols: [rounds('snake'), ['Bananes / partie', (s) => (S(s, 'snakeRounds') ? S(s, 'snakeBananas') / S(s, 'snakeRounds') : 0), (s) => (S(s, 'snakeRounds') ? n1(S(s, 'snakeBananas') / S(s, 'snakeRounds')) : '—'), 1],
-    ['Record', (s) => { const b = bestOf(s, ['snakeBest0', 'snakeBest1', 'snakeBest2'], LV); return b ? LV.indexOf(b.lv) * 1e6 + b.v : -1; },
-      (s) => { const b = bestOf(s, ['snakeBest0', 'snakeBest1', 'snakeBest2'], LV); return b ? `${fmt(b.v)} <small class="muted">${b.lv}</small>` : '—'; }, 1],
+    recCol('snake'),
     ['Bananes mangées', (s) => S(s, 'snakeBananas'), (s) => fmt(S(s, 'snakeBananas')), 1], gains('snake')] },
   { k: 'breaker', name: 'Casse-briques', cols: [['Niveaux cassés', (s) => S(s, 'breakerLevels'), (s) => fmt(S(s, 'breakerLevels')), 1], gains('breaker')] },
 ];

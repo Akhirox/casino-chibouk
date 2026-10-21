@@ -1742,7 +1742,7 @@ td.vol .bar-track { height: 8px; }
    ========================================================================== */
 .fg-wrap { max-width: 980px; margin: 0 auto; }
 .fg-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin: 0 auto 14px; max-width: 640px; padding: 8px 12px; border-radius: 14px; background: var(--panel); border: 1px solid var(--line); }
-.fg-timer { font-family: var(--font-title); font-size: 1.35rem; color: var(--gold); font-variant-numeric: tabular-nums; min-width: 64px; }
+.fg-timer { font-family: var(--font-title); font-size: 1.35rem; color: var(--gold); font-variant-numeric: tabular-nums; min-width: 92px; }
 .fg-timer.low { color: var(--red); animation: fgPulse 1s infinite; }
 @keyframes fgPulse { 50% { opacity: .45; } }
 .fg-info { color: var(--muted); font-size: .85rem; font-weight: 600; }
@@ -2690,3 +2690,14 @@ body.cb-coco, .sh-cards.cb-coco { --cb-bg: #3d2611; --cb-a: #6b4423; --cb-b: #4e
 .mcq.culture .mcq-label { color: var(--gold); text-transform: uppercase; letter-spacing: 1px; font-size: .78rem; }
 .mcq.culture .mcq-img img { max-height: 260px; width: auto; max-width: 100%; border-radius: 12px; }
 .cg-anec { margin: 0 0 8px; font-size: .85rem; color: var(--muted); font-style: italic; }
+
+/* Records au centième : chrono des quiz, ligne « record » sous les jeux, texte de fin de partie */
+.qz-chrono { display: inline-flex; align-items: center; gap: 4px; margin-left: 10px; color: var(--gold); letter-spacing: 0; text-transform: none; font-variant-numeric: tabular-nums; }
+.qz-chrono .ic { width: 13px; height: 13px; }
+.hi-score .qz-chrono b { font-size: .95rem; }
+.qz-time { font-size: .9rem; color: #cfe0d5; } .qz-time b { color: var(--gold); font-variant-numeric: tabular-nums; }
+.rec-end { font-size: .85rem; color: #cfe0d5; } .rec-end b { color: var(--gold); }
+.gl-rec { display: grid; grid-template-columns: 30px 1fr; gap: 9px; align-items: center; padding: 8px 10px; margin-bottom: 8px; border-radius: 12px; background: linear-gradient(90deg, rgba(240, 192, 64, .14), rgba(240, 192, 64, .03)); border: 1px solid rgba(240, 192, 64, .3); font-size: .84rem; }
+.gl-rec > .ic { width: 22px; height: 22px; color: var(--gold); justify-self: center; }
+.gl-rec b { display: block; font-size: .86rem; } .gl-rec b small { color: var(--muted); font-weight: 600; }
+.gl-rec > div > small { color: var(--muted); font-size: .77rem; display: block; }

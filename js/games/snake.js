@@ -4,6 +4,7 @@ import { $, $$, fmt, coinRain, CUR } from '../ui.js';
 import { monkeySVG } from '../art.js';
 import { sfx } from '../sfx.js';
 import { modesHTML, bindModes, savedLevel, saveLevel, endCardHTML } from './free-common.js';
+import { submitRecord, recordEndHTML, fmtCs } from '../records.js';
 
 export const SNAKE_LEVELS = [
   { name: 'Facile', desc: 'Lent, et les bords te font passer de l\'autre côté', step: 140, wrap: true, per: 1, feed: 60 },
@@ -39,7 +40,7 @@ export function mount(view, { wallet }) {
       <div class="sn-pad"><button data-d="0,-1" aria-label="haut">▲</button><button data-d="-1,0" aria-label="gauche">◀</button><button data-d="1,0" aria-label="droite">▶</button><button data-d="0,1" aria-label="bas">▼</button></div>`;
     cv = $('#sn-cv', stage); ctx = cv.getContext('2d');
     resize();
-    snake = [[8, 10], [7, 10], [6, 10]]; dir = [1, 0]; queue = []; score = 0; step = L.step; acc = 0; credited = false;
+    snake = [[8, 10], [7, 10], [6, 10]]; dir = [1, 0]; queue = []; score = 0; step = L.step; acc = 0; credited = false; gameMs = 0; scoreMs = 0; recRes = null;
     placeFood();
     state = 'play';
     $('#sn-pause', stage).onclick = togglePause;
@@ -84,8 +85,11 @@ export function mount(view, { wallet }) {
   }
   function overlay(t, sub) { const o = $('#sn-over', stage); if (!o) return; o.innerHTML = `<b>${t}</b><small>${sub}</small>`; o.hidden = false; o.onclick = () => state === 'paused' && togglePause(); }
 
+  // chrono de jeu (pauses exclues) : durée des déplacements ; scoreMs = moment de la dernière banane (départage les records)
+  let gameMs = 0, scoreMs = 0, recRes = null;
   function tick() {
     const L = SNAKE_LEVELS[lv];
+    gameMs += step;
     if (queue.length) dir = queue.shift();
     let [x, y] = snake[0];
     x += dir[0]; y += dir[1];
@@ -96,7 +100,7 @@ export function mount(view, { wallet }) {
     if (body.some(([a, b]) => a === x && b === y)) return over();
     snake.unshift([x, y]);
     if (eating) {
-      score++;
+      score++; scoreMs = gameMs;
       sfx.coin();
       if (L.accel) step = Math.max(50, step - 1.5);
       $('#sn-score', stage).textContent = score;
@@ -153,6 +157,8 @@ export function mount(view, { wallet }) {
     if (record) s[key] = score;
     const amount = score * L.per;
     wallet.freeReward('snake', amount, { Bananas: score }, score >= L.feed && record ? { feed: { txt: `a battu son record avec ${score} bananes au`, tail: `(${L.name.toLowerCase()})` } } : null);
+    // record : bananes, puis temps mis pour manger la dernière (au centième)
+    if (score > 0) recRes = submitRecord(wallet, 'snake', { l: lv, v: score, t: scoreMs });
     return { amount, record };
   }
 
@@ -166,7 +172,7 @@ export function mount(view, { wallet }) {
     setTimeout(() => {
       if (!alive) return;
       stage.insertAdjacentHTML('beforeend', endCardHTML({ win: record && score > 0, title: full ? 'Grille remplie, incroyable !' : `${score} banane${score > 1 ? 's' : ''}`, amount,
-        text: `${record && score ? 'Nouveau record !' : `Record : ${wallet.stats['snakeBest' + lv] || 0}.`}`,
+        text: `${score ? `Dernière banane à <b>${fmtCs(scoreMs)}</b>.` : ''}${recRes ? `<br>${recordEndHTML('snake', recRes, wallet)}` : ` Record : ${wallet.stats['snakeBest' + lv] || 0}.`}`,
         extraBtn: '<button class="btn btn-ghost" data-modes>Changer de niveau</button>' }));
       $('[data-again]', stage).onclick = start;
       $('[data-modes]', stage).onclick = intro;

@@ -4,6 +4,7 @@ import { ACHIEVEMENTS, TIERS } from './achievements.js';
 import { today, questText, questReward, questMult } from './progress.js';
 import { $, fmt, esc } from './ui.js';
 import { icon } from './art.js';
+import { recordLineHTML, onRecords } from './records.js';
 
 // succès des mini-jeux (catégorie « free ») : préfixe de leur identifiant
 const FREE_PREFIX = { quiz: 'qz-', capitals: 'cap-', movies: 'mv-', flags: 'fl-', motus: 'mo-', higher: 'hi-', queens: 'qn-', tango: 'tg-', pinpoint: 'pp-', sudoku: 'sd-', demineur: 'ms-', snake: 'sn-', breaker: 'bk-', memory: 'mm-', crossword: 'cw-', geo: 'geo-', culture: 'cg-', typing: 'ty-' };
@@ -29,8 +30,9 @@ export function mountGoals(box, game, { wallet, challenges }) {
     const all = achsOf(game).length;
     const shown = open ? todo : todo.slice(0, 3);
     shown.forEach(({ a, pr }) => items.push(`<li class="gl-a t-${a.tier}"><span class="gl-ic">${icon('medal')}</span><div><b>${esc(a.name)}</b><small>${esc(a.desc)}${pr ? ` · ${fmt(Math.min(pr[0], pr[1]))} / ${fmt(pr[1])}` : ''}</small>${pr ? `<div class="q-bar"><i style="width:${Math.min(100, (pr[0] / pr[1]) * 100)}%"></i></div>` : ''}</div><span class="gl-r">+${fmt(TIERS[a.tier].reward)}</span></li>`));
-    if (!items.length) return all ? `<div class="gl-head">${icon('trophy')}<b>Défis de ce jeu</b><small class="muted">${all} / ${all} succès</small></div><p class="muted gl-done">Tout est réussi ici, bravo !</p>` : '';
-    return `<div class="gl-head">${icon('trophy')}<b>Défis à relever ici</b>${all ? `<small class="muted">${all - todo.length} / ${all} succès</small>` : ''}</div>
+    const rec = recordLineHTML(game, wallet); // record du jeu (détenteur, et ton meilleur résultat)
+    if (!items.length) return all ? `<div class="gl-head">${icon('trophy')}<b>Défis de ce jeu</b><small class="muted">${all} / ${all} succès</small></div>${rec}<p class="muted gl-done">Tout est réussi ici, bravo !</p>` : rec;
+    return `<div class="gl-head">${icon('trophy')}<b>Défis à relever ici</b>${all ? `<small class="muted">${all - todo.length} / ${all} succès</small>` : ''}</div>${rec}
       <ul class="gl-list">${items.join('')}</ul>${todo.length > 3 ? `<button type="button" class="gl-more" data-glmore>${open ? 'Voir moins' : `Voir les ${todo.length} succès restants`}</button>` : ''}`;
   }
   let pending = false;
@@ -45,7 +47,8 @@ export function mountGoals(box, game, { wallet, challenges }) {
   const later = () => { if (!pending) { pending = true; setTimeout(render, 800); } }; // pas de rendu à chaque partie en turbo
   const off = wallet.on((e) => { if (e && e.type !== 'bet') later(); });
   const offCh = challenges ? challenges.subscribe(later) : () => {};
+  const offRec = onRecords(later);
   const iv = setInterval(() => { box.querySelectorAll('[data-end]').forEach((x) => (x.textContent = mmss(+x.dataset.end - Date.now()))); }, 1000);
   render();
-  return () => { off(); offCh(); clearInterval(iv); };
+  return () => { off(); offCh(); offRec(); clearInterval(iv); };
 }
