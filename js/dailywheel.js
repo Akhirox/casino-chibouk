@@ -2,6 +2,8 @@
 import { CONFIG } from './config.js';
 import { spinDaily, streakMult, vipOf, xMult } from './progress.js';
 import { h, $, fmt, money, toast, coinRain, sleep, CUR } from './ui.js';
+import { earnWheel } from './jp.js';
+import { icon } from './art.js';
 import { sfx } from './sfx.js';
 import { wheelInfo, multHTML } from './rewards.js';
 
@@ -49,6 +51,8 @@ export function openDailyWheel(wallet, onDone, { bonus = false } = {}) {
     spinning = true;
     $('#dw-spin', m).disabled = true; $('[data-x]', m).disabled = true;
     const r = spinDaily(wallet, bonus);
+    // roue du jour : des Jetons Poker en plus (tirés par le serveur, sans aucun bonus), pas pour les tours bonus
+    const jpP = bonus ? Promise.resolve(0) : earnWheel().catch(() => 0);
     // le gain est enregistré tout de suite (fermer la fenêtre ne change rien)
     // … mais annoncé (solde affiché, fil, quêtes…) seulement quand la roue s'arrête
     let saved;
@@ -69,7 +73,8 @@ export function openDailyWheel(wallet, onDone, { bonus = false } = {}) {
     clearInterval(ticks);
     reveal();
     spinning = false; done = true;
-    $('#dw-res', m).innerHTML = `<b>${fmt(r.base)}</b>${r.mult > 1 ? ` ${xfmt(r.mult)} (série de ${r.streak} jours)` : ''}${r.vip > 1 ? ` ${xMult(r.vip)} (VIP et bonus)` : ''}${r.cos ? ` +${Math.round(r.cos * 100)} % (titre, coffres)` : ''} = <span class="big">+${money(r.amount)}</span>`;
+    const jpWon = await Promise.race([jpP, sleep(2500).then(() => 0)]);
+    $('#dw-res', m).innerHTML = `<b>${fmt(r.base)}</b>${r.mult > 1 ? ` ${xfmt(r.mult)} (série de ${r.streak} jours)` : ''}${r.vip > 1 ? ` ${xMult(r.vip)} (VIP et bonus)` : ''}${r.cos ? ` +${Math.round(r.cos * 100)} % (titre, coffres)` : ''} = <span class="big">+${money(r.amount)}</span>${jpWon ? `<span class="dw-jp">${icon('jp')}+${fmt(jpWon)} JP <small>pour le poker</small></span>` : ''}`;
     const btn = $('#dw-spin', m);
     btn.disabled = false; btn.textContent = 'Super !';
     $('[data-x]', m).disabled = false;

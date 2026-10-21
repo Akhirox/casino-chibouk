@@ -1,6 +1,7 @@
 // Couche d'accès aux données : Firebase (Auth + Firestore) ou mode démo local (localStorage)
 import { firebaseConfig } from './firebase-config.js';
 import { CONFIG, PSEUDO_DOMAIN, PSEUDO_RE } from './config.js';
+import { createDemoPoker } from './poker/demo.js';
 
 export function emptyStats() {
   const g = () => ({ wagered: 0, won: 0, rounds: 0, wins: 0, biggestWin: 0, bestMult: 0 });
@@ -89,6 +90,19 @@ async function createFirebaseBackend() {
   const app = initializeApp(firebaseConfig);
   const auth = A.getAuth(app);
   const db = F.getFirestore(app);
+  // Poker et JP (V35) : tout passe par la Cloud Function « poker » (région europe-west1), chargée au premier besoin
+  let pokerFn = null;
+  const callPoker = async (payload) => {
+    try {
+      if (!pokerFn) { const Fn = await import(`${base}/firebase-functions.js`); pokerFn = Fn.httpsCallable(Fn.getFunctions(app, 'europe-west1'), 'poker'); }
+      return (await pokerFn(payload)).data;
+    } catch (e) {
+      const c = (e && e.code) || '';
+      if (c.includes('not-found') || c.includes('internal')) return { ok: false, error: 'Le serveur du poker ne répond pas. Si ça dure, vérifie que les Cloud Functions sont bien déployées.' };
+      return { ok: false, error: (e && e.message) || 'Erreur réseau, réessaie' };
+    }
+  };
+  const snapErr = (what) => (e) => console.warn(`Poker : lecture impossible (${what})`, e && e.code);
   const toEmail = (p) => `${p.toLowerCase()}@${PSEUDO_DOMAIN}`;
 
   const errMsg = (e) => {
@@ -251,6 +265,12 @@ async function createFirebaseBackend() {
     async isAdmin(uid) {
       try { return (await F.getDoc(F.doc(db, 'admins', uid))).exists(); } catch { return false; }
     },
+    // ——— Poker et JP ———
+    pokerCall(op, room, data = {}) { return callPoker({ op, room, ...data }); },
+    watchJP(uid, cb) { return F.onSnapshot(F.doc(db, 'jp', uid), (s) => cb(s.exists() ? s.data() : { jp: 0 }), snapErr('JP')); },
+    watchPokerLobby(cb) { return F.onSnapshot(F.collection(db, 'poker'), (s) => { const o = {}; s.forEach((d) => { o[d.id] = d.data(); }); cb(o); }, snapErr('salon')); },
+    watchPokerTable(room, cb) { return F.onSnapshot(F.doc(db, 'poker', room), (s) => cb(s.exists() ? s.data() : null), snapErr('table')); },
+    watchPokerHand(room, uid, cb) { return F.onSnapshot(F.doc(db, 'poker', room, 'hands', uid), (s) => cb(s.exists() ? s.data() : null), snapErr('cartes')); },
   };
 }
 
@@ -286,6 +306,7 @@ function createDemoBackend() {
 
   return {
     mode: 'demo',
+    ...createDemoPoker(() => read(K_SESSION, null)),
     onAuth(cb) { listener = cb; setTimeout(emit, 0); return () => { listener = null; }; },
     async signUp(pseudo, password) {
       const bad = validatePseudo(pseudo); if (bad) throw new Error(bad);

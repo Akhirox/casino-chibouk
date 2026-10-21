@@ -11,6 +11,7 @@ Casino entre potes avec de l'argent 100 % fictif (des **Brundles**). Le site est
 - **Jackpot commun** alimenté par 1 % des mises de la slot (payé par le casino), qui peut tomber sur n'importe quel spin. Chance par spin = 1,5 % × mise ÷ jackpot, plafonnée à 1 % (ex. : jackpot de 10 000 et mise de 100 → 1 sur 6 667), affichée sur la slot.
 - **En direct de la jungle** : fil d'activité de l'accueil (gains à partir de ×25, tous les succès, jackpots, passages de rang VIP, achats, quêtes, vainqueurs de la semaine).
 - **Coffre-fort** (bouton en haut, ou menu du pseudo) : met des Brundles à l'abri des mises. Dépôt et retrait libres, sans frais ni délai. Le contenu du coffre compte dans la fortune (classement et succès de solde).
+- **Poker** (V35, `js/poker.js`, onglet Poker) : Texas Hold'em No Limit entre joueurs, 6 places, 5 tables toujours ouvertes (caves 50, 100, 500, 2 500 et 10 000 JP). Monnaie à part, les **Jetons Poker (JP)** : 50 à 200 JP par jour avec la roue du jour, 10 JP par mini-jeu terminé (un toutes les 30 s), sans aucun bonus. Le serveur (Cloud Functions, dossier `functions/`) mélange, distribue et arbitre ; les règles sont dans `js/poker/engine.js` et `js/poker/server.js`, partagées avec le serveur. En mode démo, des singes robots jouent avec toi (`js/poker/demo.js`).
 - **Ferme à bananes** (jeu de gestion) : bananeraies, cabanes, entrepôts, puits et marché sur un terrain 7 × 7. Production continue même hors ligne (stock limité par les entrepôts), chantiers avec durée ; constructions, améliorations, singes, bâtisseurs et parcelles payés en Brundles. Les bananes se vendent au marché : 0,6 Brundle la banane, jusqu'à 1 Brundle avec un marché niveau 10. **Prestige** : après 2 M de bananes vendues (puis 4 M, 8 M… depuis le prestige précédent), la ferme peut être remise à zéro contre +100 % de production pour toujours (`f.pr`, `f.ss`). Chaque prestige rend les bâtiments 30 % plus chers (`PRESTIGE_PRICE`, `priceMult`). La capacité des entrepôts est multipliée comme la production (`storageOf` = `storage` × `prestigeMult`). Option « Prestige + tout reconstruire » (`replayQuote`, `prestigeReplay`) : même plan, mêmes niveaux et mêmes singes, payés au nouveau prix avec les chantiers terminés tout de suite (`rushCost` sur toute la durée). Chaque case garde ce qui a été payé (`c`) pour le remboursement à la démolition. Graines d'or (caisses) : +5 % chacune. Boosts de récolte des caisses cumulables, très dégressifs, plafond ×5 (`farmStack`). Fermes des autres joueurs visitables. Réglages et formules dans `js/farm-core.js`.
 - **Stats** : onglet « Mes stats » et onglet « Le casino » (total misé et gagné par tout le monde, RTP réel, Brundles distribués, tableau par jeu).
 - **Classements** : classement de la semaine et palmarès, fortunes (solde + coffre), meilleurs gains par jeu.
@@ -127,6 +128,19 @@ Le fichier `.nojekyll` est déjà inclus. Il empêche GitHub de transformer les 
 
 ---
 
+## 3 bis. Installer le serveur du poker (Cloud Functions, forfait Blaze)
+
+Le poker a besoin d'un petit serveur : c'est lui qui mélange le paquet et garde les cartes cachées (sinon n'importe quel joueur pourrait lire celles des autres dans la base). Une seule fois, puis à chaque version qui touche au poker :
+
+1. Installer Node.js (version LTS) puis l'outil Firebase : `npm install -g firebase-tools`
+2. `firebase login` (avec le compte propriétaire du projet)
+3. Dans le dossier du site : `cd functions`, `npm install`, `cd ..`
+4. `firebase deploy --only functions,firestore:rules` (le projet est indiqué dans `.firebaserc`). Au premier déploiement, Firebase active tout seul les services nécessaires (Cloud Functions, Cloud Build, Artifact Registry) : accepte s'il le demande.
+
+`firebase.json` recopie `js/poker/*.js` dans `functions/shared/` avant chaque déploiement, pour que le site et le serveur aient exactement les mêmes règles. Région : `europe-west1`. Coût pour un groupe d'amis : une demande au serveur par action de poker, largement dans la partie gratuite de Blaze (2 millions d'appels par mois). Pense quand même à mettre une alerte de budget dans la console Google Cloud (Facturation → Budgets et alertes). Après un moment sans joueur, la première action peut mettre 1 à 3 secondes (démarrage du serveur).
+
+Documents : `poker/{table}` (table publique, sans les cartes cachées), `poker/{table}/hands/{uid}` (tes 2 cartes, lisibles par toi seul), `pokerSecret/{table}` (paquet, serveur seulement), `jp/{uid}` (solde de JP, `room` = table où tu es assis, `pin` / `pout` = caves payées / tapis récupérés). Les joueurs ne peuvent rien écrire de tout ça directement (voir `firestore.rules`).
+
 ## 4. Économie des quotas Firebase
 
 Le plan gratuit Spark offre **50 000 lectures et 20 000 écritures par jour**. Le site les ménage ainsi :
@@ -228,6 +242,12 @@ js/farm-core.js            ferme à bananes : règles, coûts, production (sans 
 js/farm.js                 ferme à bananes : page, dessins, marché, voisins
 js/loot.js                 caisses : contenu, probabilités, application des lots et des boosts
 js/records.js              records absolus des mini-jeux (stats.rec : niveau, score, chrono au centième, date) : un seul détenteur par jeu, tags du profil et +5 % par record (max +50 %)
+js/poker.js                poker : salon (5 tables) et table de jeu (affichage, actions, relances du serveur à la fin des temps de jeu)
+js/poker/engine.js         règles du Texas Hold'em No Limit : distribution, enchères, pots annexes, évaluation des mains
+js/poker/server.js         tables, caves, gains de JP ; utilisé par les Cloud Functions et par le mode démo
+js/poker/demo.js           poker en mode démo (navigateur), avec des robots
+js/jp.js                   Jetons Poker : solde en direct, gains de la roue du jour et des mini-jeux
+functions/                 Cloud Functions (serveur du poker et des JP) ; shared/ = copie de js/poker
 js/goals.js                défis à relever affichés sur la page de chaque jeu
 js/rewards.js              affichage « base → avec bonus » des récompenses gratuites et détail des bonus
 js/cases.js                caisses : page d'ouverture (bande animée)
@@ -302,3 +322,7 @@ tools/plinko-rtp.mjs       RTP exact + simulation de chaque mode du Plinkoko
 tools/vip-rtp.mjs          retour effectif de chaque jeu avec le rakeback et les bonus VIP, rang par rang
 tools/new-games-rtp.mjs    RTP des jeux de la V9
 ```
+
+## Changer de projet Firebase (migration)
+
+`tools/migrate-firebase.mjs` copie les comptes (mêmes identifiants et mots de passe, donc mêmes `uid`) et toute la base Firestore d'un projet vers un autre, avec le forfait gratuit Spark. À lancer depuis un dossier à part avec `npm install firebase-admin` (voir l'en-tête du script). Ensuite : règles `firestore.rules` publiées dans le nouveau projet, connexion Email/Mot de passe activée, domaine du site ajouté aux domaines autorisés, puis `js/firebase-config.js` mis à jour. Les joueurs doivent se reconnecter une fois.

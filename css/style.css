@@ -1309,7 +1309,7 @@ main#view.has-board { max-width: 1640px; }
   .nav a .nl, .nav-gbtn .nl { display: inline-flex; }
   .nav a { padding: 6px 8px; }
 }
-@media (max-width: 1100px) {
+@media (max-width: 1500px) {
   .nav a > .nl, .nav-gbtn > .nl { font-size: .62rem; }
   .nav a, .nav-gbtn { min-width: 52px; padding: 6px 4px; }
 }
@@ -2709,3 +2709,110 @@ body.cb-coco, .sh-cards.cb-coco { --cb-bg: #3d2611; --cb-a: #6b4423; --cb-b: #4e
 .fm-replay-cost { list-style: none; margin: 8px 0 0; padding: 0; display: grid; gap: 4px; font-size: .88rem; }
 .fm-replay-cost li { display: flex; justify-content: space-between; gap: 12px; }
 .fm-replay-cost li.tot { border-top: 1px solid rgba(255, 255, 255, .12); padding-top: 6px; margin-top: 2px; font-weight: 700; }
+
+/* ============================ Poker (V35) ============================ */
+.pkj-pill { display: inline-flex; align-items: center; gap: 5px; padding: 6px 11px; border-radius: 999px; background: linear-gradient(135deg, rgba(91, 141, 239, .22), rgba(91, 141, 239, .08)); border: 1px solid rgba(120, 165, 255, .4); color: #cfe0ff; font-weight: 800; font-variant-numeric: tabular-nums; text-decoration: none; white-space: nowrap; }
+.pkj-pill .ic { width: 18px; height: 18px; color: #8fb4ff; } .pkj-pill small { font-size: .7rem; color: #9fb8e8; }
+.pkj-pill:hover { border-color: #8fb4ff; }
+.pkj-amt { display: inline-flex; align-items: center; gap: 4px; font-weight: 700; color: #cfe0ff; white-space: nowrap; }
+.pkj-amt .ic { width: 16px; height: 16px; color: #8fb4ff; } .pkj-amt.big { font-size: 1.15rem; } .pkj-amt.big .ic { width: 22px; height: 22px; }
+.pkj-toast { display: inline-flex; align-items: center; gap: 6px; } .pkj-toast .ic { width: 18px; height: 18px; color: #8fb4ff; } .pkj-toast small { opacity: .7; }
+.dw-jp { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 8px; color: #cfe0ff; font-weight: 800; font-size: 1.05rem; }
+.dw-jp .ic { width: 22px; height: 22px; color: #8fb4ff; } .dw-jp small { color: var(--muted); font-weight: 600; }
+.nav a.nav-poker .ni { color: #8fb4ff; }
+
+.pk-wrap { max-width: 1180px; margin: 0 auto; }
+.pk-wrap .game-head .actions { display: flex; align-items: center; gap: 10px; }
+.pk-intro { display: flex; gap: 14px; align-items: center; padding: 14px 16px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--line); margin-bottom: 16px; }
+.pk-intro p { margin: 6px 0; font-size: .9rem; } .pk-intro-monkey { width: 64px; height: 64px; flex: none; }
+.pk-rooms { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 14px; }
+.pk-room { padding: 14px; border-radius: var(--radius); background: radial-gradient(120% 90% at 50% 0%, #1d5a3a 0%, #123824 60%, #0d2a1b 100%); border: 1px solid #2d6b48; display: grid; gap: 8px; box-shadow: var(--shadow); }
+.pk-room.mine { border-color: var(--gold); box-shadow: 0 0 0 1px var(--gold), var(--shadow); }
+.pk-room-h { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; } .pk-room-h b { font-family: var(--font-title); font-size: 1.05rem; color: var(--gold); }
+.pk-stakes { font-size: .8rem; color: #cfe0d5; }
+.pk-room-buy { font-size: .9rem; color: #cfe0d5; display: flex; gap: 6px; align-items: center; }
+.pk-room-seats { display: flex; align-items: center; gap: 4px; font-size: .8rem; color: #cfe0d5; } .pk-room-seats span { margin-left: 6px; }
+.pk-room-seats i { width: 12px; height: 12px; border-radius: 50%; background: #0007; border: 1px solid #ffffff33; } .pk-room-seats i.on { background: var(--gold); border-color: var(--gold); }
+.pk-room-names { font-size: .78rem; min-height: 1.1em; }
+.pk-room-btns { display: flex; gap: 8px; flex-wrap: wrap; } .pk-room-btns .btn { flex: 1; }
+.pk-note { font-size: .85rem; color: var(--muted); text-align: center; margin: 12px 0; }
+
+/* table */
+.pk-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 12px; }
+.pk-bar-t { display: grid; } .pk-bar-t b { font-family: var(--font-title); color: var(--gold); font-size: 1.15rem; }
+.pk-bar-r { margin-left: auto; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.pk-felt-wrap { padding: 46px 70px 64px; }
+.pk-felt { position: relative; aspect-ratio: 2.15 / 1; border-radius: 999px; background: radial-gradient(ellipse at 50% 45%, #2a7a4c 0%, #1b5c37 55%, #11402a 100%); border: 14px solid #4a2e17; box-shadow: inset 0 0 0 3px #6b4524, inset 0 0 50px #0008, 0 14px 40px #0009; }
+.pk-center { position: absolute; left: 50%; top: 47%; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 8px; width: 70%; }
+.pk-board { display: flex; gap: 6px; }
+.pk-pot { min-height: 1.3em; color: #f3f6f0; font-size: .95rem; } .pk-pot b { color: var(--gold); font-variant-numeric: tabular-nums; }
+.pk-msg { min-height: 1.2em; text-align: center; font-size: .9rem; color: #e7f1ea; } .pk-msg.res { background: #0008; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--gold); }
+.pk-msg b { color: var(--gold); }
+
+.pk-card { --w: 46px; width: var(--w); height: calc(var(--w) * 1.4); border-radius: 6px; background: #fbfaf5; color: #1b1b1f; display: inline-grid; place-items: center; grid-template-rows: 1fr 1fr; padding: 2px 0; box-shadow: 0 2px 6px #0007; font-weight: 800; line-height: 1; flex: none; }
+.pk-card b { font-size: calc(var(--w) * .42); align-self: end; } .pk-card i { font-style: normal; font-size: calc(var(--w) * .46); align-self: start; }
+.pk-card.red { color: #d0263a; }
+.pk-card.back { background: repeating-linear-gradient(45deg, #1d4fa3 0 5px, #2a63c4 5px 10px); border: 2px solid #fbfaf5; }
+.pk-card.slot { background: #0003; border: 1px dashed #ffffff30; box-shadow: none; }
+.pk-card.sm { --w: 34px; } .pk-card.lg { --w: 64px; }
+.pk-card.deal { animation: pkDeal .35s ease-out both; }
+@keyframes pkDeal { from { transform: translateY(-14px) rotateY(80deg); opacity: 0; } to { transform: none; opacity: 1; } }
+
+.pk-seat { position: absolute; transform: translate(-50%, -50%); display: grid; justify-items: center; gap: 3px; width: 150px; z-index: 2; }
+.pk-seat.p0 { left: 50%; top: 100%; } .pk-seat.p1 { left: 9%; top: 84%; } .pk-seat.p2 { left: 9%; top: 16%; }
+.pk-seat.p3 { left: 50%; top: 0%; } .pk-seat.p4 { left: 91%; top: 16%; } .pk-seat.p5 { left: 91%; top: 84%; }
+.pk-hole { display: flex; gap: 3px; min-height: 48px; margin-bottom: -14px; z-index: 1; }
+.pk-plate { position: relative; display: flex; align-items: center; gap: 7px; padding: 6px 12px 6px 6px; border-radius: 999px; background: #0d1a12ee; border: 2px solid #2f4a39; min-width: 130px; box-shadow: 0 4px 12px #0008; z-index: 2; }
+.pk-pl-txt { display: grid; line-height: 1.15; } .pk-pl-txt b { font-size: .82rem; max-width: 90px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.pk-stack { color: var(--gold); font-weight: 800; font-size: .85rem; font-variant-numeric: tabular-nums; }
+.pk-last { font-size: .72rem; color: #e7f1ea; background: #0007; padding: 1px 8px; border-radius: 8px; min-height: 1.2em; max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pk-last:empty { visibility: hidden; }
+.pk-seat.empty .pk-plate { justify-content: center; background: #0006; border-style: dashed; min-height: 44px; }
+.pk-seat.acting .pk-plate { border-color: var(--gold); box-shadow: 0 0 0 3px #f0c04055, 0 4px 12px #0008; }
+.pk-seat.me .pk-plate { border-color: #8fb4ff; }
+.pk-seat.folded .pk-plate, .pk-seat.away .pk-plate, .pk-seat.bust .pk-plate { opacity: .55; }
+.pk-seat.folded .pk-hole { opacity: .45; }
+.pk-seat.win .pk-plate { border-color: var(--gold); box-shadow: 0 0 18px #f0c040aa; }
+.pk-timer { position: absolute; left: 14px; right: 14px; bottom: -5px; height: 4px; border-radius: 4px; background: #0009; overflow: hidden; }
+.pk-timer i { display: block; height: 100%; background: linear-gradient(90deg, #ff6b4a, var(--gold)); transition: width .25s linear; }
+.pk-bet { position: absolute; display: flex; align-items: center; gap: 4px; font-size: .8rem; font-weight: 800; color: #fff; background: #0009; padding: 2px 8px 2px 3px; border-radius: 999px; white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pk-chip { width: 14px; height: 14px; border-radius: 50%; background: radial-gradient(circle, #fff 0 30%, var(--gold) 31% 100%); border: 2px dashed #fff8; }
+.pk-seat.p0 .pk-bet { top: -42px; } .pk-seat.p3 .pk-bet { bottom: -34px; }
+.pk-seat.p1 .pk-bet, .pk-seat.p2 .pk-bet { right: -46px; top: 50%; } .pk-seat.p4 .pk-bet, .pk-seat.p5 .pk-bet { left: -46px; top: 50%; }
+.pk-dealer { position: absolute; width: 22px; height: 22px; border-radius: 50%; background: #fff; color: #222; font-weight: 900; font-size: .72rem; display: grid; place-items: center; box-shadow: 0 2px 4px #0008; right: -8px; top: 40px; z-index: 3; }
+
+.pk-mine { display: flex; justify-content: center; align-items: center; gap: 8px; margin: 4px 0 8px; }
+.pk-myhand { margin-left: 8px; padding: 4px 12px; border-radius: 999px; background: #0007; border: 1px solid var(--gold); color: var(--gold); font-weight: 700; font-size: .9rem; }
+.pk-actions { min-height: 10px; }
+.pk-act { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; align-items: flex-end; padding: 12px; border-radius: var(--radius); background: var(--panel); border: 1px solid var(--line); }
+.pk-act > .btn { min-width: 140px; }
+.pk-act kbd { font-size: .65rem; opacity: .6; margin-left: 4px; }
+.pk-raise { display: grid; gap: 6px; }
+.pk-presets { display: flex; gap: 5px; flex-wrap: wrap; } .pk-presets button { padding: 4px 9px; border-radius: 8px; border: 1px solid var(--line); background: #0004; color: var(--text); font-weight: 700; font-size: .78rem; cursor: pointer; } .pk-presets button:hover { border-color: var(--gold); }
+.pk-raise-row { display: flex; gap: 8px; align-items: center; } .pk-raise-row input[type=range] { width: 170px; } .pk-raise-row .bet-input { width: 100px; }
+.pk-bust { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; justify-content: center; padding: 12px; margin: 8px 0; border-radius: var(--radius); background: #3a1515aa; border: 1px solid #7a2a2a; }
+.pk-log { margin-top: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 8px 12px; }
+.pk-log summary { cursor: pointer; font-weight: 700; color: var(--muted); }
+.pk-log ol { list-style: none; margin: 8px 0 0; padding: 0; max-height: 220px; overflow: auto; font-size: .82rem; display: grid; gap: 3px; } .pk-log li { color: #cfe0d5; }
+
+@media (max-width: 760px) {
+  .pk-felt-wrap { padding: 40px 34px 70px; }
+  .pk-felt { aspect-ratio: 1 / 1.65; border-width: 10px; border-radius: 46% / 32%; }
+  .pk-seat { width: 104px; }
+  .pk-seat.p0 { left: 50%; top: 100%; } .pk-seat.p1 { left: 8%; top: 76%; } .pk-seat.p2 { left: 8%; top: 22%; }
+  .pk-seat.p3 { left: 50%; top: 0%; } .pk-seat.p4 { left: 92%; top: 22%; } .pk-seat.p5 { left: 92%; top: 76%; }
+  .pk-seat.empty .pk-plate { min-width: 70px; min-height: 30px; font-size: .72rem; }
+  .pk-plate { min-width: 96px; padding: 4px 8px 4px 4px; gap: 5px; } .pk-plate .av-sm { width: 26px; height: 26px; }
+  .pk-pl-txt b { max-width: 60px; font-size: .74rem; }
+  .pk-card { --w: 34px; } .pk-card.sm { --w: 26px; } .pk-card.lg { --w: 54px; }
+  .pk-hole { min-height: 38px; margin-bottom: -10px; }
+  .pk-seat.p1 .pk-bet, .pk-seat.p2 .pk-bet { right: auto; left: 50%; top: auto; bottom: -26px; transform: translateX(-50%); }
+  .pk-seat.p4 .pk-bet, .pk-seat.p5 .pk-bet { left: 50%; top: auto; bottom: -26px; transform: translateX(-50%); }
+  .pk-center { width: 86%; } .pk-board { gap: 4px; }
+  .pk-act > .btn { min-width: 0; flex: 1; } .pk-raise { width: 100%; } .pk-raise-row input[type=range] { flex: 1; width: auto; }
+  .pkj-pill small { display: none; }
+}
+@media (max-width: 600px) { .pkj-pill { display: none; } }
+/* barre du bas sur téléphone : Succès et Stats restent dans le menu du pseudo, pour laisser la place au Poker */
+@media (max-width: 760px) { .nav > a[data-r="stats"], .nav > a[data-r="achievements"] { display: none; } }
+.pk-mine.folded { opacity: .45; }

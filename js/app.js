@@ -39,6 +39,8 @@ import * as Farm from './farm.js';
 import * as Scratch from './games/scratch.js';
 import * as Jungle from './games/jungle.js';
 import * as Craps from './games/craps.js';
+import * as Poker from './poker.js';
+import { initJP, onJP, jpState } from './jp.js';
 import * as Memory from './games/memory.js';
 import * as Crossword from './games/crossword.js';
 import { scratchArtSVG, memoryArtSVG, crosswordArtSVG, jungleArtSVG, geoArtSVG, typingArtSVG, crapsArtSVG, cultureArtSVG } from './art.js';
@@ -86,7 +88,7 @@ let tracker = null;
 let achievements = null;
 let inboxTimer = null;
 let tips = null;
-let offCounters = null; // suivi des records « compteurs » (séries, Pinpoint, casse-briques)
+let offCounters = null, offJP = null, offJPPill = null; // suivi des records « compteurs » (séries, Pinpoint, casse-briques)
 let updater = null;
 let quests = null;
 let vip = null;
@@ -136,6 +138,7 @@ const ROUTES = {
   crossword: { label: 'Mots croisés', icon: 'crossword', mount: Crossword.mount, group: 'free', sub: 'puzzle' },
   breaker: { label: 'Casse-briques', icon: 'breaker', mount: Breaker.mount, group: 'free', sub: 'arcade' },
   farm: { label: 'Ferme', icon: 'banana', mount: Farm.mount },
+  poker: { label: 'Poker', icon: 'poker', mount: Poker.mount },
   cases: { label: 'Caisses', icon: 'crate', mount: Cases.mount },
   shop: { label: 'Boutique', icon: 'shop', mount: Shop.mount },
   achievements: { label: 'Succès', icon: 'medal', mount: AchPage.mount },
@@ -163,7 +166,7 @@ function navHTML() {
     return `<div class="nav-group" data-g="${g}">${btn}<div class="nav-pop ${g}">${body}</div></div>`;
   };
   const sep = '<span class="nav-sep" aria-hidden="true"></span>';
-  return link('lobby', ROUTES.lobby) + sep + group('casino') + group('free') + link('farm', ROUTES.farm, 'nav-farm') + link('cases', ROUTES.cases, 'nav-cases') + sep + ['shop', 'achievements', 'ranking', 'stats'].map((k) => link(k, ROUTES[k])).join('');
+  return link('lobby', ROUTES.lobby) + sep + group('casino') + group('free') + link('poker', ROUTES.poker, 'nav-poker') + link('farm', ROUTES.farm, 'nav-farm') + link('cases', ROUTES.cases, 'nav-cases') + sep + ['shop', 'achievements', 'ranking', 'stats'].map((k) => link(k, ROUTES[k])).join('');
 }
 
 /* ============================== DÉMARRAGE ============================== */
@@ -331,6 +334,7 @@ function renderShell() {
       <div class="top-right">
         <button class="daily-btn" title="Bonus quotidien"></button>
         <div class="balance-pill" title="Ton solde">${coinSVG('coin')}<span class="bal-amount">${fmt(wallet.balance)}</span></div>
+        <a class="pkj-pill" href="#/poker" title="Tes Jetons Poker (JP)">${icon('jp')}<span class="pkj-amount">${fmt(jpState().jp)}</span><small>JP</small></a>
         <span class="sync-dot saved" title="Sauvegardé"></span>
         <button class="icon-btn vault-btn" title="Coffre-fort">${icon('vault')}</button>
         <button class="icon-btn send-btn" title="Envoyer des ${CUR}">${icon('send')}</button>
@@ -407,6 +411,9 @@ function renderShell() {
   setTimeout(() => wallet && getPlayers(backend, wallet).catch(() => {}), 6000);
   let myRecs = null;
   offCounters && offCounters(); offCounters = trackCounters(wallet); // séries et compteurs : date à laquelle le record est atteint
+  // Jetons Poker : solde en direct dans l'en-tête, gains des mini-jeux
+  offJP && offJP(); offJP = initJP(backend, wallet);
+  offJPPill && offJPPill(); offJPPill = onJP((j) => { const el = $(".pkj-amount", shell); if (el) el.textContent = fmt(j.jp); });
   onRecords(() => {
     if (!wallet) return;
     const now = recordsOf(wallet.uid).map((c) => c.k);

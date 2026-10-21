@@ -1,0 +1,12 @@
+{
+  "name": "casino-chibouk-functions",
+  "description": "Cloud Functions du Casino Chibouk : poker (Texas Hold'em) et Jetons Poker (JP)",
+  "type": "module",
+  "main": "index.js",
+  "engines": { "node": "20" },
+  "dependencies": {
+    "firebase-admin": "^12.7.0",
+    "firebase-functions": "^6.1.0"
+  },
+  "private": true
+}

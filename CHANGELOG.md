@@ -2,6 +2,21 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V35 — Poker et Jetons Poker (21 octobre 2026)
+
+### Nouvelle monnaie : les Jetons Poker (JP)
+
+- Tout le monde est à égalité : les JP ne s'achètent pas avec des Brundles et aucun bonus ne les multiplie (VIP, caisses, titres, records…).
+- Roue du jour : 50 à 200 JP en plus de tes Brundles (tirés par le serveur). Mini-jeux : 10 JP par partie terminée, une toutes les 30 secondes au plus.
+- Ton solde de JP est affiché en haut, à côté de tes Brundles.
+
+### Nouvel onglet : Poker
+
+- Texas Hold'em No Limit entre joueurs, jusqu'à 6 par table. 5 tables toujours ouvertes : Lianes (cave 50 JP), Bananier (100), Cocotier (500), Baobab (2 500) et Roi Singe (10 000).
+- Le salon montre combien de joueurs sont assis à chaque table. Assieds-toi en payant la cave, pars quand tu veux : ton tapis revient en JP. Tu peux aussi regarder une table sans t'asseoir.
+- Plus de jetons ? Recave-toi sans quitter ta place. 30 secondes pour jouer ; deux temps écoulés de suite et tu passes absent.
+- Les cartes sont mélangées et distribuées par le serveur : personne ne peut voir celles des autres. Pas de commission sur les pots.
+
 ## V34 — Ferme : prestige rééquilibré (21 octobre 2026)
 
 ### Ferme

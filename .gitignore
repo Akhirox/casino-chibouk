@@ -1,0 +1,5 @@
+# Clés de compte de service Firebase (migration) : elles donnent tous les droits, ne jamais les publier
+*-cle.json
+*serviceAccount*.json
+migration/
+node_modules/
