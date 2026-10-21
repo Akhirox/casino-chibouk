@@ -2,6 +2,19 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V33 — Culture G plus souple, records absolus (21 octobre 2026)
+
+### Culture G
+
+- 3 essais par question : une mauvaise réponse ne passe plus directement à la suivante, tu peux retenter tant qu'il reste du temps.
+- 20 secondes par question (au lieu de 30).
+- Les réponses incomplètes mais claires sont acceptées : « crise des missiles » pour « La crise des missiles de Cuba », « seconde guerre » pour « Seconde Guerre mondiale ». Un mot isolé trop court (« Jules » pour « Jules César ») ne suffit pas.
+
+### Records
+
+- Plus de moyennes : seuls les records absolus comptent (meilleur temps, meilleur score, plus grand nombre). Aux quiz, le record est le nombre de sans-faute ; à Pinpoint, le nombre de mots trouvés dès le 1er indice.
+- Plus de records pour les jeux de casino : uniquement les mini-jeux.
+
 ## V32 — Records et Culture G (21 octobre 2026)
 
 ### Nouveau mini-jeu : Culture G

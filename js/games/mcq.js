@@ -65,7 +65,7 @@ export function mountMCQ(view, { wallet }, opt) {
   const SECS = () => mode.seconds || opt.seconds || CONFIG.QUIZ_SECONDS;
   const PER = () => mode.perCorrect || CONFIG.QUIZ_PER_CORRECT;
   const BONUS = () => mode.perfectBonus || CONFIG.QUIZ_PERFECT_BONUS;
-  let deadline = 0, raf = null, nextTimer = null, credited = false;
+  let deadline = 0, raf = null, nextTimer = null, credited = false, tickFn = null;
   let guard = null, rts = [], shownAt = 0; // fair-play : temps de réponse de chaque question
 
   view.innerHTML = `
@@ -165,6 +165,7 @@ export function mountMCQ(view, { wallet }, opt) {
       if (left <= 0) { answer(null); return; }
       raf = requestAnimationFrame(tick);
     };
+    tickFn = tick;
     raf = requestAnimationFrame(tick);
   }
 
@@ -184,6 +185,19 @@ export function mountMCQ(view, { wallet }, opt) {
     const text = q.type === 'text';
     const isMap = q.type === 'map';
     const ok = !timeout && (text ? (q.match ? q.match(i) : matches(i, q.accept, q.reject)) : i === q.answer);
+    // réponse écrite fausse : nouvel essai tant qu'il en reste (opt.tries) et que le temps n'est pas écoulé
+    if (text && !ok && !timeout && opt.tries > 1) {
+      q.tried = (q.tried || 0) + 1;
+      if (q.tried < opt.tries) {
+        state = 'ask';
+        const inp = $('#mcq-input', view), left = opt.tries - q.tried;
+        inp.value = ''; inp.classList.remove('shake'); void inp.offsetWidth; inp.classList.add('shake'); inp.focus();
+        $('#qz-verdict', view).textContent = `Non, ce n'est pas « ${String(i).slice(0, 40)} ». Encore ${left} essai${left > 1 ? 's' : ''} !`;
+        sfx.lose();
+        raf = requestAnimationFrame(tickFn);
+        return;
+      }
+    }
     if (!timeout) rts.push(performance.now() - shownAt);
     const right = text ? q.accept[0] : isMap ? q.right : q.choices[q.answer];
     if (isMap && opt.map) opt.map.reveal(q, i, ok);

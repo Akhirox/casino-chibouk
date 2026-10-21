@@ -30,8 +30,20 @@ export function cultureMatch(input, answers) {
     if (v === c || vs === cs) return true;
     // les nombres (années, scores…) doivent être exacts ; le reste tolère des fautes selon la longueur
     if (!/\d/.test(cs) && lev(vs, cs) <= tolFor(cs.length)) return true;
-    // réponse entière dans une phrase un peu plus longue (« c'est nolan »), pas l'inverse
+    // réponse entière dans une phrase un peu plus longue (« c'est nolan »)
     if (cs.length >= 4 && (' ' + v + ' ').includes(' ' + c + ' ') && v.length <= c.length + 14) return true;
+    // réponse incomplète mais claire : les mots tapés se suivent dans la réponse et en couvrent au moins 55 %
+    // (« crise des missiles » pour « La crise des missiles de Cuba » ; mais pas « Jules » pour « Jules César »)
+    if (partial(v.split(' '), c.split(' '), cs.length)) return true;
+  }
+  return false;
+}
+
+function partial(iw, aw, total) {
+  const len = iw.join('').length;
+  if (!iw.length || len < 5 || len / total < 0.55 || iw.length > aw.length) return false;
+  for (let s = 0; s + iw.length <= aw.length; s++) {
+    if (iw.every((w, k) => { const a = aw[s + k]; return w === a || (!/\d/.test(a) && lev(w, a) <= tolFor(a.length)); })) return true;
   }
   return false;
 }
@@ -65,9 +77,10 @@ export function mount(view, ctx) {
     kind: 'culture',
     title: 'Culture <span>G</span>',
     introTitle: () => '10 questions de culture générale, réponse à écrire',
-    introText: `${CULTURE_COUNT} questions sur ${CG_CATS.length} thèmes (cinéma, histoire, sciences, sport, jeux vidéo, manga…). Écris ta réponse : les accents, les articles et les petites fautes de frappe sont tolérés.`,
-    seconds: 30,
-    modes: [{ key: 'expert', label: 'Expert', desc: 'Aucune proposition : écris la réponse.', seconds: 30, perCorrect: 40, perfectBonus: 300, stat: 'Expert' }],
+    introText: `${CULTURE_COUNT} questions sur ${CG_CATS.length} thèmes (cinéma, histoire, sciences, sport, jeux vidéo, manga…). Écris ta réponse (3 essais par question) : les accents, les articles, les petites fautes de frappe et les réponses un peu incomplètes sont tolérés.`,
+    seconds: 20,
+    tries: 3,
+    modes: [{ key: 'expert', label: 'Expert', desc: 'Aucune proposition : écris la réponse. 3 essais par question.', seconds: 20, perCorrect: 40, perfectBonus: 300, stat: 'Expert' }],
     load: async () => QUESTIONS,
     build: (data, n) => buildCulture(data, n),
   });
