@@ -51,6 +51,9 @@ export const seedMult = (f) => (1 + SEED_BONUS * (f.seeds || 0)) * prestigeMult(
 export const PRESTIGE_BASE = 2e6, PRESTIGE_BONUS = 1;
 export const prestigeMult = (f) => 1 + PRESTIGE_BONUS * ((f && f.pr) || 0);
 export const prestigeNeed = (f) => PRESTIGE_BASE * 2 ** ((f && f.pr) || 0);
+// V34 : chaque prestige rend les bâtiments 30 % plus chers (constructions et améliorations), ×1,3 puis ×1,69, ×2,2…
+export const PRESTIGE_PRICE = 1.3;
+export const priceMult = (f) => Math.pow(PRESTIGE_PRICE, (f && f.pr) || 0);
 // Récoltes nécessaires (depuis la dernière replantation) pour la graine suivante
 export const lifeForSeeds = (n) => Math.pow(n / 2, 2) * 1e6;
 // Niveau des bâtiments de départ après une replantation (plus on a de graines, plus on repart grand)
@@ -67,21 +70,28 @@ export const neighbors = (i) => { const r = Math.floor(i / SIZE), c = i % SIZE, 
   return out; };
 const sides = (i) => { const r = Math.floor(i / SIZE), c = i % SIZE; return [[r - 1, c], [r + 1, c], [r, c - 1], [r, c + 1]].filter(([a, b]) => a >= 0 && b >= 0 && a < SIZE && b < SIZE).map(([a, b]) => a * SIZE + b); };
 
-// Prix d'un niveau (L = 1 : construire). Construire un bâtiment de plus du même type coûte plus cher.
+// Prix d'un niveau (L = 1 : construire). Construire un bâtiment de plus du même type coûte plus cher,
+// et tout coûte 30 % de plus à chaque prestige.
 export function costOf(f, t, L) {
   const d = B[t];
   const n = L === 1 ? Math.max(0, countType(f, t) - (t === 'F' || t === 'C' || t === 'E' ? 1 : 0)) : 0;
-  return Math.max(1, Math.round(d.base * PRICE * Math.pow(d.grow, L - 1) * Math.pow(d.extra, n)));
+  return Math.max(1, Math.round(d.base * PRICE * Math.pow(d.grow, L - 1) * Math.pow(d.extra, n) * priceMult(f)));
 }
 export const timeOf = (t, L) => Math.round(B[t].time * Math.pow(B[t].tgrow, L - 1)) * 1000;
 // Vitesse de construction permanente (gagnée dans les caisses) : f.spd = part du temps en moins (0,1 = −10 %), plafonnée
 export const SPEED_MAX = 0.6;
 export const speedOf = (f) => Math.max(0, Math.min(SPEED_MAX, (f && f.spd) || 0));
 export const buildTime = (f, t, L) => Math.max(1000, Math.round(timeOf(t, L) * (1 - speedOf(f))));
-// Brundles investis dans un bâtiment (construction + toutes ses améliorations), au prix actuel
+// Brundles investis dans un bâtiment (construction + toutes ses améliorations).
+// V34 : chaque case garde ce qui a vraiment été payé (x.c) ; sans ce champ (bâtiment d'avant la V34), estimation à
+// l'ancien prix, sans la hausse due au prestige (sinon démolir rapporterait plus que ce qui a été payé).
 export function investedIn(f, i) {
   const x = tile(f, i);
   if (!x) return 0;
+  if (typeof x.c === 'number') return Math.round(x.c);
+  return legacyInvested(f, x);
+}
+function legacyInvested(f, x) {
   const d = B[x.t];
   const n = Math.max(0, countType(f, x.t) - 1 - (x.t === 'F' || x.t === 'C' || x.t === 'E' ? 1 : 0));
   let sum = d.base * PRICE * Math.pow(d.extra, n);
@@ -102,7 +112,7 @@ export function normalize(raw, now = Date.now()) {
   if (!raw || typeof raw !== 'object' || !raw.v) return newFarm(now);
   const f = { ...newFarm(now), ...raw };
   const g = new Array(SIZE * SIZE).fill(null);
-  if (Array.isArray(raw.g)) raw.g.forEach((x, i) => { if (x && B[x.t] && i < g.length) g[i] = { t: x.t, l: Math.max(1, Math.min(B[x.t].max, x.l | 0)) }; });
+  if (Array.isArray(raw.g)) raw.g.forEach((x, i) => { if (x && B[x.t] && i < g.length) g[i] = { t: x.t, l: Math.max(1, Math.min(B[x.t].max, x.l | 0)), ...(Number.isFinite(x.c) && x.c >= 0 ? { c: Math.round(x.c) } : {}) }; });
   else if (raw.g) for (const k in raw.g) { const x = raw.g[k]; if (x && B[x.t] && +k < g.length) g[+k] = { t: x.t, l: x.l | 0 || 1 }; }
   f.g = g;
   f.own = Array.isArray(raw.own) ? raw.own.filter((i) => i >= 0 && i < g.length) : [...START];
@@ -116,7 +126,10 @@ export function normalize(raw, now = Date.now()) {
 }
 
 /* -------- valeurs dérivées -------- */
-export const capacity = (f) => built(f).filter((x) => x.t === 'E').reduce((a, x) => a + storage(x.l), 0);
+// Capacité d'un entrepôt dans cette ferme : multipliée comme la production à chaque prestige (×2, ×3…),
+// pour que les entrepôts ne se remplissent pas plus vite après un prestige
+export const storageOf = (f, L) => Math.round(storage(L) * prestigeMult(f));
+export const capacity = (f) => built(f).filter((x) => x.t === 'E').reduce((a, x) => a + storageOf(f, x.l), 0);
 export const houses = (f) => built(f).filter((x) => x.t === 'C').reduce((a, x) => a + housing(x.l), 0);
 // Bonus d'irrigation d'une case
 export function irrigation(f, i) { let b = 0; for (const j of neighbors(i)) { const x = f.g[j]; if (x && x.t === 'P') b += wellBonus(x.l); } return b; }
@@ -192,7 +205,10 @@ export function tick(f, now = Date.now()) {
   while (f.q.length && f.q[0].end <= now) {
     const q = f.q.shift();
     produce(q.end);
-    f.g[q.i] = { t: q.t, l: q.l };
+    const prev = f.g[q.i];
+    // ce qui a été payé pour ce bâtiment (remboursement à la démolition)
+    const paid = (prev ? (typeof prev.c === 'number' ? prev.c : legacyInvested(f, prev)) : 0) + (q.c || 0);
+    f.g[q.i] = { t: q.t, l: q.l, c: Math.round(paid) };
     done.push(q);
   }
   produce(now);
@@ -268,9 +284,52 @@ export function prestige(f, now = Date.now()) {
   f.ss = 0;
   const L = Math.min(6, f.pr + 1); // on repart un peu plus grand à chaque prestige
   f.g = new Array(SIZE * SIZE).fill(null);
-  f.g[24] = { t: 'F', l: L }; f.g[17] = { t: 'C', l: L }; f.g[31] = { t: 'E', l: L };
+  f.g[24] = { t: 'F', l: L, c: 0 }; f.g[17] = { t: 'C', l: L, c: 0 }; f.g[31] = { t: 'E', l: L, c: 0 }; // offerts
   f.q = []; f.w = 2; f.life = 0; f.t = now;
   f.b = Math.floor(capacity(f) * 0.8);
+  return null;
+}
+
+// Prestige + reconstruction (V34) : après le prestige, la ferme est remise exactement comme avant (mêmes bâtiments,
+// mêmes cases, mêmes niveaux, même nombre de singes), au prix d'après le prestige (+30 %), chantiers terminés tout de
+// suite : chaque niveau compte aussi le prix pour finir le chantier (rushCost sur toute sa durée).
+// Renvoie { err } ou { build, rush, hire, total, g, w, levels }.
+export function replayQuote(f0, now = Date.now()) {
+  const err = canPrestige(f0);
+  if (err) return { err };
+  const layout = built(f0).map((x) => ({ i: x.i, t: x.t, l: x.l })).sort((a, b) => a.i - b.i);
+  const f = JSON.parse(JSON.stringify(f0));
+  f.g = f0.g.map((x) => (x ? { ...x } : null)); f.q = []; f.xbs = (f0.xbs || []).map((b) => ({ ...b }));
+  const e2 = prestige(f, now);
+  if (e2) return { err: e2 };
+  // bâtiments offerts : gardés s'ils correspondent au plan, sinon la case est libérée pour le plan
+  for (const i of [24, 17, 31]) { const x = f.g[i], want = layout.find((y) => y.i === i); if (x && want && want.t !== x.t) f.g[i] = null; }
+  let build = 0, rush = 0, hire = 0, levels = 0;
+  // constructions d'abord (le prix d'un bâtiment de plus dépend du nombre déjà construit), puis améliorations
+  for (const { i, t } of layout) {
+    if (f.g[i] && f.g[i].t === t) continue;
+    const c = costOf(f, t, 1), ms = buildTime(f, t, 1);
+    build += c; rush += rushCost(ms, c, ms); levels++;
+    f.g[i] = { t, l: 1, c };
+  }
+  for (const { i, t, l } of layout) {
+    for (let L = f.g[i].l + 1; L <= l; L++) {
+      const c = costOf(f, t, L), ms = buildTime(f, t, L);
+      build += c; rush += rushCost(ms, c, ms); levels++;
+      f.g[i] = { t, l: L, c: (f.g[i].c || 0) + c };
+    }
+  }
+  const w = Math.min(f0.w, houses(f));
+  for (let n = f.w; n < w; n++) hire += hireCost(n);
+  return { build, rush, hire, total: build + rush + hire, g: f.g, w, levels };
+}
+// Applique le prestige puis la reconstruction chiffrée par replayQuote (le prix est débité par l'appelant)
+export function prestigeReplay(f, quote, now = Date.now()) {
+  const err = prestige(f, now);
+  if (err) return err;
+  f.g = quote.g.map((x) => (x ? { ...x } : null));
+  f.w = quote.w;
+  f.rate = Math.round(productionPerHour(f));
   return null;
 }
 

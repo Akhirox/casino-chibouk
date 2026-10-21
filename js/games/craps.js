@@ -117,7 +117,7 @@ export function mount(view, { wallet }) {
   function rebet() {
     if (!lastLayout || point) return false;
     const want = Object.fromEntries(Object.entries(lastLayout).filter(([k, v]) => v > 0 && C.canBet(k, null, lastLayout) && !(bets[k] && ['pass', 'dpass'].includes(k))));
-    if (!wallet.canAfford(sum(want))) { toast('Solde insuffisant pour remettre la mise', 'error'); return false; }
+    if (sum(want) > 0 && !wallet.canAfford(sum(want))) { toast('Solde insuffisant pour remettre la mise', 'error'); return false; }
     pending = want; sfx.chip(); render(); return true;
   }
   // reprendre les mises Place et les cotes (les mises de ligne, elles, restent jusqu'à la décision)
@@ -212,7 +212,9 @@ export function mount(view, { wallet }) {
     }
     if (point && plan.place && plan.placeAmt) for (const n of PLACE_SETS[plan.place]) { if (plan.place === 'nopoint' && n === point) continue; const k = 'p' + n; if (!bets[k] && !want[k]) add(k, plan.placeAmt); }
     ['field', 'any7', 'craps'].forEach((k) => { if (plan[k] && !want[k]) add(k, plan[k]); });
-    if (!wallet.canAfford(sum(want))) { toast('Auto arrêtée : solde insuffisant pour la stratégie prévue', 'error'); return false; }
+    // rien à ajouter (point en cours, mises déjà posées) : on relance simplement (canAfford(0) répond toujours non)
+    const need = sum(want);
+    if (need > 0 && !wallet.canAfford(need)) { toast('Auto arrêtée : solde insuffisant pour la stratégie prévue', 'error'); return false; }
     pending = want; render();
     return true;
   }

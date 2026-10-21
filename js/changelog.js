@@ -1,9 +1,20 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '33';
+export const VERSION = '34';
 
 export const CHANGELOG = [
+  {
+    v: '34', date: '21 octobre 2026', title: 'Ferme : prestige rééquilibré',
+    groups: [
+      ['Ferme', [
+        'Chaque prestige rend les bâtiments 30 % plus chers (constructions et améliorations) : ×1,3 après le 1er prestige, ×1,69 après le 2e, ×2,2 après le 3e…',
+        'Les entrepôts suivent la production : leur capacité est multipliée comme elle à chaque prestige (×2 après le 1er, ×3 après le 2e…). Ils ne se remplissent donc pas plus vite après un prestige.',
+        'Nouvelle option au moment du prestige : « Prestige + tout reconstruire ». Ta ferme est remise exactement comme avant (mêmes bâtiments, mêmes cases, mêmes niveaux, mêmes singes) d\'un seul coup. Le prix comprend les bâtiments au nouveau tarif, les chantiers terminés tout de suite et les singes ; le détail est affiché avant de confirmer.',
+        'Démolir rembourse 60 % de ce que tu as vraiment payé pour le bâtiment.',
+      ]],
+    ],
+  },
   {
     v: '33', date: '21 octobre 2026', title: 'Records et Culture G',
     groups: [

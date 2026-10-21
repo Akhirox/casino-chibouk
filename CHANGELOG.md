@@ -2,6 +2,15 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V34 — Ferme : prestige rééquilibré (21 octobre 2026)
+
+### Ferme
+
+- Chaque prestige rend les bâtiments 30 % plus chers (constructions et améliorations) : ×1,3 après le 1er prestige, ×1,69 après le 2e, ×2,2 après le 3e…
+- Les entrepôts suivent la production : leur capacité est multipliée comme elle à chaque prestige (×2 après le 1er, ×3 après le 2e…). Ils ne se remplissent donc pas plus vite après un prestige.
+- Nouvelle option au moment du prestige : « Prestige + tout reconstruire ». Ta ferme est remise exactement comme avant (mêmes bâtiments, mêmes cases, mêmes niveaux, mêmes singes) d'un seul coup. Le prix comprend les bâtiments au nouveau tarif, les chantiers terminés tout de suite et les singes ; le détail est affiché avant de confirmer.
+- Démolir rembourse 60 % de ce que tu as vraiment payé pour le bâtiment.
+
 ## V33 — Records et Culture G (21 octobre 2026)
 
 ### Nouveau mini-jeu : Culture G

@@ -270,7 +270,7 @@ export function mount(view, { wallet, backend }) {
     const up = $('#fm-up', el); if (up) up.onclick = () => act(F.costOf(f(), x.t, x.l + 1), () => F.upgrade(f(), sel, Date.now(), wallet.balance), 'upgrade', `Amélioration lancée : ${d.name} niveau ${x.l + 1}`);
     $('#fm-demo', el).onclick = async () => {
       const back = F.refundOf(f(), sel);
-      const ok = await modal({ title: 'Démolir ?', html: `<p>Démolir ${d.name.toLowerCase()} niveau ${x.l} ?</p><p>Tu récupères <b class="gold">${money(back)}</b> : ${Math.round(F.REFUND * 100)} % de ce que coûtent sa construction et ses améliorations (${money(F.investedIn(f(), sel))}).</p>`, buttons: [{ label: 'Annuler', value: false }, { label: `Démolir (+${fmt(back)})`, value: true, primary: true }] });
+      const ok = await modal({ title: 'Démolir ?', html: `<p>Démolir ${d.name.toLowerCase()} niveau ${x.l} ?</p><p>Tu récupères <b class="gold">${money(back)}</b> : ${Math.round(F.REFUND * 100)} % de ce que tu as payé pour sa construction et ses améliorations (${money(F.investedIn(f(), sel))}).</p>`, buttons: [{ label: 'Annuler', value: false }, { label: `Démolir (+${fmt(back)})`, value: true, primary: true }] });
       if (!ok) return;
       const sel0 = sel, back2 = F.refundOf(f(), sel0);
       act(0, () => F.demolish(f(), sel0), 'demolish', `Bâtiment démoli : +${fmt(back2)} ${CUR}`, () => { if (back2 > 0) wallet.credit('farmrefund', back2, { what: 'demolish' }); });
@@ -291,7 +291,7 @@ export function mount(view, { wallet, backend }) {
         <li><span>Singes au travail</span><b>${wa ? wa.w : 0} / ${F.slots(x.l)}</b></li><li><span>Production</span><b>${fmt(wa ? wa.w * wa.per : 0)}/h</b></li>${irr ? `<li><span>Irrigation</span><b>+${Math.round(irr * 100)} %</b></li>` : ''}</ul>`;
     }
     if (x.t === 'C') return `<ul class="fm-stats">${row('Singes logés', F.housing(x.l), F.housing(nx))}</ul>`;
-    if (x.t === 'E') return `<ul class="fm-stats">${row('Capacité', fmt(F.storage(x.l)), fmt(F.storage(nx)))}</ul>`;
+    if (x.t === 'E') return `<ul class="fm-stats">${row('Capacité', fmt(F.storageOf(fm, x.l)), fmt(F.storageOf(fm, nx)))}</ul>`;
     if (x.t === 'P') {
       // effet réel sur la ferme telle qu'elle est construite : production sans le puits / maintenant / au niveau suivant
       const now = F.productionPerHour(fm), without = prodWith(fm, sel, null), next = same ? now : prodWith(fm, sel, { t: 'P', l: nx });
@@ -308,7 +308,7 @@ export function mount(view, { wallet, backend }) {
     const fm = f();
     return `<h3>Construire ici</h3><div class="fm-builds">${F.TYPES.map((t) => {
       const d = F.B[t], c = F.costOf(fm, t, 1), err = F.canBuild(fm, sel, t, wallet.balance);
-      const eff = t === 'F' ? `${fmt(F.perWorker(1))}/h par singe, ${F.slots(1)} places` : t === 'C' ? `${F.housing(1)} singes logés` : t === 'E' ? `+${fmt(F.storage(1))} de stockage` : t === 'P' ? `+${Math.round(F.wellBonus(1) * 100)} % aux bananeraies voisines (ici : +${fmt(prodWith(fm, sel, { t: 'P', l: 1 }) - F.productionPerHour(fm))}/h)` : `vente à ${frN(F.sellAt(1))} ${CUR} la banane, +${frN(F.MARKET_STEP)} par niveau`;
+      const eff = t === 'F' ? `${fmt(F.perWorker(1))}/h par singe, ${F.slots(1)} places` : t === 'C' ? `${F.housing(1)} singes logés` : t === 'E' ? `+${fmt(F.storageOf(fm, 1))} de stockage` : t === 'P' ? `+${Math.round(F.wellBonus(1) * 100)} % aux bananeraies voisines (ici : +${fmt(prodWith(fm, sel, { t: 'P', l: 1 }) - F.productionPerHour(fm))}/h)` : `vente à ${frN(F.sellAt(1))} ${CUR} la banane, +${frN(F.MARKET_STEP)} par niveau`;
       return `<div class="fm-build ${err ? 'off' : ''}"><span class="fm-build-art">${tileArt(t, 1)}</span><div><b>${d.name}</b><small>${eff}</small><small>${fmt(c)} ${CUR} · ${dur(F.buildTime(fm, t, 1))}</small>${err && err !== 'Pas assez de Brundles' ? `<small class="fm-err">${err}</small>` : ''}</div>
         <button class="btn btn-gold btn-sm" data-build="${t}" ${err ? 'disabled' : ''}>Construire</button></div>`;
     }).join('')}</div>`;
@@ -320,7 +320,7 @@ export function mount(view, { wallet, backend }) {
     const pct = Math.max(0, Math.min(100, (ss / need) * 100));
     return `<div class="fm-seedbox"><h4>${STAR}Prestige${fm.pr ? ` ${fm.pr}` : ''}</h4>
       <p>${fm.pr ? `Ta production est multipliée par <b>×${F.prestigeMult(fm)}</b> grâce à tes ${fm.pr} prestige${fm.pr > 1 ? 's' : ''}.` : 'Vends 2 millions de bananes pour débloquer le prestige : ferme remise à zéro contre <b>+100 % de production pour toujours</b>.'}${fm.seeds ? ` Tes <b>${fm.seeds} graine${fm.seeds > 1 ? 's' : ''} d'or</b> ajoutent +${Math.round(F.SEED_BONUS * fm.seeds * 100)} %.` : ''}</p>
-      <p class="muted">Vendues depuis ${fm.pr ? 'le dernier prestige' : 'le début'} : <b>${fmt(Math.floor(ss))}</b> / ${fmt(need)}${ok ? ' : prestige disponible !' : ''}. Le palier double à chaque prestige.</p>
+      <p class="muted">Vendues depuis ${fm.pr ? 'le dernier prestige' : 'le début'} : <b>${fmt(Math.floor(ss))}</b> / ${fmt(need)}${ok ? ' : prestige disponible !' : ''}. Le palier double à chaque prestige, et les bâtiments coûtent 30 % de plus${fm.pr ? ` (prix actuels ×${frN(Math.round(F.priceMult(fm) * 100) / 100)})` : ''}.</p>
       <div class="fm-bar"><i style="width:${pct}%"></i></div>
       ${ok ? `<button class="btn btn-gold btn-sm" data-replant>${STAR}Prestige : +100 % de production</button>` : ''}</div>`;
   }
@@ -414,21 +414,48 @@ export function mount(view, { wallet, backend }) {
     numbers(); if (sel < 0) side();
   }
 
-  // Prestige : ferme remise à zéro contre +100 % de production pour toujours
+  // Prestige : ferme remise à zéro contre +100 % de production pour toujours.
+  // Option : tout reconstruire à l'identique tout de suite (bâtiments, niveaux, singes), chantiers terminés payés.
   async function replant() {
     const fm = f();
     F.tick(fm);
     const err = F.canPrestige(fm);
     if (err) { toast(err, 'error'); return; }
     const after = (fm.pr || 0) + 1;
-    const ok = await modal({ title: `Prestige ${after} ?`, html: `
+    const quote = F.replayQuote(fm);
+    const pm = (n) => frN(Math.round(Math.pow(F.PRESTIGE_PRICE, n) * 100) / 100);
+    const rich = !quote.err && wallet.canAfford(quote.total);
+    const ok = await modal({ title: `Prestige ${after} ?`, cls: 'wide', html: `
       <p>Ta production passe de <b>×${F.prestigeMult(fm)}</b> à <b class="gold">×${after + 1}</b>, pour toujours.</p>
       <ul class="muted"><li><b>Conservé</b> : tes ${fm.own.length} parcelles, tes ${fm.bu} bâtisseur${fm.bu > 1 ? 's' : ''}, tes graines d'or, ta vitesse de construction, tes boosts en cours et tes statistiques.</li>
       <li><b>Remis à zéro</b> : tous les bâtiments, les singes et les bananes en stock (vends-les avant !).</li>
-      <li>Tu repars avec une bananeraie, une cabane et un entrepôt de niveau <b>${Math.min(6, after + 1)}</b>, et un entrepôt rempli aux 4/5.</li></ul>
+      <li>Tu repars avec une bananeraie, une cabane et un entrepôt de niveau <b>${Math.min(6, after + 1)}</b>, et un entrepôt rempli aux 4/5.</li>
+      <li><b>Les bâtiments coûtent 30 % de plus</b> à chaque prestige : prix ×${pm(after)} après celui-ci${fm.pr ? ` (×${pm(fm.pr)} aujourd'hui)` : ''}.</li></ul>
+      ${quote.err ? '' : `<div class="fm-replay"><b>${STAR}Option : tout reconstruire tout de suite</b>
+        <p class="muted">Ta ferme est remise exactement comme maintenant (${F.built(fm).length} bâtiments aux mêmes places et aux mêmes niveaux, ${quote.w} singes), au nouveau prix, sans attendre les chantiers.</p>
+        <ul class="fm-replay-cost"><li><span>Bâtiments (${quote.levels} niveaux, prix ×${pm(after)})</span><b>${money(quote.build)}</b></li>
+          <li><span>Chantiers terminés tout de suite</span><b>${money(quote.rush)}</b></li>
+          <li><span>Singes (${quote.w - 2} à embaucher)</span><b>${money(quote.hire)}</b></li>
+          <li class="tot"><span>Total</span><b class="gold">${money(quote.total)}</b></li></ul>
+        ${rich ? '' : `<p class="neg">Il te manque ${money(quote.total - wallet.balance)} pour cette option.</p>`}</div>`}
       <p class="muted fm-note">Prochain prestige après ${fmt(F.PRESTIGE_BASE * 2 ** after)} bananes vendues.</p>`,
-      buttons: [{ label: 'Pas encore', value: false }, { label: `Prestige (×${after + 1})`, value: true, primary: true }] });
+      buttons: [{ label: 'Pas encore', value: false }, ...(quote.err ? [] : [{ label: `Prestige + tout reconstruire (${fmt(quote.total)})`, value: 'replay' }]), { label: `Prestige (×${after + 1})`, value: true, primary: true }] });
     if (!ok || !alive) return;
+    if (ok === 'replay') {
+      // le prix est recalculé au moment du clic (chantiers, singes ou solde ont pu changer pendant la fenêtre)
+      F.tick(fm);
+      const q = F.replayQuote(fm);
+      if (q.err) { toast(q.err, 'error'); return; }
+      if (!wallet.canAfford(q.total)) { toast(`Pas assez de ${CUR} : il faut ${fmt(q.total)} pour tout reconstruire`, 'error'); sfx.lose(); return; }
+      if (F.prestigeReplay(fm, q)) return;
+      wallet.debit('farm', q.total, { what: 'replay', build: q.build, rush: q.rush, hire: q.hire });
+      sel = -1;
+      save(wallet, 'prestige', { pr: fm.pr, replay: q.total });
+      sfx.bonus(); coinRain(60);
+      toast(`Prestige ${fm.pr} : ferme reconstruite à l'identique, elle produit maintenant ×${F.prestigeMult(fm)} !`, 'win', 6000);
+      render();
+      return;
+    }
     if (F.prestige(fm)) return;
     sel = -1;
     save(wallet, 'prestige', { pr: fm.pr });
@@ -447,7 +474,7 @@ export function mount(view, { wallet, backend }) {
       <li>Constructions, améliorations et singes se paient directement en <b>${CUR}</b>.</li>
       <li>Les chantiers prennent du temps (de quelques secondes à plusieurs heures). Engage des <b>bâtisseurs</b> pour en mener plusieurs à la fois, ou termine-les tout de suite en payant des ${CUR}.</li>
       <li>Les <b>parcelles</b> autour de ta ferme s'achètent en ${CUR}.</li>
-      <li><b>Prestige</b> : après 2 millions de bananes vendues, tu peux remettre ta ferme à zéro contre <b>+100 % de production pour toujours</b> (×2, puis ×3, ×4…). Tu gardes tes parcelles, tes bâtisseurs et tes graines d'or. Le palier double à chaque fois : 2 M, 4 M, 8 M de bananes vendues…</li>
+      <li><b>Prestige</b> : après 2 millions de bananes vendues, tu peux remettre ta ferme à zéro contre <b>+100 % de production pour toujours</b> (×2, puis ×3, ×4…). Tu gardes tes parcelles, tes bâtisseurs et tes graines d'or. Le palier double à chaque fois : 2 M, 4 M, 8 M de bananes vendues… Chaque prestige rend les bâtiments <b>30 % plus chers</b>. La capacité des entrepôts, elle, est multipliée comme la production (×2, ×3…). Tu peux aussi tout reconstruire à l'identique d'un coup, en payant les bâtiments, les chantiers terminés tout de suite et les singes.</li>
       <li><b>Graines d'or</b> (caisses) : +5 % de production chacune, pour toujours.</li>
       <li><b>Boosts de récolte</b> (caisses) : ils se cumulent, de moins en moins (le 2e compte pour 1/2, le 3e pour 1/3, le 4e pour 1/4…) mais chacun ajoute toujours un peu, jusqu'à ×5.</li>
       <li>Onglet <b>Les voisins</b> : visite les fermes des autres joueurs et compare vos productions.</li></ul>`, buttons: [{ label: 'Compris', value: true, primary: true }] });
