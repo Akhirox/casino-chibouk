@@ -1,18 +1,20 @@
 // Succès (achievements) : défis globaux et par jeu, débloqués automatiquement à partir des événements du portefeuille
 import { CONFIG } from './config.js';
 import { vipOf, vipIndex } from './progress.js';
+import { recordCount } from './records.js';
 
 export const TIERS = {
   bronze: { name: 'Bronze', reward: 100 },
   silver: { name: 'Argent', reward: 500 },
   gold: { name: 'Or', reward: 2500 },
   legend: { name: 'Légende', reward: 10000 },
+  mythic: { name: 'Mythique', reward: 250000 },
 };
 
 export const CATEGORIES = {
   global: 'Global', slots: 'Chibouk Slot', jungle: 'Jungle Connect', craps: 'Craps', blackjack: 'Blackjack', roulette: 'Roulette', plinko: 'Plinkoko',
   crash: 'Crashibouk', tower: 'Tower', mines: 'Mines', dice: 'Dice', hilo: 'Hi-Lo', keno: 'Keno', wheel: 'Roue du Singe', limbo: 'Limbo', scratch: 'Jeux à gratter',
-  free: 'Jeux gratuits', farm: 'Ferme', progress: 'Progression',
+  free: 'Jeux gratuits', farm: 'Ferme', progress: 'Progression', mythic: 'Mythiques',
 };
 
 const CASINO_GAMES = ['slots', 'jungle', 'craps', 'blackjack', 'roulette', 'plinko', 'crash', 'tower', 'mines', 'dice', 'hilo', 'keno', 'wheel', 'limbo', 'scratch'];
@@ -26,6 +28,8 @@ const streak = (c, game, kind) => (c.streaks && c.streaks[game] && c.streaks[gam
 // test(e, w, c) -> true pour débloquer ; progress(w, c) -> [actuel, objectif] (optionnel)
 // production horaire de la ferme (enregistrée à chaque seconde par la minuterie de la ferme)
 const fr = (w) => (w.p.farm && w.p.farm.rate) || 0;
+const fm = (w) => w.p.farm || {};
+const fmMax = (w, t) => Math.max(0, ...((fm(w).g || []).filter((x) => x && x.t === t).map((x) => x.l)));
 export const ACHIEVEMENTS = [
   /* ------------------------------ GLOBAL ------------------------------ */
   { id: 'first-bet', cat: 'global', tier: 'bronze', name: 'Premier pas dans la jungle', desc: 'Jouer ta toute première partie.', test: (e, w) => st(w).rounds >= 1 },
@@ -233,6 +237,22 @@ export const ACHIEVEMENTS = [
   { id: 'cw-1', cat: 'free', tier: 'bronze', name: 'Cruciverbiste', desc: 'Remplir une grille de mots croisés.', test: (e, w) => (st(w).crosswordWon || 0) >= 1 },
   { id: 'cw-hard', cat: 'free', tier: 'silver', name: 'Dictionnaire vivant', desc: 'Remplir une grille de mots croisés difficile.', test: (e, w) => (st(w).crosswordWon2 || 0) >= 1 },
   { id: 'cw-clean', cat: 'free', tier: 'gold', name: 'Sans filet', desc: 'Remplir une grille de mots croisés difficile sans aucun indice.', test: (e, w) => (st(w).crosswordCleanHard || 0) >= 1 },
+  /* ------------------------------ MYTHIQUES (V38) : pour ceux qui ont tout fini ------------------------------ */
+  { id: 'my-vip', cat: 'mythic', tier: 'mythic', name: 'Dieu Singe', desc: 'Atteindre le rang VIP Dieu Singe (250 000 milliards misés).', test: (e, w) => vipOf(st(w).totalWagered).index >= vipIndex('dieu'), progress: (w) => [st(w).totalWagered, 2.5e14] },
+  { id: 'my-bal-1md', cat: 'mythic', tier: 'mythic', name: 'Milliardaire de la jungle', desc: 'Atteindre 1 milliard de Brundles (solde + coffre).', test: (e, w) => w.fortune >= 1e9, progress: (w) => [w.fortune, 1e9] },
+  { id: 'my-win-100m', cat: 'mythic', tier: 'mythic', name: 'Le coup du siècle', desc: 'Gagner 100 millions de Brundles en un seul coup.', test: (e, w) => (st(w).biggestWin || 0) >= 1e8, progress: (w) => [st(w).biggestWin || 0, 1e8] },
+  { id: 'my-pr8', cat: 'mythic', tier: 'mythic', name: 'Seigneur des bananes', desc: 'Atteindre le prestige 8 de la ferme.', test: (e, w) => (fm(w).pr || 0) >= 8, progress: (w) => [fm(w).pr || 0, 8] },
+  { id: 'my-f20', cat: 'mythic', tier: 'mythic', name: 'Bananeraie divine', desc: 'Monter une bananeraie au niveau 20 (Ascension).', test: (e, w) => fmMax(w, 'F') >= 20, progress: (w) => [fmMax(w, 'F'), 20] },
+  { id: 'my-wonders', cat: 'mythic', tier: 'mythic', name: 'Les quatre merveilles', desc: 'Achever les 4 Merveilles de la ferme (niveau 5).', test: (e, w) => ['temple', 'port', 'obs', 'arbre'].every((k) => ((fm(w).wo || {})[k] || 0) >= 5), progress: (w) => [['temple', 'port', 'obs', 'arbre'].reduce((a, k) => a + Math.min(5, (fm(w).wo || {})[k] || 0), 0), 20] },
+  { id: 'my-exp50', cat: 'mythic', tier: 'mythic', name: 'Grand explorateur', desc: 'Réussir 50 expéditions.', test: (e, w) => (fm(w).exn || 0) >= 50, progress: (w) => [fm(w).exn || 0, 50] },
+  { id: 'my-seeds60', cat: 'mythic', tier: 'mythic', name: 'Jardin d\'Éden', desc: 'Posséder 60 graines d\'or.', test: (e, w) => (fm(w).seeds || 0) >= 60, progress: (w) => [fm(w).seeds || 0, 60] },
+  { id: 'my-records5', cat: 'mythic', tier: 'mythic', name: 'Intouchable', desc: 'Détenir 5 records des mini-jeux en même temps.', test: () => recordCount() >= 5, progress: () => [recordCount(), 5] },
+  { id: 'my-quiz25', cat: 'mythic', tier: 'mythic', name: 'Cerveau quantique', desc: 'Faire 10/10 au calcul mental difficile en moins de 25 secondes.', test: (e, w) => { const r = st(w).rec && st(w).rec.quiz; return !!r && r.l >= 2 && r.v >= 10 && r.t > 0 && r.t < 25000; } },
+  { id: 'my-quads', cat: 'mythic', tier: 'mythic', name: 'Carré d\'As dans la manche', desc: 'Remporter un pot au poker avec un carré ou mieux.', test: (e) => e.type === 'poker' && e.cat >= 7 },
+  { id: 'my-pot', cat: 'mythic', tier: 'mythic', name: 'Requin des tables', desc: 'Remporter un pot de 10 000 JP ou plus au poker.', test: (e) => e.type === 'poker' && e.amount >= 10000 },
+  { id: 'my-wheel60', cat: 'mythic', tier: 'mythic', name: 'Pilier de la jungle', desc: 'Tourner la roue du jour 60 jours d\'affilée.', test: (e, w) => ((w.p.streak && w.p.streak.n) || 0) >= 60, progress: (w) => [(w.p.streak && w.p.streak.n) || 0, 60] },
+  { id: 'my-motus30', cat: 'mythic', tier: 'mythic', name: 'Dictionnaire sur pattes', desc: 'Trouver le mot du jour 30 jours d\'affilée.', test: (e, w) => (st(w).motusBestStreak || 0) >= 30, progress: (w) => [st(w).motusStreak || 0, 30] },
+  { id: 'my-all', cat: 'mythic', tier: 'mythic', name: 'Immortel de la jungle', desc: 'Débloquer tous les autres succès (hors Mythiques).', test: (e, w) => { const u = (w.p.ach && w.p.ach.u) || {}; return ACHIEVEMENTS.every((a) => a.tier === 'mythic' || u[a.id]); }, progress: (w) => { const u = (w.p.ach && w.p.ach.u) || {}; const base = ACHIEVEMENTS.filter((a) => a.tier !== 'mythic'); return [base.filter((a) => u[a.id]).length, base.length]; } },
 ];
 
 /* ------------------------------ moteur ------------------------------ */

@@ -1,6 +1,6 @@
-// Chat de la jungle : pas de temps réel (trop de lectures), les messages partent au rythme de la synchronisation du solde.
-// Au plus 1 message par synchro (CONFIG.SYNC_INTERVAL_MS) : si tu écris plus vite, ton message attend son tour
-// (un seul en attente). Les autres joueurs le voient à leur prochaine lecture du fil (45 s quand le chat est ouvert).
+// Chat de la jungle. V37 : en temps réel avec Firebase (les autres voient ton message tout de suite), au plus
+// 1 message toutes les 3 s. Sans temps réel (mode démo), 1 message par synchro (CONFIG.SYNC_INTERVAL_MS).
+// Si tu écris plus vite, ton message attend son tour (un seul en attente).
 import { CONFIG } from './config.js';
 
 export const CHAT_MAX = 200;
@@ -10,7 +10,7 @@ export function createChat(wallet, social) {
   try { lastSent = +localStorage.getItem('chibouk_chat_last_' + wallet.uid) || 0; } catch {}
   const subs = new Set();
   const notify = () => subs.forEach((cb) => { try { cb(); } catch (e) { console.error(e); } });
-  const gap = () => CONFIG.SYNC_INTERVAL_MS;
+  const gap = () => (social && social.live ? 3000 : CONFIG.SYNC_INTERVAL_MS);
   const waitMs = () => Math.max(0, lastSent + gap() - Date.now());
 
   async function sendNow(text) {
@@ -38,6 +38,7 @@ export function createChat(wallet, social) {
     },
     get pending() { return pending; },
     get waitMs() { return waitMs(); },
+    get live() { return !!(social && social.live); },
     cancel() { pending = null; clearTimeout(timer); notify(); },
     subscribe(cb) { subs.add(cb); return () => subs.delete(cb); },
     destroy() { clearTimeout(timer); subs.clear(); },

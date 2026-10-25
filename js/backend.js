@@ -205,6 +205,21 @@ async function createFirebaseBackend() {
       const snap = await F.getDocs(q);
       return snap.docs.map((d) => { const x = d.data(); return { id: d.id, ...x, kind: 'chat', at: x.ts && x.ts.toMillis ? x.ts.toMillis() : x.at || 0 }; });
     },
+    // Temps réel (V37) : écoute des nouveaux messages du fil et du chat. Coût : 1 lecture par message reçu (et 1 lecture
+    // au branchement s'il n'y a rien de neuf). Débranché quand le joueur est inactif (voir social.js).
+    watchFeed(since, n, cb) {
+      const q = F.query(F.collection(db, 'feed'), F.where('at', '>', since), F.orderBy('at', 'desc'), F.limit(n));
+      return F.onSnapshot(q, (snap) => cb(snap.docs.map((d) => ({ id: d.id, ...d.data() }))), (e) => console.warn('Fil en direct : écoute impossible', e && e.code));
+    },
+    watchChat(afterMs, n, cb) {
+      const c = F.collection(db, 'chat');
+      const q = afterMs ? F.query(c, F.where('ts', '>', F.Timestamp.fromMillis(afterMs)), F.orderBy('ts', 'desc'), F.limit(n)) : F.query(c, F.orderBy('ts', 'desc'), F.limit(n));
+      return F.onSnapshot(q, (snap) => cb(snap.docs.map((d) => {
+        const x = d.data({ serverTimestamps: 'estimate' });
+        // pending : ton propre message pas encore confirmé par le serveur (son heure n'est qu'une estimation)
+        return { id: d.id, ...x, kind: 'chat', pending: d.metadata.hasPendingWrites, at: x.ts && x.ts.toMillis ? x.ts.toMillis() : x.at || 0 };
+      })), (e) => console.warn('Chat en direct : écoute impossible', e && e.code));
+    },
     // Jackpot commun : amount = montant accumulé au-dessus de la mise de départ
     async getJackpot() {
       const snap = await F.getDoc(F.doc(db, 'meta', 'jackpot'));
@@ -303,6 +318,9 @@ function createDemoBackend() {
     } catch { return 'plain:' + s; }
   };
   const emit = () => { if (listener) { const s = read(K_SESSION, null); listener(s); } };
+  const liveSubs = new Set();
+  const liveEmit = () => liveSubs.forEach((f) => { try { f(); } catch (e) { console.error(e); } });
+  window.addEventListener('storage', (e) => { if (e.key === K_FEED || e.key === 'chibouk_demo_chat') liveEmit(); });
 
   return {
     mode: 'demo',
@@ -380,6 +398,16 @@ function createDemoBackend() {
       const list = read(K_FEED, []);
       list.push({ ...entry, id: 'f_' + Math.random().toString(36).slice(2, 10), at: Date.now() });
       write(K_FEED, list.slice(-100));
+      liveEmit();
+    },
+    // temps réel en démo : même onglet (tout de suite) et autres onglets du navigateur (événement « storage »)
+    watchFeed(since, n, cb) {
+      const f = () => cb(read(K_FEED, []).filter((e) => e.at > since).sort((a, b) => b.at - a.at).slice(0, n));
+      liveSubs.add(f); setTimeout(f, 0); return () => liveSubs.delete(f);
+    },
+    watchChat(afterMs, n, cb) {
+      const f = () => cb(read('chibouk_demo_chat', []).map((e) => ({ ...e, kind: 'chat' })).filter((e) => e.at > afterMs).sort((a, b) => b.at - a.at).slice(0, n));
+      liveSubs.add(f); setTimeout(f, 0); return () => liveSubs.delete(f);
     },
     async fetchFeed(since = 0, n = 25) {
       return read(K_FEED, []).filter((e) => e.at > since).sort((a, b) => b.at - a.at).slice(0, n);
@@ -388,6 +416,7 @@ function createDemoBackend() {
       const list = read('chibouk_demo_chat', []);
       list.push({ ...msg, id: 'c_' + Math.random().toString(36).slice(2, 10), at: Date.now() });
       write('chibouk_demo_chat', list.slice(-200));
+      liveEmit();
     },
     async fetchChat(afterMs = 0, n = 80) {
       return read('chibouk_demo_chat', []).map((e) => ({ ...e, kind: 'chat' })).filter((e) => e.at > afterMs).sort((a, b) => b.at - a.at).slice(0, n);

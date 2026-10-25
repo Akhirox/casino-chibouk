@@ -50,7 +50,7 @@ import * as Shop from './shop.js';
 import * as Cases from './cases.js';
 import { initLoot } from './loot.js';
 import { createChat } from './chat.js';
-import { initQuests, today, questText, vipOf, vipProgress, VIP, rakePot, claimRake, initVip, pctFmt, freeMult, xMult, questMult, questReward } from './progress.js';
+import { initQuests, today, questText, vipOf, vipIndex, vipProgress, VIP, rakePot, claimRake, initVip, pctFmt, freeMult, xMult, questMult, questReward } from './progress.js';
 import { initChallenges, challengeRoute, challengeMult, MIN_BET, PODIUM } from './challenges.js';
 import { createSocial, feedRich, feedText, groupFeed, groupRich, FEED_ICON, jackpotChance, chanceText } from './social.js';
 import { openVipModal } from './vip.js';
@@ -59,7 +59,7 @@ import { syncWeeks } from './weekly.js';
 import { initHistory } from './history.js';
 import { openDailyWheel, bonusSpins } from './dailywheel.js';
 import { mountBoard } from './gameboard.js';
-import { initAchievements, achSummary, TIERS } from './achievements.js';
+import { initAchievements, achSummary, TIERS, ACHIEVEMENTS } from './achievements.js';
 import * as AchPage from './achpage.js';
 import * as News from './changelog.js';
 import { initUpdater } from './updater.js';
@@ -75,7 +75,7 @@ import { setRewardWallet, bonusHTML, questInfo, challengeInfo } from './rewards.
 import { tagsHTML } from './tags.js';
 import { receiveGifts } from './gifts.js';
 import { mountGoals } from './goals.js';
-import { onRecords, recordsOf, RECORD_CATS, trackCounters } from './records.js';
+import { onRecords, recordsOf, RECORD_CATS, trackCounters, recordCount } from './records.js';
 
 const app = $('#app');
 let backend = null;
@@ -374,8 +374,25 @@ function renderShell() {
   achievements = initAchievements(wallet, (a) => {
     toast(`<span class="ach-toast t-${a.tier}">${icon('medal')}<span><small>Succès débloqué · ${TIERS[a.tier].name}</small><b>${esc(a.name)}</b><em>+${fmt(TIERS[a.tier].reward)} ${CUR}</em></span></span>`, 'ach', 5000);
     sfx.bonus();
-    if (a.tier === 'gold' || a.tier === 'legend') coinRain(40);
+    if (a.tier === 'mythic') { sfx.win(true); coinRain(120); } else if (a.tier === 'gold' || a.tier === 'legend') coinRain(40);
+    setTimeout(runUnlocks, 300);
   });
+  // Cosmétiques exclusifs (V38) : débloqués pour toujours dès que la condition est remplie (prestige, succès Mythiques, records…)
+  let unlockAt = 0;
+  function runUnlocks() {
+    if (!wallet) return;
+    unlockAt = Date.now();
+    const u = (wallet.p.ach && wallet.p.ach.u) || {}, my = ACHIEVEMENTS.filter((a) => a.tier === 'mythic');
+    const fresh = Shop.checkUnlocks(wallet, { mythic: my.filter((a) => u[a.id]).length, mythicAll: my.every((a) => u[a.id]), records: recordCount(), vipIndex: vipOf(wallet.stats.totalWagered).index, celesteIndex: vipIndex('celeste') });
+    fresh.forEach((it) => {
+      toast(`<span class="ach-toast t-mythic">${icon('star')}<span><small>Objet exclusif débloqué</small><b>${esc(it.name)}</b><em>${esc(Shop.unlockText(it))} · à équiper dans la boutique</em></span></span>`, 'ach', 7000);
+      if (social) social.post({ kind: 'cosm', name: it.name });
+    });
+    if (fresh.length) { sfx.win(true); coinRain(60); }
+  }
+  wallet.on((e) => { if (e && e.type !== 'set' && Date.now() - unlockAt > 3000) runUnlocks(); });
+  onRecords(() => setTimeout(runUnlocks, 200));
+  setTimeout(runUnlocks, 2500);
   setTimeout(() => { if (wallet) News.maybeShowNews(); }, 1200);
   Shop.applyCosmetics(wallet);
   historyOff = initHistory(wallet);
@@ -721,7 +738,7 @@ function panelInner() {
     <div class="fp-body fp-feed"></div>
     <div class="fp-body fp-chat" hidden><ul class="ch-list"></ul>
       <form class="ch-form" autocomplete="off"><input class="bet-input ch-in" maxlength="200" placeholder="Ton message…"><button class="btn btn-gold btn-sm" type="submit">${icon('send')}</button></form>
-      <small class="ch-note muted">1 message par minute. Historique des 80 derniers messages, le même sur tous les appareils (relu toutes les 45 s quand le chat est ouvert).</small></div>`;
+      <small class="ch-note muted">${chat && chat.live ? 'En direct · 1 message toutes les 3 s.' : '1 message par minute.'} Historique des 80 derniers messages, le même sur tous les appareils.</small></div>`;
 }
 // Remplit un panneau et le garde à jour ; renvoie la fonction de nettoyage
 function bindPanel(root) {
@@ -753,7 +770,7 @@ function bindPanel(root) {
   $('.ch-form', root).onsubmit = (e) => {
     e.preventDefault();
     const inp = $('.ch-in', root), r = chat ? chat.send(inp.value) : 'Chat indisponible';
-    if (r === 'sent' || r === 'queued') { inp.value = ''; sfx.click(); if (r === 'queued') toast('Message envoyé avec la prochaine synchro (1 message par minute)'); renderChat(); list.scrollTop = list.scrollHeight; }
+    if (r === 'sent' || r === 'queued') { inp.value = ''; sfx.click(); if (r === 'queued') toast(chat.live ? 'Doucement : ton message part dans quelques secondes' : 'Message envoyé avec la prochaine synchro (1 message par minute)'); renderChat(); list.scrollTop = list.scrollHeight; }
     else toast(r, 'error');
   };
   // détail d'un groupe, « Voir plus », bulle des succès gardée dans le cadre

@@ -2,6 +2,7 @@
 import { cosBonus } from './bonus.js';
 import { lootPerm, sellBoost, activeBoosts, stackMult, STACK_CAP } from './loot.js';
 import { openBoostDetail, boostDetailHTML } from './boostdetail.js';
+import { EXPEDITION_ITEMS, owns } from './shop.js';
 import * as F from './farm-core.js';
 import { $, $$, fmt, money, esc, toast, modal, coinRain, CUR } from './ui.js';
 import { icon } from './art.js';
@@ -23,6 +24,14 @@ export function dur(ms) {
   return `${m} min${s % 60 && m < 10 ? ` ${s % 60} s` : ''}`;
 }
 export const hasFarm = (p) => !!(p && p.farm && p.farm.v);
+// grands montants : 1,35 Md, 250 M
+const fmtBig = (n) => (n >= 1e9 ? `${String(Math.round(n / 1e7) / 100).replace('.', ',')} Md` : n >= 1e6 ? `${String(Math.round(n / 1e4) / 100).replace('.', ',')} M` : fmt(n));
+const WONDER_ART = {
+  temple: '<svg viewBox="0 0 64 64"><path d="M8 26 32 10l24 16z" fill="#f5c542" stroke="#8a5a00" stroke-width="2"/><rect x="12" y="26" width="40" height="4" fill="#d9a520"/><g fill="#f0d27a" stroke="#8a5a00" stroke-width="1.5"><rect x="15" y="30" width="5" height="20"/><rect x="25" y="30" width="5" height="20"/><rect x="34" y="30" width="5" height="20"/><rect x="44" y="30" width="5" height="20"/></g><rect x="9" y="50" width="46" height="6" rx="1" fill="#c98a00"/><circle cx="32" cy="20" r="4" fill="#fff6c4"/></svg>',
+  port: '<svg viewBox="0 0 64 64"><path d="M4 44c6 4 10 4 14 0 4 4 10 4 14 0 4 4 10 4 14 0 4 4 8 4 14 0v14H4z" fill="#2a6fc4"/><path d="M14 40h36l-6 8H20z" fill="#8a5a2b"/><path d="M31 10v30" stroke="#5a3a1a" stroke-width="2.5"/><path d="M33 12l14 24H33z" fill="#fff"/><path d="M29 16 18 34h11z" fill="#f0e6c8"/><path d="M31 10l8 3-8 3z" fill="#ff4d5e"/></svg>',
+  obs: '<svg viewBox="0 0 64 64"><rect x="16" y="34" width="32" height="22" fill="#6b7a8f"/><path d="M14 36a18 18 0 0 1 36 0z" fill="#9fb3c8" stroke="#3a4a5f" stroke-width="2"/><path d="M34 22l14-10" stroke="#3a4a5f" stroke-width="5" stroke-linecap="round"/><circle cx="52" cy="10" r="2" fill="#ffe27a"/><circle cx="44" cy="6" r="1.5" fill="#ffe27a"/><rect x="28" y="44" width="8" height="12" fill="#3a4a5f"/></svg>',
+  arbre: '<svg viewBox="0 0 64 64"><path d="M28 58c2-10 2-20 0-30h8c-2 10-2 20 0 30z" fill="#7a4a1f"/><circle cx="32" cy="22" r="16" fill="#2e9e4f"/><circle cx="18" cy="28" r="10" fill="#37b35c"/><circle cx="46" cy="28" r="10" fill="#37b35c"/><circle cx="32" cy="12" r="9" fill="#46c46b"/><g fill="#ffe27a"><circle cx="24" cy="20" r="2"/><circle cx="40" cy="16" r="2"/><circle cx="44" cy="30" r="2"/><circle cx="20" cy="31" r="2"/><circle cx="32" cy="27" r="2"/></g></svg>',
+};
 // Copie à jour d'une ferme (la sienne ou celle d'un voisin) sans toucher à l'original
 export function snapshot(raw, now = Date.now()) { const f = F.normalize(JSON.parse(JSON.stringify(raw || {})), now); F.tick(f, now); return f; }
 const MILESTONES = [100, 500, 1000, 2500, 5000, 10000, 25000];
@@ -154,7 +163,7 @@ export function mount(view, { wallet, backend }) {
   F.tick(f());
 
   view.innerHTML = `<div class="fm-wrap">
-    <div class="game-head"><h1>Ferme à <span>bananes</span></h1><div class="actions"><span class="seg fm-tabs"><button data-t="me">Ma ferme</button><button data-t="nb">Les voisins</button></span><button class="btn btn-ghost btn-sm fm-helpbtn" id="fm-help" title="Comment ça marche ?"><span class="fm-help-l">Comment ça marche ?</span><span class="fm-help-s">?</span></button></div></div>
+    <div class="game-head"><h1>Ferme à <span>bananes</span></h1><div class="actions"><span class="seg fm-tabs"><button data-t="me">Ma ferme</button><button data-t="late">Domaine</button><button data-t="nb">Les voisins</button></span><button class="btn btn-ghost btn-sm fm-helpbtn" id="fm-help" title="Comment ça marche ?"><span class="fm-help-l">Comment ça marche ?</span><span class="fm-help-s">?</span></button></div></div>
     <div id="fm-body"></div></div>`;
   $$('.fm-tabs button', view).forEach((b) => (b.onclick = () => { tab = b.dataset.t; render(); }));
   $('#fm-help', view).onclick = help;
@@ -163,6 +172,7 @@ export function mount(view, { wallet, backend }) {
     if (!alive) return;
     $$('.fm-tabs button', view).forEach((b) => b.classList.toggle('on', b.dataset.t === tab));
     if (tab === 'nb') return neighbors();
+    if (tab === 'late') return domain();
     const fm = f();
     $('#fm-body', view).innerHTML = `
       <section class="fm-top">
@@ -198,14 +208,15 @@ export function mount(view, { wallet, backend }) {
     el('fm-bar').style.width = Math.min(100, (fm.b / Math.max(1, cap)) * 100) + '%';
     el('fm-bar').classList.toggle('full', fm.b >= cap - 0.5);
     el('fm-full').textContent = fm.b >= cap - 0.5 ? 'Entrepôt plein : la récolte est à l\'arrêt !' : rate > 0 ? `Plein dans ${dur(((cap - fm.b) / rate) * F.HOUR)}` : 'Aucun singe au travail';
-    el('fm-rate').innerHTML = `${fmt(Math.round(rate))} <small>/ h</small>${bm > 1 ? ` <span class="fm-boost" title="${F.activeFarmBoosts(fm).map((b) => `×${String(b.m).replace('.', ',')} encore ${dur(b.u - Date.now())}`).join(' · ')} (cumul dégressif, ×${F.FARM_BOOST_CAP} max)">×${String(bm).replace('.', ',')}${F.activeFarmBoosts(fm).length > 1 ? ` (${F.activeFarmBoosts(fm).length} boosts)` : ''} · ${dur(F.boostEnd(fm) - Date.now())}</span> <button type="button" class="fm-bd" data-boostd="farm">Voir le détail</button>` : ''}${sellBoost(wallet.p) > 1 ? ` <button type="button" class="fm-bd sell" data-boostd="sell">Vente ×${String(sellBoost(wallet.p)).replace('.', ',')} · détail</button>` : ''}`;
+    el('fm-rate').innerHTML = `${fmt(Math.round(rate))} <small>/ h</small>${bm > 1 ? ` <span class="fm-boost" title="${F.activeFarmBoosts(fm).map((b) => `×${String(b.m).replace('.', ',')} encore ${dur(b.u - Date.now())}`).join(' · ')} (cumul dégressif, ×${F.boostCap(fm)} max)">×${String(bm).replace('.', ',')}${F.activeFarmBoosts(fm).length > 1 ? ` (${F.activeFarmBoosts(fm).length} boosts)` : ''} · ${dur(F.boostEnd(fm) - Date.now())}</span> <button type="button" class="fm-bd" data-boostd="farm">Voir le détail</button>` : ''}${sellBoost(wallet.p) > 1 ? ` <button type="button" class="fm-bd sell" data-boostd="sell">Vente ×${String(sellBoost(wallet.p)).replace('.', ',')} · détail</button>` : ''}`;
     el('fm-value').textContent = `≈ ${fmt(Math.round(rate * F.sellRate(fm)))} ${CUR}/h à la vente`;
     el('fm-seeds').innerHTML = [fm.pr ? `${STAR} Prestige ${fm.pr} · ×${F.prestigeMult(fm)}` : '', fm.seeds ? `${SEED} ${fm.seeds} graine${fm.seeds > 1 ? 's' : ''} d'or · +${Math.round(F.SEED_BONUS * fm.seeds * 100)} %` : ''].filter(Boolean).join(' · ');
     const rb = el('fm-replant');
     rb.hidden = (fm.ss || 0) < F.prestigeNeed(fm);
     if (!rb.hidden) rb.innerHTML = `${STAR} Prestige · +100 %`;
     const hc = F.hireCost(fm.w), H = F.houses(fm);
-    el('fm-wk').textContent = `${fm.w} / ${H}`;
+    const away = F.awayAt(fm);
+    el('fm-wk').innerHTML = `${fmt(fm.w)} / ${fmt(H)}${away ? ` <small class="fm-away" title="En expédition">(${away} en expédition)</small>` : fm.ex ? ' <small class="fm-away done">(expédition rentrée : voir Domaine)</small>' : ''}`;
     // singes nécessaires pour remplir toutes les places des bananeraies (construites)
     const need = F.totalSlots(fm), miss = need - fm.w, needEl = el('fm-need');
     needEl.className = 'fm-need ' + (miss > 0 ? 'miss' : miss < 0 ? 'extra' : 'ok');
@@ -264,10 +275,10 @@ export function mount(view, { wallet, backend }) {
       return;
     }
     if (!x) { el.innerHTML = buildMenu(); $$('[data-build]', el).forEach((b) => (b.onclick = () => { const t = b.dataset.build; act(F.costOf(f(), t, 1), () => F.build(f(), sel, t, Date.now(), wallet.balance), 'build', `Construction lancée : ${F.B[t].name}`); })); return; }
-    const d = F.B[x.t], max = x.l >= d.max, cost = max ? 0 : F.costOf(fm, x.t, x.l + 1), err = max ? null : F.canUpgrade(fm, sel, wallet.balance);
-    el.innerHTML = `<div class="fm-side-head"><span class="fm-side-art">${tileArt(x.t, x.l)}</span><div><h3>${d.name}</h3><span class="tier-badge">Niveau ${x.l} / ${d.max}</span></div></div>
+    const d = F.B[x.t], mxL = F.maxLevel(fm, x.t), max = x.l >= mxL, cost = max ? 0 : F.costOf(fm, x.t, x.l + 1), err = max ? null : F.canUpgrade(fm, sel, wallet.balance);
+    el.innerHTML = `<div class="fm-side-head"><span class="fm-side-art">${tileArt(x.t, x.l)}</span><div><h3>${d.name}</h3><span class="tier-badge">Niveau ${x.l} / ${mxL}</span>${x.l > d.max ? ' <span class="tier-badge t-mythic">Ascension</span>' : ''}</div></div>
       <p class="muted">${d.desc}</p>${detail(x)}
-      ${max ? '<p class="gold">Niveau maximum atteint.</p>' : `<div class="fm-up"><div><small>Amélioration</small><b>${money(cost)}</b><small>${dur(F.buildTime(fm, x.t, x.l + 1))}</small></div>
+      ${max ? `<p class="gold">Niveau maximum atteint.${mxL < F.absMax(x.t) ? ` L'Ascension (prestige ${F.ASCENSION_PR}) permet de monter jusqu'au niveau ${F.absMax(x.t)}.` : ''}</p>` : `<div class="fm-up"><div><small>Amélioration</small><b>${money(cost)}</b><small>${dur(F.buildTime(fm, x.t, x.l + 1))}</small></div>
         <button class="btn btn-gold" id="fm-up" ${err ? 'disabled' : ''}>Améliorer</button></div>${err ? `<p class="fm-err">${err}</p>` : ''}`}
       <button class="btn btn-ghost btn-sm fm-demo" id="fm-demo">Démolir</button>`;
     const up = $('#fm-up', el); if (up) up.onclick = () => act(F.costOf(f(), x.t, x.l + 1), () => F.upgrade(f(), sel, Date.now(), wallet.balance), 'upgrade', `Amélioration lancée : ${d.name} niveau ${x.l + 1}`);
@@ -285,7 +296,7 @@ export function mount(view, { wallet, backend }) {
 
   // effet actuel → niveau suivant
   function detail(x) {
-    const fm = f(), nx = Math.min(x.l + 1, F.B[x.t].max), same = nx === x.l;
+    const fm = f(), nx = Math.min(x.l + 1, F.maxLevel(fm, x.t)), same = nx === x.l;
     const row = (label, a, b) => `<li><span>${label}</span><b>${a}${same ? '' : ` <i>→ ${b}</i>`}</b></li>`;
     if (x.t === 'F') {
       const wa = F.assignment(fm).fields.find((y) => y.i === sel);
@@ -383,7 +394,7 @@ export function mount(view, { wallet, backend }) {
     setTimeout(() => { refreshBoard(); side(); }, 1100);
   }
   function boostDetail(kind) {
-    if (kind === 'farm') openBoostDetail('Boosts de récolte de la ferme', F.activeFarmBoosts(f()), (ms) => F.farmStack(ms), { cap: F.FARM_BOOST_CAP });
+    if (kind === 'farm') openBoostDetail('Boosts de récolte de la ferme', F.activeFarmBoosts(f()), (ms) => F.farmStack(ms, F.boostCap(f())), { cap: F.boostCap(f()) });
     else openBoostDetail('Boosts de vente des bananes', activeBoosts(wallet.p).filter((b) => b.g === 'sell'), (ms) => stackMult(ms, STACK_CAP.sell), { cap: STACK_CAP.sell });
   }
   // Marché : vendre des bananes contre des Brundles
@@ -484,11 +495,95 @@ export function mount(view, { wallet, backend }) {
       <li>Les <b>parcelles</b> autour de ta ferme s'achètent en ${CUR}.</li>
       <li><b>Prestige</b> : après 2 millions de bananes vendues, tu peux remettre ta ferme à zéro contre <b>+100 % de production pour toujours</b> (×2, puis ×3, ×4…). Tu gardes tes parcelles, tes bâtisseurs et tes graines d'or. Le palier double à chaque fois : 2 M, 4 M, 8 M de bananes vendues… Chaque prestige rend les bâtiments <b>30 % plus chers</b>. La capacité des entrepôts, elle, est multipliée comme la production (×2, ×3…). Tu peux aussi tout reconstruire à l'identique d'un coup, en payant les bâtiments, les chantiers terminés tout de suite et les singes.</li>
       <li><b>Graines d'or</b> (caisses) : +5 % de production chacune, pour toujours.</li>
-      <li><b>Boosts de récolte</b> (caisses) : ils se cumulent, de moins en moins (le 2e compte pour 1/2, le 3e pour 1/3, le 4e pour 1/4…) mais chacun ajoute toujours un peu, jusqu'à ×5.</li>
+      <li><b>Boosts de récolte</b> (caisses) : ils se cumulent, de moins en moins (le 2e compte pour 1/2, le 3e pour 1/3, le 4e pour 1/4…) mais chacun ajoute toujours un peu, jusqu'à ×5 (×10 avec l'Arbre-Monde).</li>
+      <li><b>Domaine</b> (fin de partie) : paliers de prestige (3, 5, 8 et 12), <b>Ascension</b> au prestige 5 (bananeraies jusqu'au niveau 20, cabanes et entrepôts jusqu'au 17), <b>Merveilles</b> (bâtiments uniques gardés après les prestiges) et <b>expéditions</b> (des singes partent chercher des Brundles, des boosts, des graines d'or et des objets rares).</li>
       <li>Onglet <b>Les voisins</b> : visite les fermes des autres joueurs et compare vos productions.</li></ul>`, buttons: [{ label: 'Compris', value: true, primary: true }] });
   }
 
   /* ---------- voisins ---------- */
+  /* ---------- Domaine (V38) : paliers de prestige, merveilles, expéditions ---------- */
+  function domain() {
+    if (!alive || tab !== 'late') return;
+    const fm = f(), now = Date.now(), pr = fm.pr || 0;
+    F.tick(fm);
+    const ex = fm.ex, xd = ex && F.expedition(ex.id);
+    const pct = (a, b) => Math.max(0, Math.min(100, (a / Math.max(1, b)) * 100));
+    $('#fm-body', view).innerHTML = `<div class="dm-wrap">
+      <section class="panel dm-sec"><h2 class="dm-h">${STAR}Paliers de prestige <small class="muted">tu es au prestige ${pr} · production ×${F.prestigeMult(fm)}${F.milestoneProd(fm) ? ` · bonus des paliers +${Math.round(F.milestoneProd(fm) * 100)} %` : ''}</small></h2>
+        <ol class="dm-ms">${F.MILESTONES.map((m) => `<li class="${pr >= m.pr ? 'done' : ''}"><b>Prestige ${m.pr}</b><span>${esc(m.txt)}</span><i>${pr >= m.pr ? icon('check') : icon('lock')}</i></li>`).join('')}</ol>
+        <p class="muted dm-note">Le prestige demande deux fois plus de bananes vendues à chaque fois : les derniers paliers sont faits pour durer.</p></section>
+      <section class="panel dm-sec"><h2 class="dm-h">${icon('tower')}Merveilles <small class="muted">bâtiments uniques, hors de la grille : ils restent après chaque prestige</small></h2>
+        <div class="dm-wonders">${Object.entries(F.WONDERS).map(([k, w]) => {
+          const L = F.wonderLv(fm, k), max = L >= w.max, locked = pr < w.pr, cost = max ? 0 : F.wonderCost(k, L + 1), err = F.canWonder(fm, k, wallet.balance);
+          return `<div class="dm-w ${locked ? 'locked' : ''} ${L ? 'built' : ''} w-${k}"><div class="dm-w-art">${WONDER_ART[k]}</div>
+            <b>${esc(w.name)}</b><span class="tier-badge">${locked ? `Prestige ${w.pr}` : `Niveau ${L} / ${w.max}`}</span>
+            <small>${esc(w.desc)}</small>${L ? `<small class="gold">Actuellement : ${esc(w.effect(L))}</small>` : ''}
+            ${locked ? `<small class="muted">${icon('lock')}Débloquée au prestige ${w.pr}</small>` : max ? '<small class="gold">Merveille achevée !</small>' : `<button class="btn btn-gold btn-sm" data-wonder="${k}" ${err ? 'disabled' : ''}>${L ? 'Agrandir' : 'Construire'} · ${fmtBig(cost)}</button>`}</div>`;
+        }).join('')}</div></section>
+      <section class="panel dm-sec"><h2 class="dm-h">${icon('globe')}Expéditions <small class="muted">${fm.exn ? `${fm.exn} réussie${fm.exn > 1 ? 's' : ''}` : 'envoie des singes chercher des trésors'}</small></h2>
+        ${ex ? (ex.end > now ? `<div class="dm-ex-run"><b>${esc(xd.name)}</b><span>${ex.n} singes partis · retour dans <b data-left="${ex.end}">${dur(ex.end - now)}</b></span><div class="fm-bar"><i data-exbar style="width:${pct(now - ex.start, ex.end - ex.start)}%"></i></div><small class="muted">Pendant l'expédition, ces singes ne récoltent pas.</small></div>`
+          : `<div class="dm-ex-run done"><b>${esc(xd.name)} : les singes sont rentrés !</b><button class="btn btn-gold" data-exclaim>Voir le butin</button></div>`) : ''}
+        <div class="dm-exps">${F.EXPEDITIONS.map((x) => {
+          const err = F.canExpedition(fm, x.id, now), locked = pr < x.pr;
+          return `<div class="dm-x ${locked ? 'locked' : ''}"><b>${esc(x.name)}</b><span>${dur(F.expDuration(fm, x))} · ${x.n} singes</span>
+            <small>Butin : des Brundles (≈ ${Math.round(x.k * 100)} % de ${x.h} h de récolte vendue), boost de récolte ×${String(x.boost[1]).replace('.', ',')} (${Math.round(x.boost[0] * 100)} %), graine d'or (${Math.round(x.seed[0] * 100)} %), objet rare exclusif (${Math.round(x.cos * 100)} %)</small>
+            ${locked ? `<small class="muted">${icon('lock')}Prestige ${x.pr}</small>` : `<button class="btn btn-ghost btn-sm" data-exgo="${x.id}" ${err ? 'disabled' : ''}>Partir</button>${err && !ex ? `<small class="fm-err">${esc(err)}</small>` : ''}`}</div>`;
+        }).join('')}</div>
+        <p class="muted dm-note">Objets rares des expéditions : ${EXPEDITION_ITEMS.map((it) => `<span class="${owns(wallet.p, it.id) ? 'gold' : ''}">${esc(it.name)}</span>`).join(' · ')}. Une seule expédition à la fois ; pas de prestige tant qu'elle n'est pas rentrée.</p></section>
+    </div>`;
+    $$('[data-wonder]', view).forEach((b) => (b.onclick = () => wonder(b.dataset.wonder)));
+    $$('[data-exgo]', view).forEach((b) => (b.onclick = () => goExpedition(b.dataset.exgo)));
+    const cl = $('[data-exclaim]', view); if (cl) cl.onclick = claimExpedition;
+  }
+  async function wonder(k) {
+    const fm = f(), w = F.WONDERS[k], L = F.wonderLv(fm, k), cost = F.wonderCost(k, L + 1);
+    const ok = await modal({ title: `${L ? 'Agrandir' : 'Construire'} : ${esc(w.name)}`, html: `<p>${esc(w.desc)}</p><p>Niveau ${L} → <b>${L + 1}</b> : ${esc(w.effect(L + 1))}.</p><p>Prix : <b>${money(cost)}</b>. Instantané, et gardé après chaque prestige.</p>`,
+      buttons: [{ label: 'Annuler', value: false }, { label: `${L ? 'Agrandir' : 'Construire'} (${fmtBig(cost)})`, value: true, primary: true }] });
+    if (!ok || !alive) return;
+    F.tick(fm);
+    if (!wallet.canAfford(cost)) { toast(`Pas assez de ${CUR}`, 'error'); return; }
+    const err = F.buildWonder(fm, k, wallet.balance);
+    if (err) { toast(err, 'error'); return; }
+    wallet.debit('farm', cost, { what: 'wonder', wonder: k, level: L + 1 });
+    save(wallet, 'wonder', { wonder: k, level: L + 1 });
+    sfx.bonus(); coinRain(40);
+    toast(`${esc(w.name)} : niveau ${L + 1} !`, 'win');
+    domain();
+  }
+  async function goExpedition(id) {
+    const fm = f(), x = F.expedition(id);
+    const ok = await modal({ title: `Expédition : ${esc(x.name)}`, html: `<p><b>${x.n} singes</b> partent pendant <b>${dur(F.expDuration(fm, x))}</b>. Ils ne récoltent pas pendant ce temps (production actuelle : ${fmt(F.productionPerHour(fm))}/h, pendant l'expédition : ${fmt(F.assignment({ ...fm, ex: { n: x.n, end: Infinity } }).fields.reduce((a, y) => a + y.w * y.per, 0))}/h).</p><p class="muted">Au retour : des Brundles, et peut-être un boost de récolte, des graines d'or ou un objet rare.</p>`,
+      buttons: [{ label: 'Annuler', value: false }, { label: 'Envoyer les singes', value: true, primary: true }] });
+    if (!ok || !alive) return;
+    const err = F.startExpedition(fm, id);
+    if (err) { toast(err, 'error'); return; }
+    save(wallet, 'expedition', { id });
+    sfx.click(); toast(`Les singes partent vers : ${esc(x.name)}`);
+    domain();
+  }
+  async function claimExpedition() {
+    const fm = f(), x = F.expedition(fm.ex && fm.ex.id);
+    const r = F.claimExpedition(fm);
+    if (r.err) { toast(r.err, 'error'); return; }
+    const L = r.loot, lines = [];
+    let item = null, extra = 0;
+    if (L.cos) {
+      const left = EXPEDITION_ITEMS.filter((it) => !owns(wallet.p, it.id));
+      if (left.length) { item = left[Math.floor(Math.random() * left.length)]; wallet.p.shop = { owned: { ...((wallet.p.shop && wallet.p.shop.owned) || {}), [item.id]: Date.now() }, eq: { ...((wallet.p.shop && wallet.p.shop.eq) || {}) } }; wallet.set('shop', wallet.p.shop); }
+      else extra = L.brundles; // tout est déjà trouvé : butin doublé
+    }
+    wallet.credit('expedition', L.brundles + extra, { id: L.id });
+    lines.push(`<li>${money(L.brundles + extra)}${extra ? ' <small>(butin doublé : tu as déjà tous les objets rares)</small>' : ''}</li>`);
+    if (L.boost) lines.push(`<li>Boost de récolte <b>×${String(L.boost.m).replace('.', ',')}</b> pendant ${L.boost.h} h</li>`);
+    if (L.seeds) lines.push(`<li>${SEED} <b>${L.seeds} graine${L.seeds > 1 ? 's' : ''} d'or</b> (+${L.seeds * 5} % de production pour toujours)</li>`);
+    if (item) lines.push(`<li class="dm-rare">Objet rare : <b>« ${esc(item.name)} »</b> (${item.cat === 'title' ? 'titre' : item.cat === 'frame' ? 'cadre' : 'dos de cartes'}) : équipe-le dans la boutique !</li>`);
+    save(wallet, 'expedition-done', { id: L.id });
+    if (item) window.dispatchEvent(new CustomEvent('chibouk:feed', { detail: { type: 'expedition', name: item.name, place: x.name } }));
+    sfx.win(!!(item || L.seeds)); coinRain(item ? 60 : 25);
+    domain();
+    modal({ title: 'Retour d\'expédition', html: `<p>Les singes reviennent de « ${esc(x.name)} » avec :</p><ul class="dm-loot">${lines.join('')}</ul>`, buttons: [{ label: 'Super !', value: true, primary: true }] });
+  }
+
   async function neighbors() {
     const body = $('#fm-body', view);
     body.innerHTML = '<div class="panel"><p class="muted">Chargement des fermes…</p></div>';
@@ -506,7 +601,15 @@ export function mount(view, { wallet, backend }) {
     $$('[data-visit]', body).forEach((b) => (b.onclick = () => { const r = rows.find((x) => x.p.uid === b.dataset.visit); if (r) visit(r.p); }));
   }
   render();
-  const iv = setInterval(numbers, 1000);
+  const iv = setInterval(() => {
+    numbers();
+    if (tab === 'late' && alive) {
+      const fm = f(), now = Date.now();
+      $$('[data-left]', view).forEach((x) => (x.textContent = dur(+x.dataset.left - now)));
+      const bar = $('[data-exbar]', view); if (bar && fm.ex) bar.style.width = Math.min(100, ((now - fm.ex.start) / (fm.ex.end - fm.ex.start)) * 100) + '%';
+      if (fm.ex && fm.ex.end <= now && !$('[data-exclaim]', view)) domain(); // les singes rentrent : bouton du butin
+    }
+  }, 1000);
   const onFarm = () => { if (tab === 'me') { refreshBoard(); side(); numbers(); } };
   window.addEventListener('chibouk:farm', onFarm);
   return () => { alive = false; clearInterval(iv); window.removeEventListener('chibouk:farm', onFarm); };

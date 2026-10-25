@@ -1,6 +1,7 @@
-// Fil d'activité « En direct de la jungle » + jackpot commun de la slot.
-// Lectures économes : toutes les 2 min (et seulement si le joueur est là), on ne lit que les nouveaux messages
-// (1 lecture s'il n'y a rien) + le jackpot (1 lecture). Les contributions au jackpot partent toutes les 5 min.
+// Fil d'activité « En direct de la jungle », chat et jackpot commun de la slot.
+// V37 : fil et chat en temps réel (écoute Firestore) tant que le joueur est là : 1 lecture par nouveau message,
+// débranchés quand il est inactif. Le jackpot est relu toutes les 2 min (1 lecture) et les contributions partent
+// toutes les 5 min.
 import { CONFIG } from './config.js';
 import { isIdle, onWake } from './activity.js';
 import { randInt } from './games/slots-math.js';
@@ -12,6 +13,7 @@ import { goldMonkeySVG } from './art.js';
 import { sfx } from './sfx.js';
 
 const GAME_NAMES = { slots: 'la Chibouk Slot', jungle: 'à la Jungle Connect', craps: 'au Craps', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au Plinkoko', crash: 'au Crashibouk', tower: 'à la Tower', mines: 'aux Mines', dice: 'au Dice', hilo: 'au Hi-Lo', keno: 'au Keno', wheel: 'à la Roue du Singe', limbo: 'au Limbo', scratch: 'aux jeux à gratter' };
+const WONDER_NAMES = { temple: 'Temple du Singe d\'or', port: 'Grand Port', obs: 'Observatoire', arbre: 'Arbre-Monde' };
 const AT = (g) => (g === 'slots' ? 'à la Chibouk Slot' : GAME_NAMES[g] || '');
 const mx = (m) => '×' + m.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
 
@@ -44,6 +46,9 @@ export function feedText(e) {
     case 'feat': return `${e.txt || ''} ${FEAT_GAMES[e.game] || ''}${e.tail ? ' ' + e.tail : ''}`;
     case 'loot': return `a ouvert une ${e.box || 'caisse'} et décroché « ${e.txt || ''} »${e.sub ? ` (${e.sub})` : ''}, lot ${e.r === 'gold' ? 'MYTHIQUE' : 'légendaire'} !`;
     case 'challenge': return `${e.place > 1 ? `finit ${e.place}e du` : 'a remporté le'} défi de la jungle (+${fmt(e.amount)} Brundles)${e.txt ? ` : ${e.txt}` : ''}`;
+    case 'cosm': return `a débloqué l'objet exclusif « ${e.name} »`;
+    case 'expedition': return `a trouvé « ${e.name} » en expédition (${e.place || 'ferme'})`;
+    case 'wonder': return e.level >= 5 ? `a achevé la merveille « ${e.name} » !` : `a construit la merveille « ${e.name} »`;
     default: return e.text || '';
   }
 }
@@ -81,6 +86,9 @@ export function feedRich(e) {
     case 'feat': t = `${esc(e.txt || '')} ${FEAT_GAMES[e.game] ? L('#/' + e.game, FEAT_GAMES[e.game]) : ''}${e.tail ? ' ' + esc(e.tail) : ''}`; break;
     case 'loot': t = `a ouvert une ${L('#/cases', esc(e.box || 'caisse'))} et décroché <b class="${e.r === 'gold' ? 'gold' : 'neg'}">« ${esc(e.txt || '')} »</b>${e.sub ? ` <small class="muted">(${esc(e.sub)})</small>` : ''}, lot ${e.r === 'gold' ? '<b class="gold">MYTHIQUE</b>' : 'légendaire'} !`; break;
     case 'challenge': t = `${e.place > 1 ? `finit <b>${e.place}e</b> du` : 'a remporté le'} ${L('#/lobby', 'défi de la jungle')} et touche <b class="gold">${fmt(e.amount)}</b> Brundles${e.txt ? ` <small class="muted">(${esc(e.txt)})</small>` : ''}`; break;
+    case 'cosm': t = `a débloqué l'objet exclusif ${L('#/shop', `<b class="gold">« ${esc(e.name)} »</b>`)}`; break;
+    case 'expedition': t = `a trouvé ${L('#/shop', `<b class="gold">« ${esc(e.name)} »</b>`)} en ${L('#/farm', 'expédition')} <small class="muted">(${esc(e.place || '')})</small>`; break;
+    case 'wonder': t = `${e.level >= 5 ? 'a achevé' : 'a construit'} la merveille ${L('#/farm', `<b class="gold">« ${esc(e.name)} »</b>`)}${e.level >= 5 ? ' !' : ''}`; break;
     default: t = esc(feedText(e));
   }
   return `${who} ${t}`;
@@ -120,7 +128,7 @@ export function groupRich(g) {
   // avec l'heure du plus récent, et un gain d'il y a plusieurs heures semblait tout frais
   return feedRich(e);
 }
-export const FEED_ICON = { bigwin: 'bolt', ach: 'medal', achs: 'medal', jackpot: 'trophy', vip: 'star', motus: 'motus', shop: 'shop', week: 'trophy', quests: 'check', perfect: 'quiz', wheel: 'wheel', streak: 'higher', feat: 'bulb', farm: 'banana', replant: 'banana', prestige: 'star', challenge: 'flag', loot: 'crate' };
+export const FEED_ICON = { bigwin: 'bolt', ach: 'medal', achs: 'medal', jackpot: 'trophy', vip: 'star', motus: 'motus', shop: 'shop', week: 'trophy', quests: 'check', perfect: 'quiz', wheel: 'wheel', streak: 'higher', feat: 'bulb', farm: 'banana', replant: 'banana', prestige: 'star', challenge: 'flag', loot: 'crate', cosm: 'star', expedition: 'globe', wonder: 'tower' };
 
 // Chance de remporter le jackpot sur un spin payant de la slot (proportionnelle à la mise, plafonnée à 1 %)
 export const JACKPOT_FACTOR = 1.5;
@@ -147,7 +155,7 @@ export function createSocial(wallet, backend) {
     let base = chats.filter((e) => !(e.cid && cids.has(e.cid) && String(e.id).startsWith('local_')));
     if (full) base = base.filter((e) => String(e.id).startsWith('local_')); // relecture complète : la liste du serveur fait foi
     chats = [...(full ? fresh : add), ...base].sort((a, b) => a.at - b.at).slice(-CHAT_N);
-    const srv = fresh.map((e) => e.at || 0);
+    const srv = fresh.filter((e) => !e.pending).map((e) => e.at || 0); // heure estimée d'un message pas encore confirmé : ignorée
     if (srv.length) chatTs = Math.max(chatTs, ...srv);
     return add;
   }
@@ -180,8 +188,9 @@ export function createSocial(wallet, backend) {
       await pushJackpot();
       // marge de 5 min : l'heure d'un message est celle de l'appareil qui l'envoie ; une horloge un peu en retard
       // faisait passer ses messages sous « since » et ils n'étaient jamais lus (ex. vainqueur d'un défi resté inconnu)
-      const [fresh, jp, msgs] = await Promise.all([backend.fetchFeed(since ? since - FEED_MARGIN : 0, since ? 30 : 40), backend.getJackpot(),
-        backend.fetchChat ? backend.fetchChat(chatTs, chatTs ? 50 : CHAT_N).catch((e) => { console.warn('Chat indisponible', e); return null; }) : null]);
+      // en temps réel, le fil et le chat arrivent tout seuls : on ne relit que le jackpot
+      const [fresh, jp, msgs] = await Promise.all([live ? [] : backend.fetchFeed(since ? since - FEED_MARGIN : 0, since ? 30 : 40), backend.getJackpot(),
+        !live && backend.fetchChat ? backend.fetchChat(chatTs, chatTs ? 50 : CHAT_N).catch((e) => { console.warn('Chat indisponible', e); return null; }) : null]);
       jackpot = jp || { amount: 0 };
       if (msgs) {
         // trop de nouveaux messages d'un coup (longue absence) : on relit les CHAT_N derniers pour ne pas laisser de trou
@@ -191,22 +200,51 @@ export function createSocial(wallet, backend) {
         if (!first && add.some((e) => e.uid !== wallet.uid)) window.dispatchEvent(new CustomEvent('chibouk:chat'));
         keepChat();
       }
-      if (fresh.length) {
-        since = Math.max(since, ...fresh.map((e) => e.at || 0));
-        // un message déjà affiché en local (même cid) est remplacé par sa version serveur, pas dupliqué
-        const known = new Set(entries.map((e) => e.id));
-        const add = fresh.filter((e) => !known.has(e.id));
-        const cids = new Set(add.map((e) => e.cid).filter(Boolean));
-        entries = capEntries([...add, ...entries.filter((e) => !(e.cid && cids.has(e.cid) && String(e.id).startsWith('local_')))].sort((a, b) => b.at - a.at));
-        // petits toasts pour les exploits des autres (pas au premier chargement)
-        if (!first) add.filter((e) => e.uid !== wallet.uid && ['jackpot', 'bigwin', 'week', 'challenge', 'loot'].includes(e.kind)).slice(0, 2)
-          .forEach((e) => toast(`<b>${esc(feedWho(e))}</b> ${esc(feedText(e))}`, e.kind === 'jackpot' ? 'win' : 'info', 5000));
-      }
+      addFeed(fresh, !first);
       first = false;
       keepFeed();
       notify();
     } catch (e) { console.warn('Fil d\'activité indisponible', e); }
   }
+  function addFeed(fresh, toasts) {
+    if (!fresh.length) return;
+    since = Math.max(since, ...fresh.map((e) => e.at || 0));
+    // un message déjà affiché en local (même cid) est remplacé par sa version serveur, pas dupliqué
+    const known = new Set(entries.map((e) => e.id));
+    const add = fresh.filter((e) => !known.has(e.id));
+    const cids = new Set(add.map((e) => e.cid).filter(Boolean));
+    entries = capEntries([...add, ...entries.filter((e) => !(e.cid && cids.has(e.cid) && String(e.id).startsWith('local_')))].sort((a, b) => b.at - a.at));
+    // petits toasts pour les exploits des autres (pas au premier chargement)
+    if (toasts) add.filter((e) => e.uid !== wallet.uid && ['jackpot', 'bigwin', 'week', 'challenge', 'loot'].includes(e.kind)).slice(0, 2)
+      .forEach((e) => toast(`<b>${esc(feedWho(e))}</b> ${esc(feedText(e))}`, e.kind === 'jackpot' ? 'win' : 'info', 5000));
+  }
+
+  /* ---------- temps réel (V37) : fil et chat écoutés en direct tant que le joueur est là ---------- */
+  // Débranché dès que le joueur est inactif (onglet caché ou 4 min sans rien faire), rebranché à son retour sur
+  // les seuls messages arrivés entre-temps : un onglet oublié ne coûte rien.
+  const live = !!(backend.watchFeed && backend.watchChat);
+  let offFeed = null, offChat = null, firstFeed = true, firstChat = true;
+  function attach() {
+    if (!live || !alive || offFeed || isIdle()) return;
+    firstFeed = firstChat = true;
+    offFeed = backend.watchFeed(since ? since - FEED_MARGIN : 0, since ? 30 : 40, (fresh) => {
+      if (!alive) return;
+      addFeed(fresh, !firstFeed); // pas de toasts pour les messages déjà là au branchement
+      firstFeed = false;
+      keepFeed(); notify();
+    });
+    offChat = backend.watchChat(chatTs, chatTs ? 50 : CHAT_N, async (msgs) => {
+      if (!alive) return;
+      // longue absence (50 nouveaux messages ou plus) : on relit les CHAT_N derniers pour ne pas laisser de trou
+      const full = !chatTs || (firstChat && msgs.length >= 50);
+      const list = full && chatTs ? await backend.fetchChat(0, CHAT_N).catch(() => msgs) : msgs;
+      const add = mergeChat(list, full);
+      if (!firstChat && add.some((e) => e.uid !== wallet.uid)) window.dispatchEvent(new CustomEvent('chibouk:chat'));
+      firstChat = false;
+      keepChat(); notify();
+    });
+  }
+  function detach() { offFeed && offFeed(); offChat && offChat(); offFeed = offChat = null; }
 
   // Publication : au plus un message toutes les 8 s ; les succès débloqués ensemble sont regroupés en un seul message
   const GAP = 8000;
@@ -282,15 +320,20 @@ export function createSocial(wallet, backend) {
     if (e.type === 'free' && e.meta && e.meta.feed && FEAT_GAMES[e.game]) post({ kind: 'feat', game: e.game, txt: String(e.meta.feed.txt || '').slice(0, 80), tail: String(e.meta.feed.tail || '').slice(0, 40) });
     if (e.type === 'farm' && e.act === 'milestone' && e.n >= 500) post({ kind: 'farm', n: e.n });
     if (e.type === 'farm' && e.act === 'prestige') post({ kind: 'prestige', pr: e.pr });
+    if (e.type === 'farm' && e.act === 'wonder' && (e.level === 1 || e.level === 5)) post({ kind: 'wonder', name: WONDER_NAMES[e.wonder] || e.wonder, level: e.level });
     if (e.type === 'vipup') post({ kind: 'vip', rank: e.rank, bonus: e.amount });
   });
-  const onCustom = (ev) => { const d = ev.detail || {}; if (d.type === 'motus' && d.won) post({ kind: 'motus', tries: d.tries }); if (d.type === 'week') post({ kind: 'week', winner: d.winner, profit: d.profit }); };
+  const onCustom = (ev) => { const d = ev.detail || {}; if (d.type === 'motus' && d.won) post({ kind: 'motus', tries: d.tries }); if (d.type === 'expedition') post({ kind: 'expedition', name: d.name, place: d.place }); if (d.type === 'week') post({ kind: 'week', winner: d.winner, profit: d.profit }); };
   window.addEventListener('chibouk:feed', onCustom);
 
   // relecture toutes les FEED_INTERVAL_MS, ou toutes les 45 s quand le chat est ouvert à l'écran
   let fast = false;
-  timer = setInterval(() => { if (Date.now() - lastPoll >= (fast ? 45000 : CONFIG.FEED_INTERVAL_MS) - 500) poll(); }, 5000);
-  const offWake = onWake(() => poll()); // retour sur l'onglet ou reprise après une pause
+  timer = setInterval(() => {
+    if (live) { if (isIdle()) detach(); else attach(); } // écoute en direct seulement quand le joueur est là
+    if (Date.now() - lastPoll >= (fast && !live ? 45000 : CONFIG.FEED_INTERVAL_MS) - 500) poll();
+  }, 5000);
+  const offWake = onWake(() => { attach(); poll(); }); // retour sur l'onglet ou reprise après une pause
+  setTimeout(attach, 300);
   const onLeave = () => { pushJackpot(true).catch(() => {}); };
   window.addEventListener('pagehide', onLeave);
   setTimeout(() => poll(true), 1200);
@@ -300,17 +343,19 @@ export function createSocial(wallet, backend) {
     get jackpot() { return jackpotValue(); },
     refresh: () => poll(true),
     post,
-    set fast(v) { const was = fast; fast = !!v; if (fast && !was && Date.now() - lastPoll > 30000) poll(); },
+    set fast(v) { const was = fast; fast = !!v; if (fast && !was && !live && Date.now() - lastPoll > 30000) poll(); },
+    live,
     // message de chat : envoyé tout de suite (1 écriture), sans passer par la file du fil d'activité
     async say(text) {
       const tg = Array.isArray(wallet.p.tags) && wallet.p.tags.length ? { tg: wallet.p.tags } : {};
       const full = { text, uid: wallet.uid, pseudo: wallet.pseudo, cid: Math.random().toString(36).slice(2, 10), ...tg };
       await backend.postChat(full);
-      chats = [...chats, { ...full, kind: 'chat', id: 'local_' + Date.now(), at: Date.now() }].slice(-CHAT_N);
+      // en direct, le message revient tout seul par l'écoute ; sinon on l'affiche tout de suite en local
+      if (!live || !offChat) chats = [...chats, { ...full, kind: 'chat', id: 'local_' + Date.now(), at: Date.now() }].slice(-CHAT_N);
       notify();
     },
     destroy() {
-      alive = false; clearInterval(timer); off();
+      alive = false; clearInterval(timer); off(); detach();
       window.removeEventListener('chibouk:feed', onCustom); offWake(); window.removeEventListener('pagehide', onLeave);
       pushJackpot(true).catch(() => {});
     },

@@ -53,7 +53,7 @@ export function mount(view, { wallet, social }) {
   $('#cs-kpis', view).onclick = (e) => {
     const b = e.target.closest('[data-bd]'); if (!b) return;
     const g = b.dataset.bd, p = wallet.p;
-    if (g === 'farm') { openBoostDetail('Boosts de récolte de la ferme', p.farm ? F.activeFarmBoosts(p.farm) : [], (ms) => F.farmStack(ms), { cap: F.FARM_BOOST_CAP }); return; }
+    if (g === 'farm') { openBoostDetail('Boosts de récolte de la ferme', p.farm ? F.activeFarmBoosts(p.farm) : [], (ms) => F.farmStack(ms, p.farm ? F.boostCap(p.farm) : F.FARM_BOOST_CAP), { cap: p.farm ? F.boostCap(p.farm) : F.FARM_BOOST_CAP }); return; }
     const names = { all: 'Boosts de tous les mini-jeux', chal: 'Boosts des défis de la jungle', sell: 'Boosts de vente des bananes' };
     openBoostDetail(names[g] || 'Boosts', L.activeBoosts(p).filter((x) => x.g === g), (ms) => L.stackMult(ms, L.STACK_CAP[g] ?? 3), { cap: L.STACK_CAP[g] ?? 3 });
   };

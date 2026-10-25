@@ -2882,3 +2882,60 @@ body.cb-coco, .sh-cards.cb-coco { --cb-bg: #3d2611; --cb-a: #6b4423; --cb-b: #4e
 .bd-list li { display: grid; grid-template-columns: 62px 1fr auto; gap: 8px; }
 .bd-note { font-size: .78rem; margin-top: 10px; }
 .bd-inline { margin: 6px 0 10px; } .bd-inline summary { cursor: pointer; color: var(--gold); font-size: .85rem; font-weight: 700; } .bd-inline .bd { margin-top: 8px; }
+
+/* ============================ V38 : fin de partie ============================ */
+/* succès Mythiques */
+@keyframes mythShift { to { background-position: 200% 0; } }
+.t-mythic.tier-badge { background: linear-gradient(90deg, #ff4d5e, #ffd23f, #3ddc84, #36c2ff, #c77dff, #ff4d5e); background-size: 200% 100%; animation: mythShift 3s linear infinite; color: #1a0b2a; font-weight: 900; }
+.ach-card.t-mythic { border-color: #c77dff66; }
+.ach-card.done.t-mythic { box-shadow: 0 0 0 1px #ffd23f88, 0 0 22px rgba(199, 125, 255, .35); }
+.ach-card.done.t-mythic .ach-ic { background: conic-gradient(#ff4d5e, #ffd23f, #3ddc84, #36c2ff, #c77dff, #ff4d5e); color: #fff; animation: frSpin 6s linear infinite; }
+.gl-a.t-mythic .gl-ic { color: #ffd23f; }
+.ach-toast.t-mythic .ic { color: #ffd23f; filter: drop-shadow(0 0 6px #c77dff); }
+/* nouveaux rangs VIP */
+.vip-badge.vip-celeste { background: linear-gradient(90deg, #0c3b4f, #1b6f8f, #0c3b4f); background-size: 200% 100%; animation: mythShift 4s linear infinite; color: #bff9ff; border-color: #7df9ff; box-shadow: 0 0 8px #7df9ff66; }
+.vip-badge.vip-esprit { background: linear-gradient(90deg, #4a0f3d, #8f1f74, #4a0f3d); background-size: 200% 100%; animation: mythShift 3s linear infinite; color: #ffd1f3; border-color: #ff5fd2; box-shadow: 0 0 10px #ff5fd288; }
+.vip-badge.vip-dieu { background: linear-gradient(90deg, #ff4d5e, #ffd23f, #3ddc84, #36c2ff, #c77dff, #ff4d5e); background-size: 200% 100%; animation: mythShift 2.5s linear infinite; color: #1a0b2a; border-color: #fff3b0; box-shadow: 0 0 14px #ffd70099; font-weight: 900; }
+/* cadres V38 */
+.avf.fr-aurora::before { inset: -3px; background: conic-gradient(#3ddc84, #36c2ff, #c77dff, #3ddc84, #7df9ff, #3ddc84); filter: blur(.5px); box-shadow: 0 0 14px rgba(61, 220, 132, .6); animation: frSpin 5s linear infinite; }
+.avf.fr-blackhole::before { inset: -4px; background: conic-gradient(from 0deg, #000, #1a0b3a, #ff8a3d, #000, #6a3df5, #000); box-shadow: 0 0 0 2px #000, 0 0 18px rgba(255, 138, 61, .7); animation: frSpin 1.8s linear infinite; }
+.avf.fr-eternal::before { inset: -4px; background: conic-gradient(#fff, #fff3b0, #f5c542, #fff, #ffd1f3, #fff3b0, #fff); box-shadow: 0 0 14px #fff3b0, 0 0 34px rgba(255, 215, 0, .7); animation: frSpin 3s linear infinite; }
+.avf.fr-eternal::after { content: ''; position: absolute; left: 50%; top: -26%; width: 64%; height: 36%; transform: translateX(-50%); z-index: 2; background: linear-gradient(#fff, #ffd23f); clip-path: polygon(0 100%, 0 30%, 20% 60%, 35% 10%, 50% 55%, 65% 10%, 80% 60%, 100% 30%, 100% 100%); filter: drop-shadow(0 0 4px #fff3b0); }
+.avf.fr-feuillage::before { inset: -3px; background: repeating-conic-gradient(#f5c542 0 15deg, #6b8f1f 15deg 30deg); box-shadow: 0 0 10px rgba(245, 197, 66, .6); }
+.avf.fr-soleil::before { inset: -5px; background: repeating-conic-gradient(#ffd23f 0 10deg, #ff8a3d 10deg 20deg); box-shadow: 0 0 20px #ffb300, 0 0 40px rgba(255, 138, 61, .6); animation: frSpin 8s linear infinite; }
+.avf.fr-mythic::before { inset: -3px; background: conic-gradient(#ff4d5e, #ffd23f, #3ddc84, #36c2ff, #c77dff, #ff4d5e); box-shadow: 0 0 16px rgba(199, 125, 255, .8); animation: frSpin 2s linear infinite; }
+.avf.fr-pantheon::before { inset: -5px; background: conic-gradient(#fff, #ffd23f, #ff4d5e, #fff, #36c2ff, #c77dff, #fff); box-shadow: 0 0 18px #fff, 0 0 40px rgba(199, 125, 255, .9); animation: frSpin 1.4s linear infinite, neonPulse 2s ease-in-out infinite; }
+.avf.fr-celeste::before { inset: -4px; background: radial-gradient(circle at 25% 25%, #fff 0 1px, transparent 2px), radial-gradient(circle at 75% 40%, #fff 0 1px, transparent 2px), radial-gradient(circle at 40% 80%, #fff 0 1px, transparent 2px), conic-gradient(#0c3b4f, #7df9ff, #bff9ff, #1b6f8f, #7df9ff, #0c3b4f); box-shadow: 0 0 16px #7df9ff; animation: frSpin 4s linear infinite; }
+.avf.fr-boussole::before { inset: -3px; background: repeating-conic-gradient(#c98a00 0 45deg, #fff3b0 45deg 90deg); box-shadow: 0 0 8px rgba(245, 197, 66, .6); animation: frSpin 12s linear infinite; }
+/* dos de cartes V38 */
+body.cb-aurora, .sh-cards.cb-aurora { --cb-bg: #08202a; --cb-a: #135a4a; --cb-b: #2a2f7a; --cb-line: #7df9ff; }
+body.cb-royal, .sh-cards.cb-royal { --cb-bg: #2a0b3a; --cb-a: #5a1f8f; --cb-b: #3a0f5a; --cb-line: #ffd23f; }
+body.cb-carte, .sh-cards.cb-carte { --cb-bg: #6b4a1f; --cb-a: #c9a36b; --cb-b: #a8834b; --cb-line: #5a3a14; }
+/* boutique : objets exclusifs */
+.sh-item.excl { position: relative; border-color: #c77dff55; }
+.sh-item.excl.locked .sh-prev { filter: grayscale(.8) brightness(.55); }
+.sh-excl { display: block; color: #e0c4ff; font-size: .74rem; line-height: 1.3; }
+/* ferme : onglet Domaine */
+.fm-away { color: #8fb4ff; font-size: .72rem; font-weight: 600; } .fm-away.done { color: var(--gold); }
+.dm-wrap { display: grid; gap: 16px; }
+.dm-sec { padding: 16px; }
+.dm-h { display: flex; align-items: center; justify-content: flex-start !important; gap: 8px; flex-wrap: wrap; margin: 0 0 12px; font-size: 1.1rem; text-align: left; }
+.dm-h small { margin-left: auto; } .dm-h .ic, .dm-h .seed { width: 22px; height: 22px; color: var(--gold); } .dm-h small { font-family: var(--font); font-size: .78rem; font-weight: 500; }
+.dm-ms { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.dm-ms li { display: grid; grid-template-columns: 96px 1fr 24px; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: #0004; border: 1px solid var(--line); opacity: .7; }
+.dm-ms li.done { opacity: 1; border-color: #f5c54266; background: rgba(245, 197, 66, .07); }
+.dm-ms li b { color: var(--gold); font-family: var(--font-title); font-weight: 400; } .dm-ms li i .ic { width: 18px; height: 18px; } .dm-ms li.done i { color: #3ddc84; }
+.dm-note { font-size: .8rem; margin: 10px 0 0; }
+.dm-wonders { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+.dm-w { display: grid; gap: 6px; justify-items: center; text-align: center; padding: 14px; border-radius: 16px; background: #0004; border: 1px solid var(--line); }
+.dm-w.built { border-color: #f5c54288; box-shadow: 0 0 18px rgba(245, 197, 66, .15); }
+.dm-w.locked { opacity: .55; } .dm-w.locked .dm-w-art { filter: grayscale(1); }
+.dm-w-art svg { width: 72px; height: 72px; display: block; }
+.dm-w small { font-size: .78rem; line-height: 1.3; } .dm-w small .ic { width: 14px; height: 14px; vertical-align: -2px; }
+.dm-exps { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 12px; }
+.dm-x { display: grid; gap: 6px; padding: 12px; border-radius: 14px; background: #0004; border: 1px solid var(--line); }
+.dm-x.locked { opacity: .55; } .dm-x > span { color: var(--gold); font-weight: 700; font-size: .85rem; } .dm-x small { font-size: .76rem; color: var(--muted); line-height: 1.35; }
+.dm-ex-run { display: grid; gap: 6px; padding: 12px 14px; border-radius: 14px; background: rgba(91, 141, 239, .1); border: 1px solid rgba(120, 165, 255, .4); }
+.dm-ex-run.done { background: rgba(245, 197, 66, .1); border-color: var(--gold); grid-template-columns: 1fr auto; align-items: center; animation: pkActGlow 1.4s ease-in-out infinite; }
+.dm-loot { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 6px; } .dm-loot li { padding: 8px 10px; border-radius: 10px; background: #0004; } .dm-loot .seed { width: 16px; height: 16px; vertical-align: -3px; }
+.dm-loot li.dm-rare { border: 1px solid #c77dff; box-shadow: 0 0 12px rgba(199, 125, 255, .4); }

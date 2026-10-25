@@ -32,7 +32,7 @@ export const wellBonus = (L) => 0.1 * L;                               // +10 % 
 export const SELL_BASE = 0.6;                                          // Brundles par banane sans marché
 export const MARKET_STEP = 0.04;                                       // + par niveau de marché (niveau 10 : 1 banane = 1 Brundle)
 export const sellAt = (marketLevel) => Math.round((SELL_BASE + MARKET_STEP * (marketLevel || 0)) * 1000) / 1000;
-export const sellRate = (f) => { const m = findType(f, 'M'); return sellAt(m ? m.l : 0); };
+export const sellRate = (f) => { const m = findType(f, 'M'); return Math.round(sellAt(m ? m.l : 0) * (1 + PORT_BONUS * wonderLv(f, 'port')) * 1000) / 1000; };
 export const PRICE = 0.6;                                              // prix en Brundles = ancien prix en bananes × 0,6 (même rentabilité)
 export const hireCost = (n) => Math.round(16 * PRICE * Math.pow(1.16, n));     // prix du (n+1)ᵉ singe, en Brundles
 export const landCost = (k) => Math.round(600 * Math.pow(1.2, k));    // k-ième case achetée, en Brundles
@@ -45,7 +45,7 @@ export const rushCost = (ms, cost = 0, total = 0) => Math.max(10, Math.ceil(ms /
 export const SEED_BONUS = 0.05;
 export const seedGain = (life) => Math.floor(2 * Math.sqrt(Math.max(0, life) / 1e6)); // 1 M récoltées → 2 graines, 25 M → 10
 export const REPLANT_MIN = 2;
-export const seedMult = (f) => (1 + SEED_BONUS * (f.seeds || 0)) * prestigeMult(f);
+export const seedMult = (f) => (1 + SEED_BONUS * (f.seeds || 0)) * prestigeMult(f) * (1 + TEMPLE_BONUS * wonderLv(f, 'temple')) * (1 + milestoneProd(f));
 // Prestige (V28) : après 2 M de bananes vendues, on peut remettre la ferme à zéro contre +100 % de production pour toujours.
 // Le palier double à chaque fois (2 M, 4 M, 8 M… de bananes vendues depuis le prestige précédent).
 export const PRESTIGE_BASE = 2e6, PRESTIGE_BONUS = 1;
@@ -75,9 +75,11 @@ const sides = (i) => { const r = Math.floor(i / SIZE), c = i % SIZE; return [[r 
 export function costOf(f, t, L) {
   const d = B[t];
   const n = L === 1 ? Math.max(0, countType(f, t) - (t === 'F' || t === 'C' || t === 'E' ? 1 : 0)) : 0;
-  return Math.max(1, Math.round(d.base * PRICE * Math.pow(d.grow, L - 1) * Math.pow(d.extra, n) * priceMult(f)));
+  const asc = L > d.max ? Math.pow(ASC_PRICE, L - d.max) : 1; // niveaux d'Ascension : beaucoup plus chers
+  return Math.max(1, Math.round(d.base * PRICE * Math.pow(d.grow, L - 1) * Math.pow(d.extra, n) * priceMult(f) * asc));
 }
-export const timeOf = (t, L) => Math.round(B[t].time * Math.pow(B[t].tgrow, L - 1)) * 1000;
+// au-delà du niveau max de base : durée du dernier niveau, +25 % par niveau d'Ascension (au lieu d'une explosion)
+export const timeOf = (t, L) => { const d = B[t], top = Math.min(L, d.max); const base = Math.round(d.time * Math.pow(d.tgrow, top - 1)) * 1000; return L > d.max ? Math.round(base * (1 + 0.25 * (L - d.max))) : base; };
 // Vitesse de construction permanente (gagnée dans les caisses) : f.spd = part du temps en moins (0,1 = −10 %), plafonnée
 export const SPEED_MAX = 0.6;
 export const speedOf = (f) => Math.max(0, Math.min(SPEED_MAX, (f && f.spd) || 0));
@@ -112,7 +114,7 @@ export function normalize(raw, now = Date.now()) {
   if (!raw || typeof raw !== 'object' || !raw.v) return newFarm(now);
   const f = { ...newFarm(now), ...raw };
   const g = new Array(SIZE * SIZE).fill(null);
-  if (Array.isArray(raw.g)) raw.g.forEach((x, i) => { if (x && B[x.t] && i < g.length) g[i] = { t: x.t, l: Math.max(1, Math.min(B[x.t].max, x.l | 0)), ...(Number.isFinite(x.c) && x.c >= 0 ? { c: Math.round(x.c) } : {}) }; });
+  if (Array.isArray(raw.g)) raw.g.forEach((x, i) => { if (x && B[x.t] && i < g.length) g[i] = { t: x.t, l: Math.max(1, Math.min(absMax(x.t), x.l | 0)), ...(Number.isFinite(x.c) && x.c >= 0 ? { c: Math.round(x.c) } : {}) }; });
   else if (raw.g) for (const k in raw.g) { const x = raw.g[k]; if (x && B[x.t] && +k < g.length) g[+k] = { t: x.t, l: x.l | 0 || 1 }; }
   f.g = g;
   f.own = Array.isArray(raw.own) ? raw.own.filter((i) => i >= 0 && i < g.length) : [...START];
@@ -122,6 +124,13 @@ export function normalize(raw, now = Date.now()) {
   f.bu = Math.max(1, Math.min(3, f.bu));
   migrate(f, now);
   f.spd = Math.max(0, Math.min(SPEED_MAX, Number(raw.spd) || 0));
+  // fin de partie (V38) : merveilles, expédition en cours, nombre d'expéditions
+  const wo = {};
+  if (raw.wo && typeof raw.wo === 'object') for (const k of Object.keys(WONDERS)) { const v = Math.floor(Number(raw.wo[k]) || 0); if (v > 0) wo[k] = Math.min(WONDERS[k].max, v); }
+  f.wo = wo;
+  const ex = raw.ex;
+  f.ex = ex && EXPEDITIONS.some((x) => x.id === ex.id) && Number(ex.end) > 0 ? { id: ex.id, n: Math.max(0, Math.floor(Number(ex.n) || 0)), start: Number(ex.start) || 0, end: Number(ex.end) } : null;
+  f.exn = Math.max(0, Math.floor(Number(raw.exn) || 0));
   return f;
 }
 
@@ -138,9 +147,10 @@ export function assignment(f) {
   const sm = seedMult(f);
   const fields = built(f).filter((x) => x.t === 'F').map((x) => ({ i: x.i, l: x.l, per: perWorker(x.l) * (1 + irrigation(f, x.i)) * sm, cap: slots(x.l), w: 0 }));
   fields.sort((a, b) => b.per - a.per);
-  let left = Math.min(f.w, houses(f));
+  const away = awayAt(f, f.t || Date.now());
+  let left = Math.max(0, Math.min(f.w, houses(f)) - away);
   for (const x of fields) { x.w = Math.min(x.cap, left); left -= x.w; }
-  return { fields, idle: Math.max(0, Math.min(f.w, houses(f)) - fields.reduce((a, x) => a + x.w, 0)), homeless: Math.max(0, f.w - houses(f)) };
+  return { fields, away, idle: Math.max(0, Math.min(f.w, houses(f)) - away - fields.reduce((a, x) => a + x.w, 0)), homeless: Math.max(0, f.w - houses(f)) };
 }
 // Boosts de récolte gagnés dans les caisses : f.xbs = [{ m, u }]. Ils se cumulent avec un rendement dégressif (V30) :
 // le plus fort compte en entier, le 2e à 1/2, le 3e à 1/3, le 4e à 1/4… : chaque nouveau boost ajoute toujours un peu,
@@ -161,14 +171,16 @@ export function migrate(f, now = Date.now()) {
   if (f.ssm !== 1) { if (!f.pr) f.ss = Math.max(Number(f.ss) || 0, Number(f.sold) || 0); f.ssm = 1; }
   return f;
 }
-export function farmStack(ms) {
+export function farmStack(ms, cap = FARM_BOOST_CAP) {
   const s = ms.filter((m) => m > 1).sort((a, b) => b - a);
   let t = 1;
   s.forEach((m, i) => { t += (m - 1) / (i + 1); });
-  return Math.min(FARM_BOOST_CAP, Math.round(t * 100) / 100);
+  return Math.min(cap, Math.round(t * 100) / 100);
 }
+// plafond des boosts de récolte : ×5, +1 par niveau de l'Arbre-Monde
+export const boostCap = (f) => FARM_BOOST_CAP + wonderLv(f, 'arbre');
 export const activeFarmBoosts = (f, t = Date.now()) => { if (f && (f.xb || !Array.isArray(f.xbs))) migrate(f, Math.min(t, f.t || t)); return ((f && f.xbs) || []).filter((b) => b.u > t); };
-export const boostAt = (f, t = Date.now()) => farmStack(activeFarmBoosts(f, t).map((b) => b.m));
+export const boostAt = (f, t = Date.now()) => farmStack(activeFarmBoosts(f, t).map((b) => b.m), boostCap(f));
 export const boostEnd = (f, t = Date.now()) => Math.max(0, ...activeFarmBoosts(f, t).map((b) => b.u));
 export function addBoost(f, m, hours, now = Date.now()) {
   f.xbs = [...activeFarmBoosts(f, now), { m, u: now + hours * HOUR }];
@@ -197,7 +209,7 @@ export function tick(f, now = Date.now()) {
   };
   // boosts de récolte (caisses) : on découpe la période à chaque fin de boost
   const produce = (until) => {
-    const ends = activeFarmBoosts(f, f.t).map((b) => b.u).filter((u) => u < until).sort((a, b) => a - b);
+    const ends = [...activeFarmBoosts(f, f.t).map((b) => b.u), ...(f.ex && f.ex.end > f.t ? [f.ex.end] : [])].filter((u) => u < until).sort((a, b) => a - b);
     for (const u of ends) seg(u, boostAt(f, f.t));
     seg(until, boostAt(f, f.t));
   };
@@ -236,7 +248,7 @@ export function build(f, i, t, now = Date.now(), money = Infinity) {
 export function canUpgrade(f, i, money = Infinity) {
   const x = tile(f, i);
   if (!x) return 'Rien à améliorer ici';
-  if (x.l >= B[x.t].max) return 'Niveau maximum';
+  if (x.l >= maxLevel(f, x.t)) return maxLevel(f, x.t) < absMax(x.t) ? `Niveau maximum (jusqu'au niveau ${absMax(x.t)} à partir du prestige ${ASCENSION_PR})` : 'Niveau maximum';
   if (f.q.some((q) => q.i === i)) return 'Déjà en travaux';
   if (f.q.length >= f.bu) return 'Tous tes bâtisseurs sont occupés';
   if (money < costOf(f, x.t, x.l + 1)) return 'Pas assez de Brundles';
@@ -272,6 +284,7 @@ export function canPrestige(f) {
   const need = prestigeNeed(f);
   if ((f.ss || 0) < need) return `Il faut avoir vendu ${fmtM(need)} de bananes depuis ${f.pr ? 'le dernier prestige' : 'le début'}`;
   if (f.q.length) return 'Attends la fin de tes chantiers';
+  if (f.ex) return 'Attends le retour de ton expédition (et récupère son butin)';
   return null;
 }
 const fmtM = (n) => (n >= 1e6 ? `${(n / 1e6).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} million${n >= 2e6 ? 's' : ''}` : Math.round(n).toLocaleString('fr-FR'));
@@ -336,3 +349,95 @@ export function prestigeReplay(f, quote, now = Date.now()) {
 // Score affiché dans le classement des fermes
 export const farmScore = (f) => Math.round(f.rate || productionPerHour(f));
 export const levels = (f) => built(f).reduce((a, x) => a + x.l, 0);
+
+
+/* ================================ FIN DE PARTIE (V38) ================================ */
+// Ascension : au prestige 5, bananeraies, cabanes et entrepôts peuvent monter 5 niveaux de plus (coûts ×1,6 par niveau en plus)
+export const ASCENSION_PR = 5, ASC_EXTRA = 5, ASC_PRICE = 1.6;
+const ASC_TYPES = ['F', 'C', 'E'];
+export const absMax = (t) => B[t].max + (ASC_TYPES.includes(t) ? ASC_EXTRA : 0);
+export const maxLevel = (f, t) => B[t].max + (ASC_TYPES.includes(t) && ((f && f.pr) || 0) >= ASCENSION_PR ? ASC_EXTRA : 0);
+
+// Merveilles : bâtiments uniques hors de la grille, gardés après les prestiges, payés en Brundles (prix ×3 par niveau)
+export const TEMPLE_BONUS = 0.1, PORT_BONUS = 0.05, OBS_BONUS = 0.1;
+export const WONDERS = {
+  temple: { name: 'Temple du Singe d\'or', pr: 2, max: 5, base: 50e6, effect: (L) => `+${L * 10} % de production`, desc: '+10 % de production par niveau.' },
+  port: { name: 'Grand Port', pr: 4, max: 5, base: 100e6, effect: (L) => `+${L * 5} % au prix de vente`, desc: '+5 % au prix de vente des bananes par niveau.' },
+  obs: { name: 'Observatoire', pr: 6, max: 5, base: 250e6, effect: (L) => `expéditions −${L * 10} %`, desc: 'Expéditions 10 % plus courtes par niveau.' },
+  arbre: { name: 'Arbre-Monde', pr: 8, max: 5, base: 1e9, effect: (L) => `boosts de récolte jusqu'à ×${FARM_BOOST_CAP + L}`, desc: '+1 au plafond des boosts de récolte par niveau (×5 → ×10).' },
+};
+export const wonderLv = (f, k) => Math.max(0, Math.min(WONDERS[k].max, Math.floor((f && f.wo && f.wo[k]) || 0)));
+export const wonderCost = (k, L) => Math.round(WONDERS[k].base * Math.pow(3, L - 1));
+export function canWonder(f, k, money = Infinity) {
+  const w = WONDERS[k];
+  if (!w) return 'Merveille inconnue';
+  if ((f.pr || 0) < w.pr) return `Disponible au prestige ${w.pr}`;
+  const L = wonderLv(f, k);
+  if (L >= w.max) return 'Niveau maximum';
+  if (money < wonderCost(k, L + 1)) return 'Pas assez de Brundles';
+  return null;
+}
+export function buildWonder(f, k, money = Infinity) {
+  const err = canWonder(f, k, money);
+  if (err) return err;
+  f.wo = { ...(f.wo || {}), [k]: wonderLv(f, k) + 1 };
+  return null;
+}
+
+// Paliers de prestige : récompenses permanentes (et cosmétiques exclusifs, voir shop.js)
+export const MILESTONES = [
+  { pr: 3, txt: 'Titre « Fermier émérite » et expédition au Temple perdu' },
+  { pr: 5, txt: 'Ascension : niveaux 16 à 20 (bananeraies, cabanes et entrepôts 13 à 17) et cadre « Feuillage d\'or »' },
+  { pr: 8, txt: '+25 % de production pour toujours et titre « Seigneur des bananes »', prod: 0.25 },
+  { pr: 12, txt: '+50 % de production pour toujours et cadre « Soleil de la jungle »', prod: 0.5 },
+];
+export const milestoneProd = (f) => MILESTONES.filter((m) => m.prod && ((f && f.pr) || 0) >= m.pr).reduce((a, m) => a + m.prod, 0);
+
+// Expéditions : des singes partent en mission (ils ne récoltent plus), et reviennent avec un butin
+export const EXPEDITIONS = [
+  { id: 'fleuve', name: 'Bord du fleuve', h: 2, n: 5, pr: 0, k: 0.3, boost: [0.3, 1.5, 3], seed: [0.05, 1, 1], cos: 0.01 },
+  { id: 'montagne', name: 'Montagne aux brumes', h: 8, n: 12, pr: 1, k: 0.5, boost: [0.4, 2, 6], seed: [0.15, 1, 1], cos: 0.03 },
+  { id: 'temple', name: 'Temple perdu', h: 24, n: 25, pr: 3, k: 0.8, boost: [0.5, 2, 12], seed: [0.35, 1, 2], cos: 0.08 },
+];
+export const expedition = (id) => EXPEDITIONS.find((x) => x.id === id) || null;
+export const awayAt = (f, t = Date.now()) => (f && f.ex && f.ex.end > t ? f.ex.n : 0);
+export const expDuration = (f, x) => Math.round(x.h * HOUR * (1 - OBS_BONUS * wonderLv(f, 'obs')));
+export function canExpedition(f, id, now = Date.now()) {
+  const x = expedition(id);
+  if (!x) return 'Expédition inconnue';
+  if ((f.pr || 0) < x.pr) return `Disponible au prestige ${x.pr}`;
+  if (f.ex) return f.ex.end > now ? 'Une expédition est déjà en cours' : 'Récupère d\'abord le butin de ta dernière expédition';
+  const free = Math.min(f.w, houses(f));
+  if (free < x.n) return `Il faut ${x.n} singes (tu en as ${free})`;
+  return null;
+}
+export function startExpedition(f, id, now = Date.now()) {
+  const err = canExpedition(f, id, now);
+  if (err) return err;
+  tick(f, now);
+  const x = expedition(id);
+  f.ex = { id, n: x.n, start: now, end: now + expDuration(f, x) };
+  return null;
+}
+// Butin (tiré au retour). rand() = nombre entre 0 et 1. Renvoie { brundles, boost?, seeds?, cos: true si un objet rare tombe }
+export function rollExpedition(f, rand = Math.random) {
+  const x = expedition(f.ex && f.ex.id);
+  if (!x) return null;
+  const full = assignment({ ...f, ex: null }).fields.reduce((a, y) => a + y.w * y.per, 0); // production sans l'expédition
+  const out = { id: x.id, brundles: Math.max(100, Math.round(x.h * full * sellRate(f) * x.k)) };
+  if (rand() < x.boost[0]) out.boost = { m: x.boost[1], h: x.boost[2] };
+  if (rand() < x.seed[0]) out.seeds = x.seed[1] + Math.floor(rand() * (x.seed[2] - x.seed[1] + 1));
+  if (rand() < x.cos) out.cos = true;
+  return out;
+}
+// Récupère le butin : applique la récolte jusqu'à maintenant, les boosts et les graines (les Brundles et l'objet rare sont versés par l'appelant)
+export function claimExpedition(f, now = Date.now(), rand = Math.random) {
+  if (!f.ex) return { err: 'Aucune expédition' };
+  if (f.ex.end > now) return { err: 'Les singes ne sont pas encore rentrés' };
+  tick(f, now);
+  const loot = rollExpedition(f, rand);
+  if (loot.boost) addBoost(f, loot.boost.m, loot.boost.h, now);
+  if (loot.seeds) f.seeds = (f.seeds || 0) + loot.seeds;
+  f.ex = null; f.exn = (f.exn || 0) + 1;
+  return { loot };
+}

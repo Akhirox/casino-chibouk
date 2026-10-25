@@ -17,11 +17,14 @@ export const ITEM_BONUS = {
   // cadres
   'fr-bronze': 0.01, 'fr-silver': 0.02, 'fr-gold': 0.03, 'fr-vine': 0.04, 'fr-neon': 0.05, 'fr-fire': 0.07, 'fr-rainbow': 0.1, 'fr-diamond': 0.15,
   'fr-coco': 0.02, 'fr-toxic': 0.08, 'fr-lava': 0.08, 'fr-galaxy': 0.12, 'fr-king': 0.2,
+  'fr-aurora': 0.18, 'fr-blackhole': 0.22, 'fr-eternal': 0.25, 'fr-feuillage': 0.12, 'fr-soleil': 0.22, 'fr-mythic': 0.18, 'fr-pantheon': 0.3, 'fr-celeste': 0.25, 'fr-boussole': 0.1,
   // titres
   'ti-petit': 0.01, 'ti-banane': 0.02, 'ti-bluff': 0.03, 'ti-croupier': 0.04, 'ti-gorille': 0.05, 'ti-chasseur': 0.07, 'ti-parrain': 0.1, 'ti-legende': 0.12, 'ti-milliard': 0.15,
   'ti-curieux': 0.02, 'ti-noix': 0.03, 'ti-ouvreur': 0.06, 'ti-veinard': 0.06, 'ti-mystere': 0.09, 'ti-collec': 0.13, 'ti-dieu': 0.2,
+  'ti-baron': 0.17, 'ti-empereur': 0.21, 'ti-dieubr': 0.25, 'ti-emerite': 0.08, 'ti-seigneur': 0.15, 'ti-mythe': 0.2, 'ti-immortel': 0.3, 'ti-recordman': 0.15, 'ti-explorateur': 0.08, 'ti-pilleur': 0.12,
   // dos de cartes
   'cb-blue': 0.02, 'cb-jungle': 0.04, 'cb-gold': 0.06, 'cb-neon': 0.1, 'cb-coco': 0.03, 'cb-toxic': 0.08, 'cb-galaxy': 0.12,
+  'cb-aurora': 0.14, 'cb-royal': 0.17, 'cb-carte': 0.1,
   // thèmes de la slot
   'th-jungle': 0.02, 'th-ocean': 0.04, 'th-royal': 0.07, 'th-neon': 0.1, 'th-galaxy': 0.15,
   // effets de victoire

@@ -23,6 +23,10 @@ export const VIP = [
   { id: 'gorille', name: 'Gorille', min: 2500000000, rb: 0.0064, mult: 6, up: 5000000, color: '#3ddc84' },
   { id: 'argente', name: 'Gorille argenté', min: 25000000000, rb: 0.0066, mult: 8, up: 40000000, color: '#e8eef2' },
   { id: 'roi', name: 'Roi Singe', min: 250000000000, rb: 0.007, mult: 10, up: 300000000, color: '#c77dff' },
+  // V38 : au-delà du Roi Singe (même règle : rakeback + bonus de passage restent sous l'avantage du casino)
+  { id: 'celeste', name: 'Singe céleste', min: 2500000000000, rb: 0.0071, mult: 12, up: 2000000000, color: '#7df9ff' },
+  { id: 'esprit', name: 'Esprit de la jungle', min: 25000000000000, rb: 0.0071, mult: 15, up: 15000000000, color: '#ff5fd2' },
+  { id: 'dieu', name: 'Dieu Singe', min: 250000000000000, rb: 0.0072, mult: 20, up: 100000000000, color: '#ffd700' },
 ];
 export const vipIndex = (id) => VIP.findIndex((v) => v.id === id);
 export function vipOf(totalWagered = 0) {

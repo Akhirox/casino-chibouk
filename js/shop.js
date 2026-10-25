@@ -78,10 +78,68 @@ export const ITEMS = [
   { id: 'th-galaxy', cat: 'theme', name: 'Galaxie', loot: 'legend' },
   { id: 'fx-ruby', cat: 'effect', name: 'Pluie de rubis', loot: 'epic' },
   { id: 'fx-monkey', cat: 'effect', name: 'Pluie de singes', loot: 'legend' },
+  // V38 : très haut de gamme
+  { id: 'fr-aurora', cat: 'frame', name: 'Aurore boréale', price: 100000000 },
+  { id: 'fr-blackhole', cat: 'frame', name: 'Trou noir', price: 500000000 },
+  { id: 'fr-eternal', cat: 'frame', name: 'Couronne éternelle', price: 1000000000 },
+  { id: 'ti-baron', cat: 'title', name: 'Baron de la canopée', price: 100000000 },
+  { id: 'ti-empereur', cat: 'title', name: 'Empereur de la jungle', price: 500000000 },
+  { id: 'ti-dieubr', cat: 'title', name: 'Dieu des Brundles', price: 1000000000 },
+  { id: 'cb-aurora', cat: 'cardback', name: 'Aurore', price: 150000000 },
+  { id: 'cb-royal', cat: 'cardback', name: 'Sceau royal', price: 600000000 },
+  // V38 : exclusifs, gagnés par des exploits (jamais en vente)
+  { id: 'ti-emerite', cat: 'title', name: 'Fermier émérite', unlock: { pr: 3 } },
+  { id: 'fr-feuillage', cat: 'frame', name: 'Feuillage d\'or', unlock: { pr: 5 } },
+  { id: 'ti-seigneur', cat: 'title', name: 'Seigneur des bananes', unlock: { pr: 8 } },
+  { id: 'fr-soleil', cat: 'frame', name: 'Soleil de la jungle', unlock: { pr: 12 } },
+  { id: 'fr-mythic', cat: 'frame', name: 'Aura mythique', unlock: { mythic: 3 } },
+  { id: 'ti-mythe', cat: 'title', name: 'Mythe vivant', unlock: { mythic: 7 } },
+  { id: 'fr-pantheon', cat: 'frame', name: 'Panthéon', unlock: { mythic: 'all' } },
+  { id: 'ti-immortel', cat: 'title', name: 'Immortel de la jungle', unlock: { ach: 'my-all' } },
+  { id: 'fr-celeste', cat: 'frame', name: 'Halo céleste', unlock: { vip: 'celeste' } },
+  { id: 'ti-recordman', cat: 'title', name: 'Recordman', unlock: { records: 3 } },
+  // V38 : trouvés en expédition (ferme)
+  { id: 'ti-explorateur', cat: 'title', name: 'Explorateur de la jungle', exp: true },
+  { id: 'ti-pilleur', cat: 'title', name: 'Pilleur de temples', exp: true },
+  { id: 'fr-boussole', cat: 'frame', name: 'Boussole d\'or', exp: true },
+  { id: 'cb-carte', cat: 'cardback', name: 'Carte au trésor', exp: true },
 ];
 export const LOOT_ITEMS = ITEMS.filter((i) => i.loot);
+export const EXPEDITION_ITEMS = ITEMS.filter((i) => i.exp);
+export const UNLOCK_ITEMS = ITEMS.filter((i) => i.unlock);
+// Condition d'un objet exclusif, en clair
+export function unlockText(it) {
+  const u = it.unlock || {};
+  if (u.pr) return `Ferme : atteindre le prestige ${u.pr}`;
+  if (u.mythic === 'all') return 'Débloquer tous les succès Mythiques';
+  if (u.mythic) return `Débloquer ${u.mythic} succès Mythiques`;
+  if (u.ach === 'my-all') return 'Débloquer tous les succès (hors Mythiques)';
+  if (u.vip) return 'Atteindre le rang VIP Singe céleste';
+  if (u.records) return `Détenir ${u.records} records en même temps`;
+  if (it.exp) return 'Trouvé en expédition (ferme, onglet Domaine)';
+  return '';
+}
+// Objets exclusifs mérités : ajoutés pour toujours aux objets possédés (ctx = { mythic: nombre, mythicAll, records, vipIndex, celesteIndex, achAll })
+export function checkUnlocks(wallet, ctx) {
+  const p = wallet.p, sh = shopOf(p), fresh = [];
+  for (const it of UNLOCK_ITEMS) {
+    if (sh.owned && sh.owned[it.id]) continue;
+    const u = it.unlock;
+    const ok = u.pr ? ((p.farm && p.farm.pr) || 0) >= u.pr
+      : u.mythic === 'all' ? ctx.mythicAll
+        : u.mythic ? ctx.mythic >= u.mythic
+          : u.ach ? !!(p.ach && p.ach.u && p.ach.u[u.ach])
+            : u.vip ? ctx.vipIndex >= ctx.celesteIndex
+              : u.records ? ctx.records >= u.records : false;
+    if (ok) fresh.push(it);
+  }
+  if (!fresh.length) return [];
+  p.shop = { owned: { ...(sh.owned || {}), ...Object.fromEntries(fresh.map((it) => [it.id, Date.now()])) }, eq: { ...(sh.eq || {}) } };
+  wallet.set('shop', p.shop);
+  return fresh;
+}
 export const DEFAULTS = { frame: 'fr-none', title: 'ti-none', cardback: 'cb-classic', theme: 'th-classic', effect: 'fx-coins' };
-export const PAID_ITEMS = ITEMS.filter((i) => i.price > 0 || i.loot);
+export const PAID_ITEMS = ITEMS.filter((i) => i.price > 0 || i.loot || i.unlock || i.exp);
 const byId = (id) => ITEMS.find((i) => i.id === id);
 
 const shopOf = (p) => (p && p.shop) || { owned: {}, eq: {} };
@@ -182,12 +240,13 @@ export function mount(view, { wallet, backend }) {
       const btn = on ? `<button class="btn btn-ghost btn-sm" disabled>${icon('check')}Équipé</button>`
         : own ? `<button class="btn btn-ghost btn-sm" data-eq="${it.id}">Équiper</button>`
           : it.loot ? `<a class="btn btn-ghost btn-sm" href="#/cases">${icon('crate')}Dans les caisses</a>`
+            : it.unlock || it.exp ? `<button class="btn btn-ghost btn-sm" disabled>${icon('lock')}Exclusif</button>`
             : `<button class="btn btn-gold btn-sm" data-buy="${it.id}" ${wallet.balance < it.price ? 'disabled' : ''}>Acheter</button>`;
-      return `<div class="sh-item ${on ? 'on' : ''} ${own ? 'own' : ''} ${it.loot ? 'loot r-' + it.loot : ''}">
+      return `<div class="sh-item ${on ? 'on' : ''} ${own ? 'own' : ''} ${it.loot ? 'loot r-' + it.loot : ''} ${it.unlock || it.exp ? 'excl' : ''} ${(it.unlock || it.exp) && !own ? 'locked' : ''}">
         <div class="sh-prev">${previewHTML(it, wallet)}</div>
         <b>${esc(it.name)}</b>
         ${bonusText(it.id, it.cat) ? `<span class="sh-bonus">${bonusText(it.id, it.cat)}</span>` : ''}
-        <span class="sh-price">${it.loot ? (own ? 'Possédé · exclusif caisses' : 'Exclusif caisses') : it.price ? (own ? 'Possédé' : money(it.price)) : 'Offert'}</span>
+        <span class="sh-price">${it.loot ? (own ? 'Possédé · exclusif caisses' : 'Exclusif caisses') : it.unlock || it.exp ? `<small class="sh-excl">${own ? 'Débloqué · ' : ''}${esc(unlockText(it))}</small>` : it.price ? (own ? 'Possédé' : money(it.price)) : 'Offert'}</span>
         ${btn}</div>`;
     }).join('');
   }

@@ -2,6 +2,36 @@
 
 Le même contenu est visible sur le site, page « Nouveautés » (menu du pseudo ou bas de page).
 
+## V38 — Fin de partie (25 octobre 2026)
+
+### Rangs VIP
+
+- Trois nouveaux rangs au-delà du Roi Singe : Singe céleste (2 500 milliards misés), Esprit de la jungle (25 000 milliards) et Dieu Singe (250 000 milliards), avec un badge animé et un gros bonus de passage.
+
+### Succès Mythiques
+
+- Un nouveau palier au-dessus de Légende : 15 succès très durs, 250 000 Brundles chacun. Fortune d'un milliard, gain de 100 millions en un coup, prestige 8, bananeraie niveau 20, les 4 merveilles, 50 expéditions, 5 records en même temps, carré au poker, 60 jours de roue d'affilée… et tous les autres succès.
+
+### Ferme : onglet Domaine
+
+- Paliers de prestige (3, 5, 8 et 12) : titres et cadres exclusifs, expédition au Temple perdu, et jusqu'à +75 % de production pour toujours.
+- Ascension au prestige 5 : les bananeraies montent jusqu'au niveau 20, les cabanes et les entrepôts jusqu'au 17. Chaque niveau en plus coûte beaucoup plus cher.
+- Merveilles : 4 bâtiments uniques, hors de la grille, gardés après chaque prestige. Temple du Singe d'or (+10 % de production par niveau), Grand Port (+5 % au prix de vente), Observatoire (expéditions plus courtes) et Arbre-Monde (boosts de récolte jusqu'à ×10).
+- Expéditions : envoie des singes en mission de 2 h à 24 h. Ils ne récoltent pas pendant ce temps, mais rapportent des Brundles, parfois un boost de récolte, des graines d'or ou un objet rare introuvable ailleurs.
+
+### Cosmétiques à chasser
+
+- Objets exclusifs, jamais en vente : gagnés aux paliers de prestige, avec les succès Mythiques, en détenant 3 records en même temps, au rang VIP Singe céleste ou trouvés en expédition. Ils se débloquent tout seuls dès que la condition est remplie.
+- Gamme très haut de gamme en boutique : cadres, titres et dos de cartes de 100 millions à 1 milliard de Brundles.
+
+## V37 — Chat et fil en direct (22 octobre 2026)
+
+### En direct de la jungle
+
+- Le chat et le fil d'activité sont maintenant instantanés : un message ou un exploit apparaît chez tout le monde en une seconde environ, au lieu de 45 s à 2 min.
+- Chat : 1 message toutes les 3 secondes (au lieu d'1 par minute).
+- Pour économiser la base, l'écoute en direct se coupe quand tu ne joues plus (onglet caché ou 4 minutes sans rien faire) et reprend dès ton retour, avec les messages arrivés entre-temps.
+
 ## V36 — Boutique poker et table plus vivante (22 octobre 2026)
 
 ### Poker

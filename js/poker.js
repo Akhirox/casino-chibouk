@@ -191,7 +191,17 @@ export function mount(view, { wallet, backend }) {
     if (!myTurn) blinkTitle(false);
     lastTurnKey = turnKey;
     const rk = end ? `${t.hand}` : '';
-    if (rk && rk !== lastResultKey) { lastResultKey = rk; if (t.result.winners.some((w) => w.uid === wallet.uid)) { sfx.win(t.result.winners.find((w) => w.uid === wallet.uid).amount >= 10 * cfg.bb); coinRain(15); } }
+    if (rk && rk !== lastResultKey) {
+      lastResultKey = rk;
+      const mw = t.result.winners.find((w) => w.uid === wallet.uid);
+      if (mw) {
+        sfx.win(mw.amount >= 10 * cfg.bb); coinRain(15);
+        // pour les succès : pot gagné et force de la main (seulement à l'abattage)
+        const mine = me >= 0 && t.seats[me] ? (t.seats[me].shown || (hand && hand.hand === t.hand ? hand.cards : null)) : null;
+        const cat = t.result.showdown && mine && t.board.length >= 3 ? E.evaluate([...mine, ...t.board]).cat : -1;
+        try { wallet.emit({ type: 'poker', amount: mw.amount, cat, room }); } catch (e) { console.warn(e); }
+      }
+    }
   }
   function blinkTitle(on) {
     clearInterval(titleBlink); titleBlink = null; document.title = baseTitle;
