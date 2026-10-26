@@ -13,7 +13,7 @@ import { goldMonkeySVG } from './art.js';
 import { sfx } from './sfx.js';
 
 const GAME_NAMES = { slots: 'la Chibouk Slot', jungle: 'à la Jungle Connect', craps: 'au Craps', blackjack: 'au blackjack', roulette: 'à la roulette', plinko: 'au Plinkoko', crash: 'au Crashibouk', tower: 'à la Tower', mines: 'aux Mines', dice: 'au Dice', hilo: 'au Hi-Lo', keno: 'au Keno', wheel: 'à la Roue du Singe', limbo: 'au Limbo', scratch: 'aux jeux à gratter' };
-const WONDER_NAMES = { temple: 'Temple du Singe d\'or', port: 'Grand Port', obs: 'Observatoire', arbre: 'Arbre-Monde' };
+const WONDER_NAMES = { temple: 'Temple du Singe d\'or', port: 'Grand Port', obs: 'Observatoire', arbre: 'Arbre-Monde', grenier: 'Grenier céleste', comptoir: 'Comptoir des Singes', bourse: 'Bourse aux bananes', coeur: 'Cœur de l\'Arbre-Monde' };
 const AT = (g) => (g === 'slots' ? 'à la Chibouk Slot' : GAME_NAMES[g] || '');
 const mx = (m) => '×' + m.toLocaleString('fr-FR', { maximumFractionDigits: 1 });
 
@@ -48,7 +48,7 @@ export function feedText(e) {
     case 'challenge': return `${e.place > 1 ? `finit ${e.place}e du` : 'a remporté le'} défi de la jungle (+${fmt(e.amount)} Brundles)${e.txt ? ` : ${e.txt}` : ''}`;
     case 'cosm': return `a débloqué l'objet exclusif « ${e.name} »`;
     case 'expedition': return `a trouvé « ${e.name} » en expédition (${e.place || 'ferme'})`;
-    case 'wonder': return e.level >= 5 ? `a achevé la merveille « ${e.name} » !` : `a construit la merveille « ${e.name} »`;
+    case 'wonder': { const w = e.my ? 'le bâtiment mythique' : 'la merveille'; return (e.done ?? e.level >= 5) ? `a achevé ${w} « ${e.name} » !` : `a construit ${w} « ${e.name} »`; }
     default: return e.text || '';
   }
 }
@@ -88,7 +88,7 @@ export function feedRich(e) {
     case 'challenge': t = `${e.place > 1 ? `finit <b>${e.place}e</b> du` : 'a remporté le'} ${L('#/lobby', 'défi de la jungle')} et touche <b class="gold">${fmt(e.amount)}</b> Brundles${e.txt ? ` <small class="muted">(${esc(e.txt)})</small>` : ''}`; break;
     case 'cosm': t = `a débloqué l'objet exclusif ${L('#/shop', `<b class="gold">« ${esc(e.name)} »</b>`)}`; break;
     case 'expedition': t = `a trouvé ${L('#/shop', `<b class="gold">« ${esc(e.name)} »</b>`)} en ${L('#/farm', 'expédition')} <small class="muted">(${esc(e.place || '')})</small>`; break;
-    case 'wonder': t = `${e.level >= 5 ? 'a achevé' : 'a construit'} la merveille ${L('#/farm', `<b class="gold">« ${esc(e.name)} »</b>`)}${e.level >= 5 ? ' !' : ''}`; break;
+    case 'wonder': { const dn = e.done ?? e.level >= 5; t = `${dn ? 'a achevé' : 'a construit'} ${e.my ? 'le bâtiment mythique' : 'la merveille'} ${L('#/farm', `<b class="gold">« ${esc(e.name)} »</b>`)}${dn ? ' !' : ''}`; break; }
     default: t = esc(feedText(e));
   }
   return `${who} ${t}`;
@@ -320,7 +320,7 @@ export function createSocial(wallet, backend) {
     if (e.type === 'free' && e.meta && e.meta.feed && FEAT_GAMES[e.game]) post({ kind: 'feat', game: e.game, txt: String(e.meta.feed.txt || '').slice(0, 80), tail: String(e.meta.feed.tail || '').slice(0, 40) });
     if (e.type === 'farm' && e.act === 'milestone' && e.n >= 500) post({ kind: 'farm', n: e.n });
     if (e.type === 'farm' && e.act === 'prestige') post({ kind: 'prestige', pr: e.pr });
-    if (e.type === 'farm' && e.act === 'wonder' && (e.level === 1 || e.level === 5)) post({ kind: 'wonder', name: WONDER_NAMES[e.wonder] || e.wonder, level: e.level });
+    if (e.type === 'farm' && e.act === 'wonder' && (e.level === 1 || e.level === (e.max || 5))) post({ kind: 'wonder', name: WONDER_NAMES[e.wonder] || e.wonder, level: e.level, ...(e.my ? { my: true, done: e.level === e.max } : {}) });
     if (e.type === 'vipup') post({ kind: 'vip', rank: e.rank, bonus: e.amount });
   });
   const onCustom = (ev) => { const d = ev.detail || {}; if (d.type === 'motus' && d.won) post({ kind: 'motus', tries: d.tries }); if (d.type === 'expedition') post({ kind: 'expedition', name: d.name, place: d.place }); if (d.type === 'week') post({ kind: 'week', winner: d.winner, profit: d.profit }); };

@@ -100,7 +100,7 @@ export function mount(view, { wallet, social }) {
   };
   function cases() {
     const card = (c) => `<button type="button" class="cs-case ${c.id === cur.id ? 'on' : ''}" data-c="${c.id}" style="--hue:${c.hue}">
-      ${crateSVG(c.hue)}<b>${esc(c.name)}</b><span class="cs-price">${money(c.price)}</span><small class="muted">${esc(c.desc)}</small></button>`;
+      ${crateSVG(c.hue)}${c.late ? '<span class="cs-late">Fin de partie</span>' : ''}<b>${esc(c.name)}</b><span class="cs-price">${money(c.price)}</span><small class="muted">${esc(c.desc)}</small></button>`;
     const f = L.FAMILIES.find((x) => x[0] === fam) || L.FAMILIES[0];
     $('#cs-cases', view).innerHTML = `<div class="cs-fams">${L.FAMILIES.map(([k, n]) => { const st = FAM_STYLE[k] || {}; const nb = L.CASES.filter((c) => c.fam === k).length;
       return `<button type="button" data-fam="${k}" class="cs-fam ${k === fam ? 'on' : ''}" style="--fc:${st.c};--fc2:${st.c2}"><span class="cs-fam-ic">${icon(st.ic || 'crate')}</span><span class="cs-fam-t"><b>${n}</b><small>${nb} ${k === 'cos' ? 'coffrets' : k === 'royal' ? 'coffres' : 'caisses'} · ${st.tag || ''}</small></span></button>`; }).join('')}</div>
@@ -217,7 +217,7 @@ export function mount(view, { wallet, social }) {
       <li><b>Raretés</b> : Commun 70 %, Rare 22 %, Épique 6 %, Légendaire 1,7 %, Mythique 0,3 % (sauf coffrets cosmétiques et quitte ou double).</li>
       ${L.FAMILIES.map(([, n, d]) => `<li><b>${n}</b> : ${d}</li>`).join('')}
       <li><b>Boosts empilables</b> (mini-jeux, défis, vente des bananes) : le plus fort compte en entier, le 2e aux 3/4, le 3e au quart, puis de moins en moins. Deux ×3 = ×4,5, trois ×3 = ×5. Plafonds : ×6 pour les mini-jeux, ×3 pour les défis et la vente.</li>
-      <li><b>Récolte de la ferme</b> : les boosts se cumulent : le plus fort compte en entier, le 2e pour 1/2, le 3e pour 1/3, le 4e pour 1/4… Chaque boost ajoute toujours un petit quelque chose, jusqu'à ×5 (×10 avec l'Arbre-Monde de la ferme). Pour dépasser ×6, il faut les gros boosts de la Serre de l'Arbre-Monde (×4 à ×10) : un ×10 seul suffit, deux ×6 font ×8,5.</li>
+      <li><b>Récolte de la ferme</b> : les boosts se cumulent : le plus fort compte en entier, le 2e pour 1/2, le 3e pour 1/3, le 4e pour 1/4… Chaque boost ajoute toujours un petit quelque chose, jusqu'à ×5 (×10 avec l'Arbre-Monde de la ferme, ×20 avec le Cœur de l'Arbre-Monde). Pour monter haut, il faut les gros boosts : Serre de l'Arbre-Monde (×4 à ×10), Silo Royal (×5 à ×12), Moulin de l'Empereur (×8 à ×16) et Jardin des Dieux (×12 à ×20). Un ×10 seul suffit pour ×10, deux ×12 font ×18.</li>
       <li><b>Plafonds des bonus permanents</b> : coffre +100 %, vente des bananes +100 %, roue du jour +300 %, défis +200 %, vitesse de construction −60 %, production de la ferme +100 % et butin des expéditions +200 % (Coffre de l'Empereur) ; gains gratuits +50 %.</li>
       <li>Aucune caisse ne donne de rakeback : impossible de miser à l'infini en se faisant rembourser.</li>
       <li>Le lot est enregistré dès le clic : quitter la page pendant l'animation ne fait rien perdre.</li></ul>`, buttons: [{ label: 'Compris', value: true, primary: true }] });

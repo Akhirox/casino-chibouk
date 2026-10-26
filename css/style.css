@@ -2931,6 +2931,13 @@ body.cb-carte, .sh-cards.cb-carte { --cb-bg: #6b4a1f; --cb-a: #c9a36b; --cb-b: #
 .dm-w.built { border-color: #f5c54288; box-shadow: 0 0 18px rgba(245, 197, 66, .15); }
 .dm-w.locked { opacity: .55; } .dm-w.locked .dm-w-art { filter: grayscale(1); }
 .dm-w-art svg { width: 72px; height: 72px; display: block; }
+/* V40 : bâtiments mythiques, caisses de fin de partie */
+.dm-mythic { background: radial-gradient(ellipse at 50% 0, rgba(199, 125, 255, .14), transparent 60%), var(--panel); border-color: #c77dff55; }
+.dm-mythic .dm-h { color: #e2b8ff; }
+.dm-w.mythic { background: linear-gradient(160deg, #2a1440aa, #0006); border-color: #c77dff44; }
+.dm-w.mythic.built { border-color: #c77dffaa; box-shadow: 0 0 22px rgba(199, 125, 255, .25); }
+.dm-w.mythic .dm-w-art svg { filter: drop-shadow(0 0 8px rgba(199, 125, 255, .45)); }
+.cs-late { font-size: .64rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: linear-gradient(90deg, #c77dff, #ff5ec4); color: #fff; }
 .dm-w small { font-size: .78rem; line-height: 1.3; } .dm-w small .ic { width: 14px; height: 14px; vertical-align: -2px; }
 .dm-exps { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; margin-top: 12px; }
 .dm-x { display: grid; gap: 6px; padding: 12px; border-radius: 14px; background: #0004; border: 1px solid var(--line); }

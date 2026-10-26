@@ -32,6 +32,15 @@ const WONDER_ART = {
   obs: '<svg viewBox="0 0 64 64"><rect x="16" y="34" width="32" height="22" fill="#6b7a8f"/><path d="M14 36a18 18 0 0 1 36 0z" fill="#9fb3c8" stroke="#3a4a5f" stroke-width="2"/><path d="M34 22l14-10" stroke="#3a4a5f" stroke-width="5" stroke-linecap="round"/><circle cx="52" cy="10" r="2" fill="#ffe27a"/><circle cx="44" cy="6" r="1.5" fill="#ffe27a"/><rect x="28" y="44" width="8" height="12" fill="#3a4a5f"/></svg>',
   arbre: '<svg viewBox="0 0 64 64"><path d="M28 58c2-10 2-20 0-30h8c-2 10-2 20 0 30z" fill="#7a4a1f"/><circle cx="32" cy="22" r="16" fill="#2e9e4f"/><circle cx="18" cy="28" r="10" fill="#37b35c"/><circle cx="46" cy="28" r="10" fill="#37b35c"/><circle cx="32" cy="12" r="9" fill="#46c46b"/><g fill="#ffe27a"><circle cx="24" cy="20" r="2"/><circle cx="40" cy="16" r="2"/><circle cx="44" cy="30" r="2"/><circle cx="20" cy="31" r="2"/><circle cx="32" cy="27" r="2"/></g></svg>',
 };
+// V40 : bâtiments mythiques
+const MYTHIC_ART = {
+  grenier: '<svg viewBox="0 0 64 64"><ellipse cx="32" cy="54" rx="24" ry="5" fill="#9fd3ff55"/><path d="M14 52V26l18-14 18 14v26z" fill="#e8f2ff" stroke="#5a7fb0" stroke-width="2"/><path d="M10 28 32 10l22 18" fill="none" stroke="#f5c542" stroke-width="3" stroke-linecap="round"/><rect x="26" y="36" width="12" height="16" rx="2" fill="#5a7fb0"/><circle cx="32" cy="26" r="4" fill="#f5c542"/><g fill="#fff" opacity=".85"><circle cx="8" cy="14" r="1.5"/><circle cx="56" cy="10" r="1.5"/><circle cx="54" cy="40" r="1.2"/></g><path d="M6 46c4-3 8-3 10 0M48 48c4-3 8-3 10 0" stroke="#cfe6ff" stroke-width="3" fill="none" stroke-linecap="round"/></svg>',
+  comptoir: '<svg viewBox="0 0 64 64"><rect x="8" y="34" width="48" height="20" rx="2" fill="#a06a3a" stroke="#6b4320" stroke-width="2"/><path d="M6 22h52l-4 12H10z" fill="#ff4d5e"/><path d="M6 22h52" stroke="#fff" stroke-width="2"/><g fill="#fff"><path d="M14 22l-3 12h6zM30 22l-1 12h6zM46 22l1 12h6z" opacity=".8"/></g><g fill="#ffd23f" stroke="#b88600" stroke-width=".8"><ellipse cx="20" cy="42" rx="3" ry="6" transform="rotate(-20 20 42)"/><ellipse cx="26" cy="42" rx="3" ry="6"/><ellipse cx="32" cy="42" rx="3" ry="6" transform="rotate(20 32 42)"/></g><circle cx="46" cy="44" r="6" fill="#f5c542" stroke="#8a5a00" stroke-width="1.5"/><path d="M46 40v8M44 42h3a1.5 1.5 0 0 1 0 3h-2a1.5 1.5 0 0 0 0 3h3" stroke="#8a5a00" stroke-width="1.2" fill="none"/><path d="M30 8v14M24 12h12" stroke="#6b4320" stroke-width="2"/></svg>',
+  bourse: '<svg viewBox="0 0 64 64"><path d="M8 24 32 10l24 14z" fill="#c9d3e0" stroke="#4a5568" stroke-width="2"/><rect x="10" y="24" width="44" height="4" fill="#a0aec0"/><g fill="#e2e8f0" stroke="#4a5568" stroke-width="1.2"><rect x="13" y="28" width="5" height="20"/><rect x="23" y="28" width="5" height="20"/><rect x="36" y="28" width="5" height="20"/><rect x="46" y="28" width="5" height="20"/></g><rect x="8" y="48" width="48" height="7" rx="1" fill="#718096"/><path d="M14 44l10-8 8 4 16-14" stroke="#3ddc84" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round"/><path d="M44 24h6v6" stroke="#3ddc84" stroke-width="3" fill="none" stroke-linecap="round"/></svg>',
+  coeur: '<svg viewBox="0 0 64 64"><circle cx="32" cy="30" r="24" fill="#3ddc8430"/><path d="M28 60c2-10 2-18 0-26h8c-2 8-2 16 0 26z" fill="#7a4a1f"/><path d="M32 48C14 36 12 22 22 18c5-2 9 1 10 5 1-4 5-7 10-5 10 4 8 18-10 30z" fill="#ff4d8d" stroke="#a8235f" stroke-width="2"/><path d="M26 26c2-3 5-3 6 0" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" opacity=".7"/><g fill="#ffe27a"><circle cx="10" cy="14" r="2"/><circle cx="54" cy="12" r="2"/><circle cx="56" cy="40" r="1.6"/><circle cx="8" cy="42" r="1.6"/></g></svg>',
+};
+const BUILD_ART = { ...WONDER_ART, ...MYTHIC_ART };
+const bDef = (k) => F.WONDERS[k] || F.MYTHIC_B[k];
 // Copie à jour d'une ferme (la sienne ou celle d'un voisin) sans toucher à l'original
 export function snapshot(raw, now = Date.now()) { const f = F.normalize(JSON.parse(JSON.stringify(raw || {})), now); F.tick(f, now); return f; }
 const MILESTONES = [100, 500, 1000, 2500, 5000, 10000, 25000];
@@ -130,7 +139,7 @@ export function boardHTML(f, { sel = -1, readOnly = false, now = Date.now() } = 
 /* ------------------------------ minuterie globale ------------------------------ */
 // Fait avancer la ferme toutes les secondes (où qu'on soit sur le site) : chantiers terminés, stock plein, paliers.
 export function initFarm(wallet) {
-  let fullWarned = false;
+  let fullWarned = false, lastAuto = 0, lastToast = 0;
   const iv = setInterval(() => {
     const raw = wallet.p.farm;
     if (!raw || !raw.v || !Array.isArray(raw.g)) return;
@@ -141,8 +150,9 @@ export function initFarm(wallet) {
       save(wallet, 'done');
       window.dispatchEvent(new CustomEvent('chibouk:farm', { detail: { done } }));
     }
+    if ((raw.ov || 0) >= 1 && Date.now() - lastAuto >= 60000) { lastAuto = Date.now(); const loud = lastAuto - lastToast >= 600000; if (autoSell(wallet, raw, !loud) && loud) lastToast = lastAuto; } // message au plus toutes les 10 min
     const cap = F.capacity(raw);
-    if (raw.b >= cap - 0.5 && raw.rate > 0) { if (!fullWarned) { fullWarned = true; toast('Ton entrepôt est plein : vends ou dépense des bananes, sinon la récolte s\'arrête !', 'error', 6000); } }
+    if (raw.b >= cap - 0.5 && raw.rate > 0 && !F.wonderLv(raw, 'comptoir')) { if (!fullWarned) { fullWarned = true; toast('Ton entrepôt est plein : vends ou dépense des bananes, sinon la récolte s\'arrête !', 'error', 6000); } }
     else if (raw.b < cap * 0.95) fullWarned = false;
     const ms = raw.ms || 0, next = MILESTONES.find((m) => m > ms && raw.rate >= m);
     if (next) { raw.ms = Math.max(...MILESTONES.filter((m) => raw.rate >= m)); save(wallet, 'milestone', { n: raw.ms }); }
@@ -150,6 +160,21 @@ export function initFarm(wallet) {
   return { destroy: () => clearInterval(iv) };
 }
 function save(wallet, act, extra = {}) { wallet.touch({ type: 'farm', act, ...extra }); }
+// Prix de vente complet d'une banane (marché, Grand Port, Bourse, thème équipé, bonus permanents, boosts de vente)
+export const fullSellRate = (p, fm) => F.sellRate(fm) * (1 + cosBonus(p, 'farm') + lootPerm(p, 'sell')) * sellBoost(p);
+// V40 : Comptoir des Singes : le surplus mis de côté quand l'entrepôt est plein est vendu tout seul
+function autoSell(wallet, fm, quiet = false) {
+  const n = Math.floor(fm.ov || 0);
+  if (n < 1) return 0;
+  const gain = Math.floor(n * fullSellRate(wallet.p, fm));
+  fm.ov = Math.max(0, (fm.ov || 0) - n);
+  if (gain < 1) return 0;
+  fm.sold = (fm.sold || 0) + n; fm.ss = (fm.ss || 0) + n; fm.earned = (fm.earned || 0) + gain; fm.ovs = (fm.ovs || 0) + gain;
+  wallet.credit('farm', gain, { bananas: n, auto: true });
+  save(wallet, 'autosell', { bananas: n });
+  if (!quiet) toast(`Comptoir des Singes : ${fmt(n)} bananes en trop vendues · +${fmt(gain)} ${CUR}`, 'win', 4000);
+  return gain;
+}
 
 const frN = (x) => String(Math.round(x * 1000) / 1000).replace('.', ',');
 // Prix pour finir un chantier tout de suite (dépend du temps restant et du prix du chantier)
@@ -403,7 +428,7 @@ export function mount(view, { wallet, backend }) {
     const fm = f();
     F.tick(fm);
     const cb = cosBonus(wallet.p, 'farm') + lootPerm(wallet.p, 'sell'), sb = sellBoost(wallet.p); // thème équipé + bonus permanent + boost de vente
-    const rate = F.sellRate(fm) * (1 + cb) * sb;
+    const rate = fullSellRate(wallet.p, fm);
     const have = Math.floor(fm.b);
     let amount = 0;
     const res = await modal({ title: 'Marché aux bananes', cls: 'fm-market', html: `
@@ -497,7 +522,7 @@ export function mount(view, { wallet, backend }) {
       <li><b>Prestige</b> : après 2 millions de bananes vendues, tu peux remettre ta ferme à zéro contre <b>+100 % de production pour toujours</b> (×2, puis ×3, ×4…). Tu gardes tes parcelles, tes bâtisseurs et tes graines d'or. Le palier double à chaque fois : 2 M, 4 M, 8 M de bananes vendues… Chaque prestige rend les bâtiments <b>30 % plus chers</b>. La capacité des entrepôts, elle, est multipliée comme la production (×2, ×3…). Tu peux aussi tout reconstruire à l'identique d'un coup, en payant les bâtiments, les chantiers terminés tout de suite et les singes.</li>
       <li><b>Graines d'or</b> (caisses) : +5 % de production chacune, pour toujours.</li>
       <li><b>Boosts de récolte</b> (caisses) : ils se cumulent, de moins en moins (le 2e compte pour 1/2, le 3e pour 1/3, le 4e pour 1/4…) mais chacun ajoute toujours un peu, jusqu'à ×5 (×10 avec l'Arbre-Monde).</li>
-      <li><b>Domaine</b> (fin de partie) : paliers de prestige (3, 5, 8 et 12), <b>Ascension</b> au prestige 5 (bananeraies jusqu'au niveau 20, cabanes et entrepôts jusqu'au 17), <b>Merveilles</b> (bâtiments uniques gardés après les prestiges) et <b>expéditions</b> (des singes partent chercher des Brundles, des boosts, des graines d'or et des objets rares).</li>
+      <li><b>Domaine</b> (fin de partie) : paliers de prestige (3, 5, 8 et 12), <b>Ascension</b> au prestige 5 (bananeraies jusqu'au niveau 20, cabanes et entrepôts jusqu'au 17), <b>Merveilles</b> (bâtiments uniques gardés après les prestiges), <b>bâtiments mythiques</b> dès le prestige 8 (Grenier céleste : entrepôts jusqu'à ×11 ; Comptoir des Singes : le surplus d'un entrepôt plein est vendu tout seul, même hors ligne ; Bourse aux bananes : +100 % au prix de vente ; Cœur de l'Arbre-Monde : boosts de récolte jusqu'à ×20) et <b>expéditions</b> (des singes partent chercher des Brundles, des boosts, des graines d'or et des objets rares).</li>
       <li>Onglet <b>Les voisins</b> : visite les fermes des autres joueurs et compare vos productions.</li></ul>`, buttons: [{ label: 'Compris', value: true, primary: true }] });
   }
 
@@ -514,13 +539,10 @@ export function mount(view, { wallet, backend }) {
         <ol class="dm-ms">${F.MILESTONES.map((m) => `<li class="${pr >= m.pr ? 'done' : ''}"><b>Prestige ${m.pr}</b><span>${esc(m.txt)}</span><i>${pr >= m.pr ? icon('check') : icon('lock')}</i></li>`).join('')}</ol>
         <p class="muted dm-note">Le prestige demande deux fois plus de bananes vendues à chaque fois : les derniers paliers sont faits pour durer.</p></section>
       <section class="panel dm-sec"><h2 class="dm-h">${icon('tower')}Merveilles <small class="muted">bâtiments uniques, hors de la grille : ils restent après chaque prestige</small></h2>
-        <div class="dm-wonders">${Object.entries(F.WONDERS).map(([k, w]) => {
-          const L = F.wonderLv(fm, k), max = L >= w.max, locked = pr < w.pr, cost = max ? 0 : F.wonderCost(k, L + 1), err = F.canWonder(fm, k, wallet.balance);
-          return `<div class="dm-w ${locked ? 'locked' : ''} ${L ? 'built' : ''} w-${k}"><div class="dm-w-art">${WONDER_ART[k]}</div>
-            <b>${esc(w.name)}</b><span class="tier-badge">${locked ? `Prestige ${w.pr}` : `Niveau ${L} / ${w.max}`}</span>
-            <small>${esc(w.desc)}</small>${L ? `<small class="gold">Actuellement : ${esc(w.effect(L))}</small>` : ''}
-            ${locked ? `<small class="muted">${icon('lock')}Débloquée au prestige ${w.pr}</small>` : max ? '<small class="gold">Merveille achevée !</small>' : `<button class="btn btn-gold btn-sm" data-wonder="${k}" ${err ? 'disabled' : ''}>${L ? 'Agrandir' : 'Construire'} · ${fmtBig(cost)}</button>`}</div>`;
-        }).join('')}</div></section>
+        <div class="dm-wonders">${Object.keys(F.WONDERS).map(bCard).join('')}</div></section>
+      <section class="panel dm-sec dm-mythic"><h2 class="dm-h">${icon('star')}Bâtiments mythiques <small class="muted">pour les fermes géantes : stockage, vente automatique, prix et plafond des boosts · gardés après chaque prestige</small></h2>
+        <div class="dm-wonders">${Object.keys(F.MYTHIC_B).map(bCard).join('')}</div>
+        ${F.wonderLv(fm, 'comptoir') ? `<p class="muted dm-note">Comptoir des Singes : ${fm.ov >= 1 ? `${fmt(Math.floor(fm.ov))} bananes en trop attendent la prochaine vente (toutes les minutes) · ` : ''}${fmtBig(Math.floor(fm.ovs || 0))} ${CUR} gagnés par la vente automatique.</p>` : ''}</section>
       <section class="panel dm-sec"><h2 class="dm-h">${icon('globe')}Expéditions <small class="muted">${fm.exn ? `${fm.exn} réussie${fm.exn > 1 ? 's' : ''}` : 'envoie des singes chercher des trésors'}${fm.lx ? ` · butin +${Math.round(fm.lx * 100)} % (Coffre de l'Empereur)` : ''}</small></h2>
         ${ex ? (ex.end > now ? `<div class="dm-ex-run"><b>${esc(xd.name)}</b><span>${ex.n} singes partis · retour dans <b data-left="${ex.end}">${dur(ex.end - now)}</b></span><div class="fm-bar"><i data-exbar style="width:${pct(now - ex.start, ex.end - ex.start)}%"></i></div><small class="muted">Pendant l'expédition, ces singes ne récoltent pas.</small></div>`
           : `<div class="dm-ex-run done"><b>${esc(xd.name)} : les singes sont rentrés !</b><button class="btn btn-gold" data-exclaim>Voir le butin</button></div>`) : ''}
@@ -536,8 +558,16 @@ export function mount(view, { wallet, backend }) {
     $$('[data-exgo]', view).forEach((b) => (b.onclick = () => goExpedition(b.dataset.exgo)));
     const cl = $('[data-exclaim]', view); if (cl) cl.onclick = claimExpedition;
   }
+  function bCard(k) {
+    const fm = f(), pr = fm.pr || 0, w = bDef(k), my = !!F.MYTHIC_B[k];
+    const L = F.wonderLv(fm, k), max = L >= w.max, locked = pr < w.pr, req = !locked && w.req ? w.req(fm) : null, cost = max ? 0 : F.wonderCost(k, L + 1), err = F.canWonder(fm, k, wallet.balance);
+    return `<div class="dm-w ${my ? 'mythic' : ''} ${locked || req ? 'locked' : ''} ${L ? 'built' : ''} w-${k}"><div class="dm-w-art">${BUILD_ART[k]}</div>
+      <b>${esc(w.name)}</b><span class="tier-badge">${locked ? `Prestige ${w.pr}` : `Niveau ${L} / ${w.max}`}</span>
+      <small>${esc(w.desc)}</small>${L ? `<small class="gold">Actuellement : ${esc(w.effect(L))}</small>` : ''}
+      ${locked ? `<small class="muted">${icon('lock')}Débloqué au prestige ${w.pr}</small>` : max ? `<small class="gold">${my ? 'Bâtiment achevé' : 'Merveille achevée'} !</small>` : req ? `<small class="muted">${icon('lock')}${esc(req)}</small>` : `<button class="btn btn-gold btn-sm" data-wonder="${k}" ${err ? 'disabled' : ''}>${L ? 'Agrandir' : 'Construire'} · ${fmtBig(cost)}</button>`}</div>`;
+  }
   async function wonder(k) {
-    const fm = f(), w = F.WONDERS[k], L = F.wonderLv(fm, k), cost = F.wonderCost(k, L + 1);
+    const fm = f(), w = bDef(k), L = F.wonderLv(fm, k), cost = F.wonderCost(k, L + 1);
     const ok = await modal({ title: `${L ? 'Agrandir' : 'Construire'} : ${esc(w.name)}`, html: `<p>${esc(w.desc)}</p><p>Niveau ${L} → <b>${L + 1}</b> : ${esc(w.effect(L + 1))}.</p><p>Prix : <b>${money(cost)}</b>. Instantané, et gardé après chaque prestige.</p>`,
       buttons: [{ label: 'Annuler', value: false }, { label: `${L ? 'Agrandir' : 'Construire'} (${fmtBig(cost)})`, value: true, primary: true }] });
     if (!ok || !alive) return;
@@ -546,7 +576,7 @@ export function mount(view, { wallet, backend }) {
     const err = F.buildWonder(fm, k, wallet.balance);
     if (err) { toast(err, 'error'); return; }
     wallet.debit('farm', cost, { what: 'wonder', wonder: k, level: L + 1 });
-    save(wallet, 'wonder', { wonder: k, level: L + 1 });
+    save(wallet, 'wonder', { wonder: k, level: L + 1, max: w.max, ...(F.MYTHIC_B[k] ? { my: true } : {}) });
     sfx.bonus(); coinRain(40);
     toast(`${esc(w.name)} : niveau ${L + 1} !`, 'win');
     domain();

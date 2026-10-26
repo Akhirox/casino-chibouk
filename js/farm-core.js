@@ -32,7 +32,7 @@ export const wellBonus = (L) => 0.1 * L;                               // +10 % 
 export const SELL_BASE = 0.6;                                          // Brundles par banane sans marché
 export const MARKET_STEP = 0.04;                                       // + par niveau de marché (niveau 10 : 1 banane = 1 Brundle)
 export const sellAt = (marketLevel) => Math.round((SELL_BASE + MARKET_STEP * (marketLevel || 0)) * 1000) / 1000;
-export const sellRate = (f) => { const m = findType(f, 'M'); return Math.round(sellAt(m ? m.l : 0) * (1 + PORT_BONUS * wonderLv(f, 'port')) * 1000) / 1000; };
+export const sellRate = (f) => { const m = findType(f, 'M'); return Math.round(sellAt(m ? m.l : 0) * (1 + PORT_BONUS * wonderLv(f, 'port')) * (1 + BOURSE_BONUS * wonderLv(f, 'bourse')) * 1000) / 1000; };
 export const PRICE = 0.6;                                              // prix en Brundles = ancien prix en bananes × 0,6 (même rentabilité)
 export const hireCost = (n) => Math.round(16 * PRICE * Math.pow(1.16, n));     // prix du (n+1)ᵉ singe, en Brundles
 export const landCost = (k) => Math.round(600 * Math.pow(1.2, k));    // k-ième case achetée, en Brundles
@@ -126,20 +126,21 @@ export function normalize(raw, now = Date.now()) {
   f.spd = Math.max(0, Math.min(SPEED_MAX, Number(raw.spd) || 0));
   // fin de partie (V38) : merveilles, expédition en cours, nombre d'expéditions
   const wo = {};
-  if (raw.wo && typeof raw.wo === 'object') for (const k of Object.keys(WONDERS)) { const v = Math.floor(Number(raw.wo[k]) || 0); if (v > 0) wo[k] = Math.min(WONDERS[k].max, v); }
+  if (raw.wo && typeof raw.wo === 'object') for (const [k, w] of Object.entries(ALL_B())) { const v = Math.floor(Number(raw.wo[k]) || 0); if (v > 0) wo[k] = Math.min(w.max, v); }
   f.wo = wo;
   const ex = raw.ex;
   f.ex = ex && EXPEDITIONS.some((x) => x.id === ex.id) && Number(ex.end) > 0 ? { id: ex.id, n: Math.max(0, Math.floor(Number(ex.n) || 0)), start: Number(ex.start) || 0, end: Number(ex.end) } : null;
   f.exn = Math.max(0, Math.floor(Number(raw.exn) || 0));
   f.lp = Math.max(0, Math.min(1, Number(raw.lp) || 0)); // V39 : bonus permanents du Coffre de l'Empereur (production, butin des expéditions)
   f.lx = Math.max(0, Math.min(2, Number(raw.lx) || 0));
+  f.ov = Math.max(0, Number(raw.ov) || 0); // surplus en attente de vente automatique (Comptoir des Singes)
   return f;
 }
 
 /* -------- valeurs dérivées -------- */
 // Capacité d'un entrepôt dans cette ferme : multipliée comme la production à chaque prestige (×2, ×3…),
 // pour que les entrepôts ne se remplissent pas plus vite après un prestige
-export const storageOf = (f, L) => Math.round(storage(L) * prestigeMult(f));
+export const storageOf = (f, L) => Math.round(storage(L) * prestigeMult(f) * (1 + GRENIER_BONUS * wonderLv(f, 'grenier')));
 export const capacity = (f) => built(f).filter((x) => x.t === 'E').reduce((a, x) => a + storageOf(f, x.l), 0);
 export const houses = (f) => built(f).filter((x) => x.t === 'C').reduce((a, x) => a + housing(x.l), 0);
 // Bonus d'irrigation d'une case
@@ -180,7 +181,7 @@ export function farmStack(ms, cap = FARM_BOOST_CAP) {
   return Math.min(cap, Math.round(t * 100) / 100);
 }
 // plafond des boosts de récolte : ×5, +1 par niveau de l'Arbre-Monde
-export const boostCap = (f) => FARM_BOOST_CAP + wonderLv(f, 'arbre');
+export const boostCap = (f) => FARM_BOOST_CAP + wonderLv(f, 'arbre') + COEUR_CAP * wonderLv(f, 'coeur');
 export const activeFarmBoosts = (f, t = Date.now()) => { if (f && (f.xb || !Array.isArray(f.xbs))) migrate(f, Math.min(t, f.t || t)); return ((f && f.xbs) || []).filter((b) => b.u > t); };
 export const boostAt = (f, t = Date.now()) => farmStack(activeFarmBoosts(f, t).map((b) => b.m), boostCap(f));
 export const boostEnd = (f, t = Date.now()) => Math.max(0, ...activeFarmBoosts(f, t).map((b) => b.u));
@@ -206,6 +207,9 @@ export function tick(f, now = Date.now()) {
       const cap = capacity(f), p = productionPerHour(f) * m * dt;
       const room = Math.max(0, cap - f.b), got = Math.min(room, p);
       f.b += got; f.tot += got; f.life = (f.life || 0) + got;
+      // Comptoir des Singes : une part de la récolte qui ne rentre plus est mise de côté pour la vente automatique
+      const share = COMPTOIR_SHARE * wonderLv(f, 'comptoir');
+      if (share > 0 && p > got) { const x = (p - got) * share; f.ov = (f.ov || 0) + x; f.tot += x; f.life = (f.life || 0) + x; }
     }
     f.t = until;
   };
@@ -368,12 +372,22 @@ export const WONDERS = {
   obs: { name: 'Observatoire', pr: 6, max: 5, base: 250e6, effect: (L) => `expéditions −${L * 10} %`, desc: 'Expéditions 10 % plus courtes par niveau.' },
   arbre: { name: 'Arbre-Monde', pr: 8, max: 5, base: 1e9, effect: (L) => `boosts de récolte jusqu'à ×${FARM_BOOST_CAP + L}`, desc: '+1 au plafond des boosts de récolte par niveau (×5 → ×10).' },
 };
-export const wonderLv = (f, k) => Math.max(0, Math.min(WONDERS[k].max, Math.floor((f && f.wo && f.wo[k]) || 0)));
-export const wonderCost = (k, L) => Math.round(WONDERS[k].base * Math.pow(3, L - 1));
+// V40 : bâtiments mythiques (même principe que les merveilles : hors grille, gardés après les prestiges), pour les fermes géantes
+export const GRENIER_BONUS = 1, COMPTOIR_SHARE = 0.2, COEUR_CAP = 2, BOURSE_BONUS = 0.1;
+export const MYTHIC_B = {
+  grenier: { name: 'Grenier céleste', pr: 8, max: 10, base: 1e9, grow: 1.8, effect: (L) => `entrepôts ×${1 + L * GRENIER_BONUS}`, desc: '+100 % de capacité pour tous les entrepôts par niveau (jusqu\'à ×11).' },
+  comptoir: { name: 'Comptoir des Singes', pr: 8, max: 5, base: 5e9, grow: 3, effect: (L) => `${Math.round(L * COMPTOIR_SHARE * 100)} % du surplus vendu tout seul`, desc: 'Quand l\'entrepôt est plein, une part de la récolte en trop est vendue automatiquement (20 % par niveau, 100 % au niveau 5), même hors ligne.' },
+  bourse: { name: 'Bourse aux bananes', pr: 10, max: 10, base: 2e9, grow: 1.8, effect: (L) => `+${L * 10} % au prix de vente`, desc: '+10 % au prix de vente des bananes par niveau (en plus du Grand Port).' },
+  coeur: { name: 'Cœur de l\'Arbre-Monde', pr: 10, max: 5, base: 5e9, grow: 3, req: (f) => (wonderLv(f, 'arbre') >= 5 ? null : 'Il faut d\'abord achever l\'Arbre-Monde (niveau 5)'), effect: (L) => `boosts de récolte jusqu\'à ×${FARM_BOOST_CAP + 5 + L * COEUR_CAP}`, desc: '+2 au plafond des boosts de récolte par niveau (×10 → ×20). Demande l\'Arbre-Monde au niveau 5.' },
+};
+const ALL_B = () => ({ ...WONDERS, ...MYTHIC_B });
+export const wonderLv = (f, k) => { const w = ALL_B()[k]; return w ? Math.max(0, Math.min(w.max, Math.floor((f && f.wo && f.wo[k]) || 0))) : 0; };
+export const wonderCost = (k, L) => { const w = ALL_B()[k]; return Math.round(w.base * Math.pow(w.grow || 3, L - 1)); };
 export function canWonder(f, k, money = Infinity) {
-  const w = WONDERS[k];
+  const w = ALL_B()[k];
   if (!w) return 'Merveille inconnue';
   if ((f.pr || 0) < w.pr) return `Disponible au prestige ${w.pr}`;
+  if (w.req && w.req(f)) return w.req(f);
   const L = wonderLv(f, k);
   if (L >= w.max) return 'Niveau maximum';
   if (money < wonderCost(k, L + 1)) return 'Pas assez de Brundles';

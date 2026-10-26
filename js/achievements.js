@@ -2,6 +2,7 @@
 import { CONFIG } from './config.js';
 import { vipOf, vipIndex } from './progress.js';
 import { recordCount } from './records.js';
+import { boostAt } from './farm-core.js';
 
 export const TIERS = {
   bronze: { name: 'Bronze', reward: 100 },
@@ -29,6 +30,7 @@ const streak = (c, game, kind) => (c.streaks && c.streaks[game] && c.streaks[gam
 // production horaire de la ferme (enregistrée à chaque seconde par la minuterie de la ferme)
 const fr = (w) => (w.p.farm && w.p.farm.rate) || 0;
 const fm = (w) => w.p.farm || {};
+const MYB = [['grenier', 10], ['comptoir', 5], ['bourse', 10], ['coeur', 5]]; // bâtiments mythiques (V40) et leur niveau max
 const fmMax = (w, t) => Math.max(0, ...((fm(w).g || []).filter((x) => x && x.t === t).map((x) => x.l)));
 export const ACHIEVEMENTS = [
   /* ------------------------------ GLOBAL ------------------------------ */
@@ -252,6 +254,10 @@ export const ACHIEVEMENTS = [
   { id: 'my-pot', cat: 'mythic', tier: 'mythic', name: 'Requin des tables', desc: 'Remporter un pot de 10 000 JP ou plus au poker.', test: (e) => e.type === 'poker' && e.amount >= 10000 },
   { id: 'my-wheel60', cat: 'mythic', tier: 'mythic', name: 'Pilier de la jungle', desc: 'Tourner la roue du jour 60 jours d\'affilée.', test: (e, w) => ((w.p.streak && w.p.streak.n) || 0) >= 60, progress: (w) => [(w.p.streak && w.p.streak.n) || 0, 60] },
   { id: 'my-motus30', cat: 'mythic', tier: 'mythic', name: 'Dictionnaire sur pattes', desc: 'Trouver le mot du jour 30 jours d\'affilée.', test: (e, w) => (st(w).motusBestStreak || 0) >= 30, progress: (w) => [st(w).motusStreak || 0, 30] },
+  { id: 'my-grenier', cat: 'mythic', tier: 'mythic', name: 'Greniers jusqu\'au ciel', desc: 'Monter le Grenier céleste au niveau 10.', test: (e, w) => ((fm(w).wo || {}).grenier || 0) >= 10, progress: (w) => [(fm(w).wo || {}).grenier || 0, 10] },
+  { id: 'my-mythb', cat: 'mythic', tier: 'mythic', name: 'Architecte des dieux', desc: 'Achever les 4 bâtiments mythiques de la ferme.', test: (e, w) => MYB.every(([k, m]) => ((fm(w).wo || {})[k] || 0) >= m), progress: (w) => [MYB.reduce((a, [k, m]) => a + Math.min(m, (fm(w).wo || {})[k] || 0), 0), 30] },
+  { id: 'my-x20', cat: 'mythic', tier: 'mythic', name: 'Récolte divine', desc: 'Avoir un boost de récolte de ×20 sur ta ferme.', test: (e, w) => { const f = fm(w); return !!(f && f.v && boostAt(f) >= 20); } },
+  { id: 'my-auto', cat: 'mythic', tier: 'mythic', name: 'Le comptoir tourne tout seul', desc: 'Gagner 10 milliards de Brundles grâce au Comptoir des Singes.', test: (e, w) => (fm(w).ovs || 0) >= 1e10, progress: (w) => [Math.floor(fm(w).ovs || 0), 1e10] },
   { id: 'my-all', cat: 'mythic', tier: 'mythic', name: 'Immortel de la jungle', desc: 'Débloquer tous les autres succès (hors Mythiques).', test: (e, w) => { const u = (w.p.ach && w.p.ach.u) || {}; return ACHIEVEMENTS.every((a) => a.tier === 'mythic' || u[a.id]); }, progress: (w) => { const u = (w.p.ach && w.p.ach.u) || {}; const base = ACHIEVEMENTS.filter((a) => a.tier !== 'mythic'); return [base.filter((a) => u[a.id]).length, base.length]; } },
 ];
 

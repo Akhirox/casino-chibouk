@@ -1,9 +1,29 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '39';
+export const VERSION = '40';
 
 export const CHANGELOG = [
+  {
+    v: '40', date: '26 octobre 2026', title: 'Bâtiments mythiques et caisses géantes',
+    groups: [
+      ['Ferme : bâtiments mythiques (onglet Domaine)', [
+        'Grenier céleste (prestige 8, 10 niveaux) : +100 % de capacité pour tous les entrepôts par niveau, jusqu\'à ×11.',
+        'Comptoir des Singes (prestige 8, 5 niveaux) : quand l\'entrepôt est plein, 20 % par niveau de la récolte en trop est vendue toute seule (100 % au niveau 5), même hors ligne. La vente se fait toutes les minutes, au prix complet (boosts de vente compris).',
+        'Bourse aux bananes (prestige 10, 10 niveaux) : +10 % au prix de vente par niveau, jusqu\'à +100 %.',
+        'Cœur de l\'Arbre-Monde (prestige 10, 5 niveaux, Arbre-Monde achevé) : +2 au plafond des boosts de récolte par niveau, de ×10 à ×20.',
+        'Comme les merveilles : hors de la grille, gardés après chaque prestige. Prix de 1 milliard à 400 milliards le niveau.',
+      ]],
+      ['Caisses du Fermier de fin de partie', [
+        'Silo Royal (250 M) : boosts de récolte ×5 à ×12, jusqu\'à 7 jours, jusqu\'à 25 graines d\'or.',
+        'Moulin de l\'Empereur (2,5 Md) : boosts ×8 à ×16 (deux suffisent pour le plafond ×10), jusqu\'à 40 graines d\'or.',
+        'Jardin des Dieux (25 Md) : boosts ×12 à ×20, jusqu\'à 7 jours, jusqu\'à 60 graines d\'or. Deux ×12 font déjà ×18.',
+      ]],
+      ['Succès mythiques', [
+        'Quatre nouveaux : Greniers jusqu\'au ciel, Architecte des dieux, Récolte divine (boost ×20) et Le comptoir tourne tout seul.',
+      ]],
+    ],
+  },
   {
     v: '39', date: '26 octobre 2026', title: 'Caisses de fin de partie',
     groups: [

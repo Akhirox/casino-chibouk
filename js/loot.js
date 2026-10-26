@@ -94,6 +94,31 @@ export const CASES = [
       { r: 'red', w: 1, kind: 'farm', m: 3, h: 48 }, { r: 'red', w: 1, kind: 'seed', n: 2 }, { r: 'red', w: 1, kind: 'speed', s: 0.05 },
       { r: 'gold', w: 1, kind: 'seed', n: 5 }, { r: 'gold', w: 1, kind: 'farm', m: 3, h: 168 }, { r: 'gold', w: 1, kind: 'speed', s: 0.1 },
     ] },
+  // V40 : caisses du Fermier de fin de partie. Les gros boosts ne servent qu'avec un plafond relevé (Arbre-Monde, Cœur de l'Arbre-Monde).
+  { id: 'silo', fam: 'farm', late: true, name: 'Silo Royal', price: 250000000, hue: '#e0c341', desc: 'Fin de partie : boosts de récolte ×5 à ×12, jusqu\'à 7 jours, graines d\'or par poignées.',
+    pool: [
+      { r: 'blue', w: 2, kind: 'br', x: 0.3 }, { r: 'blue', w: 2, kind: 'br', x: 0.6 }, { r: 'blue', w: 3, kind: 'farm', m: 5, h: 3 }, { r: 'blue', w: 2, kind: 'boost', game: 'sell', m: 2, h: 6 },
+      { r: 'purple', w: 1, kind: 'br', x: 1.3 }, { r: 'purple', w: 2, kind: 'farm', m: 6, h: 6 }, { r: 'purple', w: 2, kind: 'farm', m: 5, h: 24 }, { r: 'purple', w: 1, kind: 'expfin' }, { r: 'purple', w: 1, kind: 'rush' },
+      { r: 'pink', w: 1, kind: 'br', x: 3 }, { r: 'pink', w: 2, kind: 'farm', m: 8, h: 6 }, { r: 'pink', w: 1, kind: 'farm', m: 6, h: 48 }, { r: 'pink', w: 1, kind: 'seed', n: 5 }, { r: 'pink', w: 1, kind: 'boost', game: 'sell', m: 3, h: 12 },
+      { r: 'red', w: 1, kind: 'br', x: 8 }, { r: 'red', w: 1, kind: 'farm', m: 10, h: 12 }, { r: 'red', w: 1, kind: 'seed', n: 12 }, { r: 'red', w: 1, kind: 'farm', m: 8, h: 72 },
+      { r: 'gold', w: 1, kind: 'br', x: 30 }, { r: 'gold', w: 1, kind: 'farm', m: 12, h: 24 }, { r: 'gold', w: 1, kind: 'seed', n: 25 }, { r: 'gold', w: 1, kind: 'farm', m: 10, h: 168 },
+    ] },
+  { id: 'moulin', fam: 'farm', late: true, name: 'Moulin de l\'Empereur', price: 2500000000, hue: '#ff9f43', desc: 'Fin de partie : boosts de récolte ×8 à ×16 (deux suffisent pour le plafond ×10 de l\'Arbre-Monde), longues ventes boostées.',
+    pool: [
+      { r: 'blue', w: 2, kind: 'br', x: 0.3 }, { r: 'blue', w: 2, kind: 'br', x: 0.6 }, { r: 'blue', w: 3, kind: 'farm', m: 8, h: 3 }, { r: 'blue', w: 2, kind: 'boost', game: 'sell', m: 2, h: 12 },
+      { r: 'purple', w: 1, kind: 'br', x: 1.3 }, { r: 'purple', w: 2, kind: 'farm', m: 10, h: 6 }, { r: 'purple', w: 2, kind: 'farm', m: 8, h: 24 }, { r: 'purple', w: 1, kind: 'expfin' }, { r: 'purple', w: 1, kind: 'rush' },
+      { r: 'pink', w: 1, kind: 'br', x: 3 }, { r: 'pink', w: 2, kind: 'farm', m: 12, h: 12 }, { r: 'pink', w: 1, kind: 'farm', m: 10, h: 48 }, { r: 'pink', w: 1, kind: 'seed', n: 8 }, { r: 'pink', w: 1, kind: 'boost', game: 'sell', m: 3, h: 24 },
+      { r: 'red', w: 1, kind: 'br', x: 8 }, { r: 'red', w: 1, kind: 'farm', m: 14, h: 12 }, { r: 'red', w: 1, kind: 'seed', n: 20 }, { r: 'red', w: 1, kind: 'farm', m: 12, h: 96 },
+      { r: 'gold', w: 1, kind: 'br', x: 30 }, { r: 'gold', w: 1, kind: 'farm', m: 16, h: 48 }, { r: 'gold', w: 1, kind: 'seed', n: 40 }, { r: 'gold', w: 1, kind: 'farm', m: 14, h: 168 },
+    ] },
+  { id: 'jardin', fam: 'farm', late: true, name: 'Jardin des Dieux', price: 25000000000, hue: '#ff5ec4', desc: 'Le sommet : boosts de récolte ×12 à ×20 (le plafond du Cœur de l\'Arbre-Monde), jusqu\'à 7 jours, et des dizaines de graines d\'or.',
+    pool: [
+      { r: 'blue', w: 2, kind: 'br', x: 0.3 }, { r: 'blue', w: 2, kind: 'br', x: 0.6 }, { r: 'blue', w: 3, kind: 'farm', m: 12, h: 4 }, { r: 'blue', w: 2, kind: 'boost', game: 'sell', m: 3, h: 12 },
+      { r: 'purple', w: 1, kind: 'br', x: 1.3 }, { r: 'purple', w: 2, kind: 'farm', m: 14, h: 8 }, { r: 'purple', w: 2, kind: 'farm', m: 12, h: 24 }, { r: 'purple', w: 1, kind: 'expfin' }, { r: 'purple', w: 1, kind: 'seed', n: 6 },
+      { r: 'pink', w: 1, kind: 'br', x: 3 }, { r: 'pink', w: 2, kind: 'farm', m: 16, h: 12 }, { r: 'pink', w: 1, kind: 'farm', m: 14, h: 72 }, { r: 'pink', w: 1, kind: 'seed', n: 12 }, { r: 'pink', w: 1, kind: 'boost', game: 'sell', m: 3, h: 48 },
+      { r: 'red', w: 1, kind: 'br', x: 8 }, { r: 'red', w: 1, kind: 'farm', m: 18, h: 24 }, { r: 'red', w: 1, kind: 'seed', n: 30 }, { r: 'red', w: 1, kind: 'farm', m: 16, h: 120 },
+      { r: 'gold', w: 1, kind: 'br', x: 30 }, { r: 'gold', w: 1, kind: 'farm', m: 20, h: 72 }, { r: 'gold', w: 1, kind: 'seed', n: 60 }, { r: 'gold', w: 1, kind: 'farm', m: 20, h: 168 },
+    ] },
   /* ---------------- Mini-jeux (boosts empilables) ---------------- */
   { id: 'sachet', fam: 'mini', name: 'Sachet du Joueur', price: 2000, hue: '#5fd0ff', desc: 'Boosts de mini-jeux et de défis de 15 min à 3 h.',
     pool: [
@@ -178,7 +203,7 @@ export const CASES = [
   { id: 'empereur', fam: 'elite', name: 'Coffre de l\'Empereur', price: 250000000, royal: true, hue: '#c77dff', desc: 'Bonus permanents de fin de partie : production de la ferme (jusqu\'à +100 %), butin des expéditions (jusqu\'à +200 %), graines d\'or.' },
 ];
 export const FAMILIES = [
-  ['farm', 'Caisses du Fermier', 'Boosts temporaires de la ferme (récolte et vente), chantiers terminés ; graines d\'or et vitesse de construction dans la Grange.'],
+  ['farm', 'Caisses du Fermier', 'Boosts temporaires de la ferme (récolte et vente), chantiers terminés ; graines d\'or et vitesse de construction dans la Grange. Fin de partie : Silo Royal, Moulin de l\'Empereur et Jardin des Dieux (boosts ×5 à ×20).'],
   ['mini', 'Caisses Mini-jeux', 'Boosts de tous les mini-jeux et des défis. Ils s\'empilent : deux ×3 donnent ×4,5, trois ×5, jusqu\'à ×6.'],
   ['cos', 'Coffrets Cosmétiques', 'Les cosmétiques de la boutique (un peu plus cher en moyenne que de les acheter, mais avec une chance de gros lot). Déjà possédé : remboursé à sa valeur boutique.'],
   ['br', 'Caisses Brundles', 'Que des Brundles : gros risque, gros gain. Et le quitte ou double.'],
