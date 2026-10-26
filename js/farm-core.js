@@ -45,7 +45,7 @@ export const rushCost = (ms, cost = 0, total = 0) => Math.max(10, Math.ceil(ms /
 export const SEED_BONUS = 0.05;
 export const seedGain = (life) => Math.floor(2 * Math.sqrt(Math.max(0, life) / 1e6)); // 1 M récoltées → 2 graines, 25 M → 10
 export const REPLANT_MIN = 2;
-export const seedMult = (f) => (1 + SEED_BONUS * (f.seeds || 0)) * prestigeMult(f) * (1 + TEMPLE_BONUS * wonderLv(f, 'temple')) * (1 + milestoneProd(f));
+export const seedMult = (f) => (1 + SEED_BONUS * (f.seeds || 0)) * prestigeMult(f) * (1 + TEMPLE_BONUS * wonderLv(f, 'temple')) * (1 + milestoneProd(f)) * (1 + Math.max(0, Math.min(1, (f && f.lp) || 0)));
 // Prestige (V28) : après 2 M de bananes vendues, on peut remettre la ferme à zéro contre +100 % de production pour toujours.
 // Le palier double à chaque fois (2 M, 4 M, 8 M… de bananes vendues depuis le prestige précédent).
 export const PRESTIGE_BASE = 2e6, PRESTIGE_BONUS = 1;
@@ -131,6 +131,8 @@ export function normalize(raw, now = Date.now()) {
   const ex = raw.ex;
   f.ex = ex && EXPEDITIONS.some((x) => x.id === ex.id) && Number(ex.end) > 0 ? { id: ex.id, n: Math.max(0, Math.floor(Number(ex.n) || 0)), start: Number(ex.start) || 0, end: Number(ex.end) } : null;
   f.exn = Math.max(0, Math.floor(Number(raw.exn) || 0));
+  f.lp = Math.max(0, Math.min(1, Number(raw.lp) || 0)); // V39 : bonus permanents du Coffre de l'Empereur (production, butin des expéditions)
+  f.lx = Math.max(0, Math.min(2, Number(raw.lx) || 0));
   return f;
 }
 
@@ -424,7 +426,7 @@ export function rollExpedition(f, rand = Math.random) {
   const x = expedition(f.ex && f.ex.id);
   if (!x) return null;
   const full = assignment({ ...f, ex: null }).fields.reduce((a, y) => a + y.w * y.per, 0); // production sans l'expédition
-  const out = { id: x.id, brundles: Math.max(100, Math.round(x.h * full * sellRate(f) * x.k)) };
+  const out = { id: x.id, brundles: Math.max(100, Math.round(x.h * full * sellRate(f) * x.k * (1 + Math.max(0, Math.min(2, f.lx || 0))))) };
   if (rand() < x.boost[0]) out.boost = { m: x.boost[1], h: x.boost[2] };
   if (rand() < x.seed[0]) out.seeds = x.seed[1] + Math.floor(rand() * (x.seed[2] - x.seed[1] + 1));
   if (rand() < x.cos) out.cos = true;

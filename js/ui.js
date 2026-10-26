@@ -13,6 +13,13 @@ export function h(html) {
 
 const nf = new Intl.NumberFormat('fr-FR');
 export const fmt = (n) => nf.format(Math.round(n || 0));
+// Montant tapé au clavier : « 2500 », « 2 500 », « 2,5k », « 1.2m » → nombre entier (0 si illisible)
+export function parseAmount(v) {
+  const m = String(v || '').replace(/[\s\u202f\u00a0]/g, '').replace(',', '.').match(/^(\d*\.?\d+)([km]?)$/i);
+  if (!m) return 0;
+  const k = m[2].toLowerCase();
+  return Math.floor(+m[1] * (k === 'k' ? 1e3 : k === 'm' ? 1e6 : 1));
+}
 export const money = (n) => `<span class="money">${fmt(n)}${coinSVG('coin coin-inline')}</span>`;
 export const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 

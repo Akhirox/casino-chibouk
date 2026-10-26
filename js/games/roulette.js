@@ -1,7 +1,7 @@
 // Roulette Banane — roulette européenne (un seul zéro), roue animée sur canvas
 import { randInt } from './slots-math.js';
 import { icon } from '../art.js';
-import { h, $, $$, fmt, money, toast, sleep, coinRain, autoHTML, bindAuto, CUR, isTurbo } from '../ui.js';
+import { h, $, $$, fmt, money, toast, sleep, coinRain, autoHTML, bindAuto, CUR, isTurbo, parseAmount } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const ORDER = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26];
@@ -74,7 +74,8 @@ export function mount(view, { wallet }) {
       <button class="rl-spot out" data-k="high" style="grid-row:5;grid-column:12 / span 2">19-36</button>
     </div></div>
     <div class="rl-controls">
-      <div class="chip-row">${CHIPS.map((v) => `<button class="chip ${v === selChip ? 'sel' : ''}" data-v="${v}">${v >= 1000 ? v / 1000 + 'k' : v}</button>`).join('')}</div>
+      <div class="chip-row">${CHIPS.map((v) => `<button class="chip ${v === selChip ? 'sel' : ''}" data-v="${v}">${v >= 1000 ? v / 1000 + 'k' : v}</button>`).join('')}
+        <label class="chip-custom" title="Montant libre : tape un montant, puis clique sur les cases du tapis"><input type="text" inputmode="numeric" class="bet-input" id="rl-custom" placeholder="Montant…" autocomplete="off"></label></div>
       <div class="bet-actions">
         <button class="btn btn-ghost" id="rl-undo">${icon('undo')}Annuler</button>
         <button class="btn btn-ghost" id="rl-clear">Effacer</button>
@@ -137,9 +138,20 @@ export function mount(view, { wallet }) {
     for (let n = 1; n <= 36; n++) if (payoutFor(key, n)) view.querySelector(`[data-k="n:${n}"]`)?.classList.toggle('cover', on);
   }
   $$('.chip-row .chip', view).forEach((c) => (c.onclick = () => {
-    selChip = +c.dataset.v; sfx.click();
+    selChip = +c.dataset.v; sfx.click(); lastChip = selChip;
+    $('#rl-custom', view).value = ''; $('.chip-custom', view).classList.remove('sel');
     $$('.chip-row .chip', view).forEach((x) => x.classList.toggle('sel', x === c));
   }));
+  // Montant libre (V39) : tant qu'il est rempli, chaque clic sur le tapis pose ce montant
+  let lastChip = selChip;
+  const customIn = $('#rl-custom', view);
+  customIn.oninput = () => {
+    const v = parseAmount(customIn.value);
+    selChip = v > 0 ? v : lastChip;
+    $('.chip-custom', view).classList.toggle('sel', v > 0);
+    $$('.chip-row .chip', view).forEach((x) => x.classList.toggle('sel', !(v > 0) && +x.dataset.v === selChip));
+  };
+  customIn.onkeydown = (e) => e.stopPropagation();
   $('#rl-undo', view).onclick = () => {
     const last = undo.pop(); if (!last) return;
     bets[last[0]] -= last[1]; if (bets[last[0]] <= 0) delete bets[last[0]];

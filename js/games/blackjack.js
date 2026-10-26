@@ -2,7 +2,7 @@
 // Doubler sur 2 cartes, séparer jusqu'à 4 mains (As séparés : une carte chacun)
 import { randInt } from './slots-math.js';
 import { monkeySVG, icon } from '../art.js';
-import { h, $, $$, fmt, money, toast, sleep, coinRain, autoHTML, bindAuto, CUR , isTurbo } from '../ui.js';
+import { h, $, $$, fmt, money, toast, sleep, coinRain, autoHTML, bindAuto, CUR , isTurbo, parseAmount } from '../ui.js';
 import { sfx } from '../sfx.js';
 
 const SUITS = ['♠', '♥', '♦', '♣'];
@@ -71,7 +71,7 @@ export function mount(view, { wallet }) {
   let alive = true;
   let phase = 'bet'; // bet | deal | play | dealer | done
   let bet = 0, lastBet = 0;
-  let selChip = 25;
+  let selChip = 25, custom = 0; // custom : montant tapé au clavier (0 = jetons)
   let autoOn = false;
   let dealer = [];
   let hands = []; // { cards, bet, done, doubled, splitAces, el, result }
@@ -109,8 +109,9 @@ export function mount(view, { wallet }) {
     </div>
     <div class="bj-controls">
       <div class="ctrl-bet">
-        <div class="chip-row">${CHIPS.map((v) => `<button class="chip" data-v="${v}">${v >= 1000 ? v / 1000 + 'k' : v}</button>`).join('')}</div>
-        <p class="bj-hint">Choisis un jeton, puis clique sur <b>MISE</b>, <b>PAIRES</b> ou <b>21+3</b> sur le tapis pour le poser. La croix retire la mise d'une case.</p>
+        <div class="chip-row">${CHIPS.map((v) => `<button class="chip" data-v="${v}">${v >= 1000 ? v / 1000 + 'k' : v}</button>`).join('')}
+          <label class="chip-custom" title="Montant libre : tape un montant, puis clique sur une case du tapis (Entrée = mise principale)"><input type="text" inputmode="numeric" class="bet-input" id="bj-custom" placeholder="Montant…" autocomplete="off"></label></div>
+        <p class="bj-hint">Choisis un jeton (ou tape un montant), puis clique sur <b>MISE</b>, <b>PAIRES</b> ou <b>21+3</b> sur le tapis pour le poser. La croix retire la mise d'une case.</p>
         <div class="bet-actions">
           <button class="btn btn-ghost" id="clear">Effacer</button>
           <button class="btn btn-ghost" id="rebet">Remiser</button>
@@ -158,9 +159,10 @@ export function mount(view, { wallet }) {
       el.classList.toggle('placeable', phase === 'bet' || phase === 'done');
       el.querySelector('b').textContent = v ? fmt(v) : '';
     }
-    $$('.chip-row .chip', view).forEach((c) => c.classList.toggle('sel', +c.dataset.v === selChip));
+    $$('.chip-row .chip', view).forEach((c) => c.classList.toggle('sel', !custom && +c.dataset.v === selChip));
+    $('.chip-custom', view).classList.toggle('sel', !!custom);
   }
-  const saveSide = () => { try { localStorage.setItem('chibouk_bj_side', JSON.stringify(side)); localStorage.setItem('chibouk_bj_chip', selChip); } catch {} };
+  const saveSide = () => { try { localStorage.setItem('chibouk_bj_side', JSON.stringify(side)); if (!custom) localStorage.setItem('chibouk_bj_chip', selChip); } catch {} };
   try { const c = +localStorage.getItem('chibouk_bj_chip'); if (CHIPS.includes(c)) selChip = c; } catch {}
   const totalStake = () => bet + side.pp + side.t3;
   // Poser le jeton sélectionné sur une case du tapis
@@ -183,8 +185,12 @@ export function mount(view, { wallet }) {
   });
   $$('.spot-x', view).forEach((b) => (b.onclick = (e) => { e.stopPropagation(); clearSpot(b.dataset.x); }));
   $$('.chip-row .chip', view).forEach((c) => {
-    c.onclick = () => { selChip = +c.dataset.v; sfx.click(); saveSide(); renderBet(); };
+    c.onclick = () => { selChip = +c.dataset.v; custom = 0; $('#bj-custom', view).value = ''; sfx.click(); saveSide(); renderBet(); };
   });
+  // Montant libre (V39) : remplace le jeton sélectionné tant qu'il est rempli ; Entrée = le poser sur la mise principale
+  const customIn = $('#bj-custom', view);
+  customIn.oninput = () => { custom = Math.max(0, parseAmount(customIn.value)); if (custom) selChip = custom; else { try { selChip = CHIPS.includes(+localStorage.getItem('chibouk_bj_chip')) ? +localStorage.getItem('chibouk_bj_chip') : 25; } catch { selChip = 25; } } renderBet(); };
+  customIn.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); if (custom) place('main'); } e.stopPropagation(); };
   $('#clear', view).onclick = () => { if (phase === 'done') resetTable(); bet = 0; side = { pp: 0, t3: 0 }; saveSide(); renderBet(); updateControls(); };
   $('#rebet', view).onclick = () => {
     if (phase === 'done') resetTable();

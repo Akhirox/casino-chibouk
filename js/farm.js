@@ -1,6 +1,6 @@
 // Ferme à bananes : page, tuiles dessinées, marché, fermes des voisins, et minuterie globale (chantiers, stock plein).
 import { cosBonus } from './bonus.js';
-import { lootPerm, sellBoost, activeBoosts, stackMult, STACK_CAP } from './loot.js';
+import { lootPerm, sellBoost, activeBoosts, stackMult, STACK_CAP, syncLatePerms } from './loot.js';
 import { openBoostDetail, boostDetailHTML } from './boostdetail.js';
 import { EXPEDITION_ITEMS, owns } from './shop.js';
 import * as F from './farm-core.js';
@@ -160,6 +160,7 @@ export function mount(view, { wallet, backend }) {
   let alive = true, tab = 'me', sel = -1;
   if (!hasFarm(wallet.p) || !Array.isArray(wallet.p.farm.g)) wallet.p.farm = F.normalize(wallet.p.farm);
   const f = () => wallet.p.farm;
+  syncLatePerms(wallet.p); // bonus du Coffre de l'Empereur (production, expéditions)
   F.tick(f());
 
   view.innerHTML = `<div class="fm-wrap">
@@ -509,7 +510,7 @@ export function mount(view, { wallet, backend }) {
     const ex = fm.ex, xd = ex && F.expedition(ex.id);
     const pct = (a, b) => Math.max(0, Math.min(100, (a / Math.max(1, b)) * 100));
     $('#fm-body', view).innerHTML = `<div class="dm-wrap">
-      <section class="panel dm-sec"><h2 class="dm-h">${STAR}Paliers de prestige <small class="muted">tu es au prestige ${pr} · production ×${F.prestigeMult(fm)}${F.milestoneProd(fm) ? ` · bonus des paliers +${Math.round(F.milestoneProd(fm) * 100)} %` : ''}</small></h2>
+      <section class="panel dm-sec"><h2 class="dm-h">${STAR}Paliers de prestige <small class="muted">tu es au prestige ${pr} · production ×${F.prestigeMult(fm)}${F.milestoneProd(fm) ? ` · bonus des paliers +${Math.round(F.milestoneProd(fm) * 100)} %` : ''}${fm.lp ? ` · Empereur +${Math.round(fm.lp * 100)} %` : ''}</small></h2>
         <ol class="dm-ms">${F.MILESTONES.map((m) => `<li class="${pr >= m.pr ? 'done' : ''}"><b>Prestige ${m.pr}</b><span>${esc(m.txt)}</span><i>${pr >= m.pr ? icon('check') : icon('lock')}</i></li>`).join('')}</ol>
         <p class="muted dm-note">Le prestige demande deux fois plus de bananes vendues à chaque fois : les derniers paliers sont faits pour durer.</p></section>
       <section class="panel dm-sec"><h2 class="dm-h">${icon('tower')}Merveilles <small class="muted">bâtiments uniques, hors de la grille : ils restent après chaque prestige</small></h2>
@@ -520,7 +521,7 @@ export function mount(view, { wallet, backend }) {
             <small>${esc(w.desc)}</small>${L ? `<small class="gold">Actuellement : ${esc(w.effect(L))}</small>` : ''}
             ${locked ? `<small class="muted">${icon('lock')}Débloquée au prestige ${w.pr}</small>` : max ? '<small class="gold">Merveille achevée !</small>' : `<button class="btn btn-gold btn-sm" data-wonder="${k}" ${err ? 'disabled' : ''}>${L ? 'Agrandir' : 'Construire'} · ${fmtBig(cost)}</button>`}</div>`;
         }).join('')}</div></section>
-      <section class="panel dm-sec"><h2 class="dm-h">${icon('globe')}Expéditions <small class="muted">${fm.exn ? `${fm.exn} réussie${fm.exn > 1 ? 's' : ''}` : 'envoie des singes chercher des trésors'}</small></h2>
+      <section class="panel dm-sec"><h2 class="dm-h">${icon('globe')}Expéditions <small class="muted">${fm.exn ? `${fm.exn} réussie${fm.exn > 1 ? 's' : ''}` : 'envoie des singes chercher des trésors'}${fm.lx ? ` · butin +${Math.round(fm.lx * 100)} % (Coffre de l'Empereur)` : ''}</small></h2>
         ${ex ? (ex.end > now ? `<div class="dm-ex-run"><b>${esc(xd.name)}</b><span>${ex.n} singes partis · retour dans <b data-left="${ex.end}">${dur(ex.end - now)}</b></span><div class="fm-bar"><i data-exbar style="width:${pct(now - ex.start, ex.end - ex.start)}%"></i></div><small class="muted">Pendant l'expédition, ces singes ne récoltent pas.</small></div>`
           : `<div class="dm-ex-run done"><b>${esc(xd.name)} : les singes sont rentrés !</b><button class="btn btn-gold" data-exclaim>Voir le butin</button></div>`) : ''}
         <div class="dm-exps">${F.EXPEDITIONS.map((x) => {

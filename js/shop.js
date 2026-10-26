@@ -87,6 +87,12 @@ export const ITEMS = [
   { id: 'ti-dieubr', cat: 'title', name: 'Dieu des Brundles', price: 1000000000 },
   { id: 'cb-aurora', cat: 'cardback', name: 'Aurore', price: 150000000 },
   { id: 'cb-royal', cat: 'cardback', name: 'Sceau royal', price: 600000000 },
+  // V39 : exclusifs du Coffret Mythique (valeur = val)
+  { id: 'fr-dragon', cat: 'frame', name: 'Dragon de jade', loot: 'mythic', val: 300000000 },
+  { id: 'fr-phenix', cat: 'frame', name: 'Phénix', loot: 'mythic', val: 800000000 },
+  { id: 'ti-oracle', cat: 'title', name: 'Oracle de la canopée', loot: 'mythic', val: 200000000 },
+  { id: 'ti-pharaon', cat: 'title', name: 'Pharaon des bananes', loot: 'mythic', val: 600000000 },
+  { id: 'cb-dragon', cat: 'cardback', name: 'Écailles de dragon', loot: 'mythic', val: 250000000 },
   // V38 : exclusifs, gagnés par des exploits (jamais en vente)
   { id: 'ti-emerite', cat: 'title', name: 'Fermier émérite', unlock: { pr: 3 } },
   { id: 'fr-feuillage', cat: 'frame', name: 'Feuillage d\'or', unlock: { pr: 5 } },

@@ -61,7 +61,7 @@ export function mount(view, { wallet, social }) {
   function kpis() {
     const p = wallet.p, now = Date.now(), fbs = p.farm ? F.activeFarmBoosts(p.farm, now) : [], fb = fbs.length ? { m: F.boostAt(p.farm, now), u: F.boostEnd(p.farm, now), n: fbs.length } : null;
     const boosts = L.activeBoosts(p, now), by = (g) => boosts.filter((b) => b.g === g);
-    const stackLine = (g, label) => { const list = by(g); if (!list.length) return ''; const m = g === 'all' ? L.boostMult(p, 'all') : g === 'chal' ? L.chalBoost(p) : L.sellBoost(p); const end = Math.max(...list.map((b) => b.u)); return `<li title="${list.map((b) => `×${String(b.m).replace('.', ',')} encore ${left(b.u - now)}`).join(' · ')}"><b>${xMult(m)}</b> ${label}${list.length > 1 ? ` <small>(${list.length} boosts empilés)</small>` : ''} <small data-u="${end}">${left(end - now)}</small> <button type="button" class="fm-bd" data-bd="${g}">détail</button></li>`; };
+    const stackLine = (g, label) => { const list = by(g); if (!list.length) return ''; const m = L.stackMult(list.map((b) => b.m), L.STACK_CAP[g] ?? 3); const end = Math.max(...list.map((b) => b.u)); return `<li title="${list.map((b) => `×${String(b.m).replace('.', ',')} encore ${left(b.u - now)}`).join(' · ')}"><b>${xMult(m)}</b> ${label}${list.length > 1 ? ` <small>(${list.length} boosts empilés)</small>` : ''} <small data-u="${end}">${left(end - now)}</small> <button type="button" class="fm-bd" data-bd="${g}">détail</button></li>`; };
     const perms = [
       permBonus(p) ? `gains gratuits +${pc(permBonus(p))}` : '',
       L.lootPerm(p, 'vault') ? `coffre +${pc(L.lootPerm(p, 'vault'))} (${pc(wallet.vaultRate)}/jour)` : '',
@@ -70,6 +70,8 @@ export function mount(view, { wallet, social }) {
       L.lootPerm(p, 'sell') ? `bananes +${pc(L.lootPerm(p, 'sell'))}` : '',
       p.farm && p.farm.seeds ? `${p.farm.seeds} graine${p.farm.seeds > 1 ? 's' : ''} d'or` : '',
       p.farm && p.farm.spd ? `chantiers −${pc(p.farm.spd)}` : '',
+      L.lootPerm(p, 'farmp') ? `ferme +${pc(L.lootPerm(p, 'farmp'))}` : '',
+      L.lootPerm(p, 'exp') ? `expéditions +${pc(L.lootPerm(p, 'exp'))}` : '',
     ].filter(Boolean);
     const lines = [stackLine('all', 'tous les mini-jeux'), stackLine('chal', 'récompenses des défis'), stackLine('sell', 'vente des bananes'),
       fb ? `<li title="${fbs.map((b) => `×${String(b.m).replace('.', ',')} encore ${left(b.u - now)}`).join(' · ')}"><b>${xMult(fb.m)}</b> récolte de la ferme${fb.n > 1 ? ` <small>(${fb.n} boosts empilés)</small>` : ''} <small data-u="${fb.u}">${left(fb.u - now)}</small> <button type="button" class="fm-bd" data-bd="farm">détail</button></li>` : '',
@@ -94,6 +96,7 @@ export function mount(view, { wallet, social }) {
     cos: { c: '#ff7ab6', c2: '#a8235f', ic: 'shop', tag: 'cosmétiques' },
     br: { c: '#ff8a3d', c2: '#b8320f', ic: 'bolt', tag: 'gros risque' },
     royal: { c: '#f5c542', c2: '#9a6a00', ic: 'star', tag: 'bonus permanents' },
+    elite: { c: '#c77dff', c2: '#5a1f8f', ic: 'trophy', tag: 'fin de partie' },
   };
   function cases() {
     const card = (c) => `<button type="button" class="cs-case ${c.id === cur.id ? 'on' : ''}" data-c="${c.id}" style="--hue:${c.hue}">
@@ -131,9 +134,10 @@ export function mount(view, { wallet, social }) {
     const list = [...L.poolOf(cur)].sort((a, b) => L.R_ORDER.indexOf(b.r) - L.R_ORDER.indexOf(a.r) || L.chanceOf(cur, a) - L.chanceOf(cur, b));
     const v = Math.round((L.valueOf(cur) / cur.price) * 100);
     $('#cs-val', view).textContent = cur.fam === 'cos' ? `En moyenne, un tirage vaut ${v} % du prix du coffret en valeur boutique. Un objet déjà possédé est remboursé à sa valeur boutique.`
+      : cur.id === 'empereur' ? 'Toujours un bonus permanent de fin de partie. Un bonus déjà au maximum est rendu en Brundles (80 % de la part du prix correspondante).'
       : cur.fam === 'royal' ? 'Toujours un bonus permanent : plus le coffre est cher, plus il est gros. Un bonus déjà au maximum est remplacé par des gains gratuits en plus.'
         : cur.fam === 'br' ? `En moyenne ${v} % du prix revient en ${CUR}${cur.id === 'qod' ? '' : ' (la plupart du temps beaucoup moins : c\'est le gros lot qui fait la moyenne)'}.`
-          : `${v} % du prix revient en ${CUR} en moyenne ; le reste de la valeur est dans les boosts (${cur.fam === 'mini' ? 'empilables' : 'ferme, cumulables'}).`;
+          : `${v} % du prix revient en ${CUR} en moyenne ; le reste de la valeur est dans les boosts (${cur.fam === 'mini' || cur.id === 'arene' ? 'empilables' : 'ferme, cumulables'}).`;
     $('#cs-pool', view).innerHTML = list.map((it) => { const lb = L.poolLabel(cur, it); return `<div class="cs-it r-${it.r} cs-pool-it"><div class="cs-it-ic">${itemIcon(lb.icon)}</div><b>${esc(lb.title)}</b><small>${esc(lb.sub)}</small><span class="cs-ch">${L.RARITIES[it.r].name} · ${pctTxt(L.chanceOf(cur, it))}</span><i class="cs-bar"></i></div>`; }).join('');
   }
   function history() {
@@ -213,8 +217,8 @@ export function mount(view, { wallet, social }) {
       <li><b>Raretés</b> : Commun 70 %, Rare 22 %, Épique 6 %, Légendaire 1,7 %, Mythique 0,3 % (sauf coffrets cosmétiques et quitte ou double).</li>
       ${L.FAMILIES.map(([, n, d]) => `<li><b>${n}</b> : ${d}</li>`).join('')}
       <li><b>Boosts empilables</b> (mini-jeux, défis, vente des bananes) : le plus fort compte en entier, le 2e aux 3/4, le 3e au quart, puis de moins en moins. Deux ×3 = ×4,5, trois ×3 = ×5. Plafonds : ×6 pour les mini-jeux, ×3 pour les défis et la vente.</li>
-      <li><b>Récolte de la ferme</b> : les boosts se cumulent : le plus fort compte en entier, le 2e pour 1/2, le 3e pour 1/3, le 4e pour 1/4… Chaque boost ajoute toujours un petit quelque chose, jusqu'à ×5 au maximum (dix ×1,5 = ×2,46 ; dix ×2 = ×3,93).</li>
-      <li><b>Plafonds des bonus permanents</b> : coffre +100 %, vente des bananes +100 %, roue du jour +300 %, défis +200 %, vitesse de construction −60 % ; gains gratuits sans plafond.</li>
+      <li><b>Récolte de la ferme</b> : les boosts se cumulent : le plus fort compte en entier, le 2e pour 1/2, le 3e pour 1/3, le 4e pour 1/4… Chaque boost ajoute toujours un petit quelque chose, jusqu'à ×5 (×10 avec l'Arbre-Monde de la ferme). Pour dépasser ×6, il faut les gros boosts de la Serre de l'Arbre-Monde (×4 à ×10) : un ×10 seul suffit, deux ×6 font ×8,5.</li>
+      <li><b>Plafonds des bonus permanents</b> : coffre +100 %, vente des bananes +100 %, roue du jour +300 %, défis +200 %, vitesse de construction −60 %, production de la ferme +100 % et butin des expéditions +200 % (Coffre de l'Empereur) ; gains gratuits +50 %.</li>
       <li>Aucune caisse ne donne de rakeback : impossible de miser à l'infini en se faisant rembourser.</li>
       <li>Le lot est enregistré dès le clic : quitter la page pendant l'animation ne fait rien perdre.</li></ul>`, buttons: [{ label: 'Compris', value: true, primary: true }] });
   }

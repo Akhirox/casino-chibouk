@@ -1,9 +1,26 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '38';
+export const VERSION = '39';
 
 export const CHANGELOG = [
+  {
+    v: '39', date: '26 octobre 2026', title: 'Caisses de fin de partie',
+    groups: [
+      ['Nouvelle famille : Caisses de l\'Élite', [
+        'Serre de l\'Arbre-Monde (25 M) : boosts de récolte ×4 à ×10, jusqu\'à 3 jours, graines d\'or par poignées, chantiers terminés et « Retour express » (ton expédition rentre tout de suite). Enfin de quoi dépasser ×6 et profiter du plafond de l\'Arbre-Monde : un ×10 seul suffit, deux ×6 font ×8,5.',
+        'Arène des Champions (25 M) : boosts de tous les mini-jeux ×4 à ×6 et des défis ×3, jusqu\'à 3 jours, jusqu\'à 60 tours de roue et du bonus permanent sur les gains gratuits.',
+        'Coffre de l\'Empereur (250 M) : deux nouveaux bonus permanents, production de la ferme (jusqu\'à +100 %) et butin des expéditions (jusqu\'à +200 %), plus des graines d\'or. Ils restent après les prestiges.',
+      ]],
+      ['Autres caisses', [
+        'Coffret Mythique : le très haut de gamme de la boutique (100 M à 1 Md) et 5 objets exclusifs introuvables ailleurs (Dragon de jade, Phénix, Oracle de la canopée, Pharaon des bananes, Écailles de dragon). Le Coffret Légende s\'arrête maintenant à 30 millions.',
+        'Caisse Titan (25 M, jusqu\'à ×250) et Quitte ou double royal (10 M).',
+      ]],
+      ['Blackjack et roulette', [
+        'Montant libre : tape un montant à côté des jetons (« 2500 », « 2,5k », « 1m »…) puis clique sur les cases du tapis. Au blackjack, Entrée le pose directement sur la mise principale.',
+      ]],
+    ],
+  },
   {
     v: '38', date: '25 octobre 2026', title: 'Fin de partie',
     groups: [
