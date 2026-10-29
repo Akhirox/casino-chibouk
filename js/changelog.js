@@ -1,9 +1,22 @@
 // Journal des versions (page « Nouveautés » + fenêtre affichée une fois après une mise à jour)
 import { $, modal, esc } from './ui.js';
 
-export const VERSION = '40';
+export const VERSION = '41';
 
 export const CHANGELOG = [
+  {
+    v: '41', date: '29 octobre 2026', title: 'Tetris',
+    groups: [
+      ['Nouveau mini-jeu : Tetris (Mini-jeux → Adresse)', [
+        'Mode Infini : vitesse tranquille et constante, joue aussi longtemps que tu tiens. +3 Brundles pour une ligne, +7 pour deux, +12 pour trois et +25 pour un Tetris (4 lignes d\'un coup).',
+        'Mode Challenge : ça accélère d\'un niveau toutes les 10 lignes, et les gains sont multipliés par le niveau (×2 au niveau 5, ×3 au niveau 9…). Record au score dans les Records.',
+        'Bonus : T-Spins, combos, back-to-back (Tetris ou T-Spin enchaînés : +50 %) et plateau entièrement vidé (+40).',
+        'Commandes : flèches pour déplacer et descendre, Espace pour faire tomber, ↑ ou X pour tourner (Z ou W dans l\'autre sens), C ou Maj pour la réserve, P pour la pause. Pièce fantôme, 5 pièces suivantes, temps de pose avant que la pièce se fige.',
+        'Sur téléphone : glisse pour déplacer, touche pour tourner, glisse vite vers le bas pour faire tomber, vers le haut pour la réserve, ou utilise les boutons.',
+        '8 succès, 3 défis de la jungle, une quête du jour, et une ligne dans le classement des mini-jeux et les statistiques.',
+      ]],
+    ],
+  },
   {
     v: '40', date: '26 octobre 2026', title: 'Bâtiments mythiques et caisses géantes',
     groups: [

@@ -140,6 +140,7 @@ TEMPLATES.push(
   { id: 'bjbj', tier: 2, n: 1, text: () => 'Fais un blackjack naturel', ev: (e) => (e.type === 'round' && e.game === 'blackjack' && e.info && e.info.bj ? 1 : 0) },
   { id: 'queens1', tier: 0, n: 1, text: () => 'Résous une grille de Queens', ev: (e) => (e.type === 'free' && e.game === 'queens' && e.extra && e.extra.Won ? 1 : 0) },
   { id: 'pinpoint1', tier: 0, n: 1, text: () => 'Trouve une catégorie à Pinpoint', ev: (e) => (e.type === 'free' && e.game === 'pinpoint' && e.extra && e.extra.Won ? 1 : 0) },
+  { id: 'tetris20', tier: 0, n: 1, text: () => 'Fais 20 lignes en une partie de Tetris', ev: (e) => (e.type === 'free' && e.game === 'tetris' && e.extra && e.extra.Lines >= 20 ? 1 : 0) },
   { id: 'snake10', tier: 0, n: 1, text: () => 'Mange 10 bananes en une partie de Snake', ev: (e) => (e.type === 'free' && e.game === 'snake' && e.extra && e.extra.Bananas >= 10 ? 1 : 0) },
   { id: 'tango2', tier: 1, n: 2, text: (n) => `Résous ${n} grilles de Tango`, ev: (e) => (e.type === 'free' && e.game === 'tango' && e.extra && e.extra.Won ? 1 : 0) },
   { id: 'sudoku1', tier: 1, n: 1, text: () => 'Résous un sudoku', ev: (e) => (e.type === 'free' && e.game === 'sudoku' && e.extra && e.extra.Won ? 1 : 0) },

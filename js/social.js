@@ -21,7 +21,7 @@ const QUIZ_LABEL = { quiz: 'au calcul mental', capitals: 'au quiz capitales', mo
 const QUIZ_ROUTE = { quiz: 'quiz', capitals: 'capitals', movies: 'movies', flags: 'flags', higher: 'higher', geo: 'geo', culture: 'culture' };
 // Jeux de réflexion : exploits publiés avec un texte (« a résolu un » + lien vers le jeu + « difficile en 5 min »)
 const BIG_MIN = { plinko: 100 };
-export const FEAT_GAMES = { queens: 'Queens', tango: 'Tango', pinpoint: 'Pinpoint', sudoku: 'Sudoku', demineur: 'Démineur', snake: 'Snake', memory: 'Memory', crossword: 'mots croisés', typing: 'Frappe éclair' };
+export const FEAT_GAMES = { queens: 'Queens', tango: 'Tango', pinpoint: 'Pinpoint', sudoku: 'Sudoku', demineur: 'Démineur', snake: 'Snake', tetris: 'Tetris', memory: 'Memory', crossword: 'mots croisés', typing: 'Frappe éclair' };
 // Qui est le sujet du message (pour la semaine : le vainqueur, pas celui qui a publié)
 export const feedWho = (e) => (e.kind === 'week' && e.winner ? e.winner : e.pseudo);
 // Texte d'un message du fil (le pseudo est ajouté à l'affichage)

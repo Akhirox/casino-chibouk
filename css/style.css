@@ -1838,6 +1838,20 @@ td.vol .bar-track { height: 8px; }
 .sn-pad [data-d="0,-1"] { grid-column: 2; grid-row: 1; } .sn-pad [data-d="-1,0"] { grid-column: 1; grid-row: 2; }
 .sn-pad [data-d="1,0"] { grid-column: 3; grid-row: 2; } .sn-pad [data-d="0,1"] { grid-column: 2; grid-row: 2; }
 @media (pointer: coarse), (max-width: 700px) { .sn-pad { display: grid; } }
+/* Tetris (V41) */
+.tt-wrap .fg-bar { max-width: 760px; }
+.tt-box { position: relative; width: max-content; margin: 0 auto; }
+.tt-cv { display: block; touch-action: none; user-select: none; -webkit-user-select: none; }
+.tt-over { border-radius: 12px; }
+.tt-keys { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px 14px; margin: 14px 0 6px; font-size: .82rem; color: var(--muted); }
+.tt-keys kbd { display: inline-block; min-width: 22px; padding: 1px 6px; margin-right: 3px; border-radius: 6px; border: 1px solid var(--line); border-bottom-width: 2px; background: var(--panel2); color: var(--text); font: 700 .75rem var(--font-body, inherit); text-align: center; }
+.tt-touch { font-size: .8rem; display: none; }
+.tt-pad { display: none; grid-template-columns: repeat(3, 1fr); gap: 8px; max-width: 360px; margin: 12px auto 0; }
+.tt-pad button { height: 54px; border-radius: 14px; border: 1px solid var(--line); background: var(--panel2); font-size: 1.35rem; font-weight: 800; color: var(--text); touch-action: none; user-select: none; -webkit-user-select: none; }
+.tt-pad button[data-k="hold"] { font-size: .85rem; }
+.tt-pad button:active { background: #2b4a37; transform: translateY(1px); }
+.tt-pad .tt-drop { grid-column: 1 / -1; height: 48px; font-size: 1rem; background: linear-gradient(180deg, #3a2f10, #241c08); border-color: #f5c54266; color: var(--gold); }
+@media (pointer: coarse), (max-width: 700px) { .tt-pad { display: grid; } .tt-touch { display: block; } .tt-keys { display: none; } }
 
 /* Pinpoint */
 .pp-board { max-width: 560px; margin: 0 auto; }
@@ -1863,6 +1877,7 @@ td.vol .bar-track { height: 8px; }
 .gc-pinpoint .gc-art { background: radial-gradient(circle at 70% 20%, #12304a, #060d14); }
 .gc-sudoku .gc-art { background: radial-gradient(circle at 50% 40%, #1f2b1a, #080c07); }
 .gc-demineur .gc-art { background: radial-gradient(circle at 50% 30%, #1f3a2a, #07100b); }
+.gc-tetris .gc-art { background: radial-gradient(circle at 50% 40%, #1d2a4a, #070b14); }
 .gc-snake .gc-art { background: radial-gradient(circle at 50% 60%, #173a24, #06100a); }
 
 /* ==========================================================================

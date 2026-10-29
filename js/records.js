@@ -64,6 +64,7 @@ export const RECORD_CATS = [
   { k: 'snake', name: 'Snake', levels: LV.map((label) => ({ label })),
     legacy: (s) => { for (let i = 2; i >= 0; i--) if (S(s, 'snakeBest' + i)) return { l: i, v: S(s, 'snakeBest' + i) }; return null; },
     txt: (e) => `${e.v} banane${e.v > 1 ? 's' : ''}${e.t != null ? ` en ${fmtCs(e.t)}` : ''}` },
+  { k: 'tetris', name: 'Tetris (Challenge)', txt: (e) => `${fmt(e.v)} points${e.t != null ? ` en ${fmtCs(e.t)}` : ''}` },
   { k: 'typing', name: 'Frappe éclair', levels: ['Facile', 'Normal', 'Difficile'].map((label) => ({ label })),
     legacy: (s) => { for (let i = 2; i >= 0; i--) if (S(s, 'typingBest' + i)) return { l: i, v: S(s, 'typingBest' + i) }; return null; },
     txt: (e) => `${e.v} mots/min${e.t != null ? `, dernier à ${fmtCs(e.t)}` : ''}` },
@@ -104,7 +105,7 @@ export const entryText = (c, e) => {
 // valeur numérique pour trier un tableau (classement des mini-jeux)
 export function entrySort(c, e) {
   if (!e) return -1;
-  const v = c.low ? 1e5 - Math.min(1e5, e.v || 0) : Math.min(9.99e5, (e.v || 0));
+  const v = c.low ? 1e5 - Math.min(1e5, e.v || 0) : Math.min(9.99e6, (e.v || 0)); // jusqu'à 10 millions (score de Tetris)
   return (e.l || 0) * 1e15 + v * 1e8 + (1e8 - Math.min(1e8 - 1, tOf(e) === Infinity ? 1e8 - 1 : tOf(e)));
 }
 

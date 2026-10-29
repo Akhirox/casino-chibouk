@@ -31,6 +31,7 @@ import * as Tango from './games/tango.js';
 import * as Pinpoint from './games/pinpoint.js';
 import * as Sudoku from './games/sudoku.js';
 import * as Snake from './games/snake.js';
+import * as Tetris from './games/tetris.js';
 import * as Geo from './games/geo.js';
 import * as Culture from './games/culture.js';
 import * as Typing from './games/typing.js';
@@ -45,7 +46,7 @@ import * as Memory from './games/memory.js';
 import * as Crossword from './games/crossword.js';
 import { scratchArtSVG, memoryArtSVG, crosswordArtSVG, jungleArtSVG, geoArtSVG, typingArtSVG, crapsArtSVG, cultureArtSVG } from './art.js';
 import * as FarmCore from './farm-core.js';
-import { queensArtSVG, tangoArtSVG, pinpointArtSVG, sudokuArtSVG, snakeArtSVG, demineurArtSVG } from './art.js';
+import { queensArtSVG, tangoArtSVG, pinpointArtSVG, sudokuArtSVG, snakeArtSVG, demineurArtSVG, tetrisArtSVG } from './art.js';
 import * as Shop from './shop.js';
 import * as Cases from './cases.js';
 import { initLoot } from './loot.js';
@@ -134,6 +135,7 @@ const ROUTES = {
   sudoku: { label: 'Sudoku', icon: 'sudoku', mount: Sudoku.mount, group: 'free', sub: 'puzzle' },
   demineur: { label: 'Démineur', icon: 'demineur', mount: Demineur.mount, group: 'free', sub: 'puzzle' },
   snake: { label: 'Snake', icon: 'snake', mount: Snake.mount, group: 'free', sub: 'arcade' },
+  tetris: { label: 'Tetris', icon: 'tetris', mount: Tetris.mount, group: 'free', sub: 'arcade' },
   memory: { label: 'Memory', icon: 'memory', mount: Memory.mount, group: 'free', sub: 'puzzle' },
   crossword: { label: 'Mots croisés', icon: 'crossword', mount: Crossword.mount, group: 'free', sub: 'puzzle' },
   breaker: { label: 'Casse-briques', icon: 'breaker', mount: Breaker.mount, group: 'free', sub: 'arcade' },
@@ -892,7 +894,8 @@ function mountLobby(view, { wallet: w }) {
     </section>
     <h3 class="sub-cat">Adresse<small>réflexes et précision</small></h3>
     <section class="games-grid free-grid">
-      ${card('typing', 'Frappe éclair', 'Nouveau ! 60 secondes pour taper un maximum de mots. Combien de mots par minute ?', `+2 à +5 ${CUR} par mot`, typingArtSVG())}
+      ${card('tetris', 'Tetris', 'Nouveau ! Empile les blocs de la jungle : mode Infini tranquille ou Challenge qui accélère sans cesse.', `+${Tetris.TT_LINES[1]} ${CUR} par ligne · Tetris +${Tetris.TT_LINES[4]}`, tetrisArtSVG())}
+      ${card('typing', 'Frappe éclair', '60 secondes pour taper un maximum de mots. Combien de mots par minute ?', `+2 à +5 ${CUR} par mot`, typingArtSVG())}
       ${card('snake', 'Snake', 'Le serpent de la jungle a faim : mange un max de bananes sans te mordre la queue.', `+1 à +4 ${CUR} par banane`, snakeArtSVG())}
       ${card('breaker', 'Casse-briques', `Casse toutes les briques d'un niveau : +${CONFIG.BREAKER_REWARD} ${CUR}. Gratuit, sans mise.`, 'Gratuit',
         `<div class="mini-bricks">${Array.from({ length: 15 }, (_, i) => `<i style="--h:${(i * 37) % 360}"></i>`).join('')}</div>`)}

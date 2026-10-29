@@ -173,6 +173,7 @@ const ICONS = {
   tango: `<circle cx="8" cy="9" r="3.6" ${D}/><path d="M8 2.6v1.2M8 14.2v1.2M1.6 9h1.2M13.2 9h1.2M3.5 4.5l.9.9M11.6 12.6l.9.9M3.5 13.5l.9-.9M11.6 5.4l.9-.9" stroke-width="1.4"/><path d="M19.5 12.5a5 5 0 1 0 1.5 7.2 4 4 0 0 1-1.5-7.2z" ${D}/>`,
   pinpoint: `<path d="M12 21.5s-6.5-6.4-6.5-11.3a6.5 6.5 0 0 1 13 0c0 4.9-6.5 11.3-6.5 11.3z" ${D}/><circle cx="12" cy="10.2" r="2.4" />`,
   sudoku: `<rect x="3.5" y="3.5" width="17" height="17" rx="2" ${D}/><path d="M9.2 3.5v17M14.8 3.5v17M3.5 9.2h17M3.5 14.8h17" stroke-width="1.3"/>`,
+  tetris: `<path d="M3.5 14.5h5.5v-5.5h5.5v5.5h5.5v5.5H3.5z" ${D}/><path d="M9 14.5v5.5M14.5 14.5v5.5M9 14.5h5.5" stroke-width="1.4"/><rect x="14.5" y="3.5" width="5.5" height="5.5" rx="1" ${D}/>`,
   snake: `<path d="M4 18.5c3 0 3-4 6-4s3 4 6 4 3.5-2.5 3.5-5-2-4.5-5-4.5H9.5A2.5 2.5 0 0 1 9.5 4H18" ${D} stroke-width="2.2"/><circle cx="18.5" cy="4" r="1.2" fill="currentColor"/>`,
   demineur: `<rect x="3.5" y="3.5" width="17" height="17" rx="2.5" ${D}/><circle cx="12" cy="13" r="4" fill="currentColor"/><path d="M12 6.5V8.5M15.5 9.5l1.2-1.2M8.5 9.5 7.3 8.3" stroke-width="1.6"/>`,
   film: `<rect x="3.5" y="9" width="17" height="11.5" rx="2" ${D}/><path d="m3.8 9 15.4-4.2-.9-3.3L3 5.7z" ${D}/><path d="m7.6 4.7 2 3M12.4 3.4l2 3" stroke-width="1.5"/><path d="M3.5 13h17" stroke-width="1.3"/>`,
@@ -392,6 +393,17 @@ export function snakeArtSVG() {
     ${body.map(([x, y], i) => `<rect x="${24 + x * 11}" y="${2 + y * 11 + 10}" width="10" height="10" rx="3" fill="${i === body.length - 1 ? '#3ddc84' : '#2fa866'}"/>`).join('')}
     <circle cx="${24 + 10 * 11 + 3}" cy="${2 + 4 * 11 + 16}" r="1.3" fill="#0a100c"/><circle cx="${24 + 10 * 11 + 7}" cy="${2 + 4 * 11 + 16}" r="1.3" fill="#0a100c"/>
     <path transform="translate(133 88) rotate(-25)" d="M-9 0a10 10 0 0 0 18 0a12 12 0 0 1-18 0z" fill="#ffd23f"/><text x="100" y="136" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="800" font-size="11" fill="#cfe0d5">mange les bananes</text></svg>`;
+}
+export function tetrisArtSVG() {
+  const C = { I: '#3fd5ff', O: '#ffd23f', T: '#b86bff', S: '#3ddc84', Z: '#ff4d5e', J: '#4d7dff', L: '#ff9f43' };
+  // pile du bas (8 colonnes × 4 lignes), une barre qui tombe dans le couloir de droite
+  const rows = ['ZZ.TTTSS', 'JZZ.TSSL', 'JJJOO.LL', 'IIIIOO.L'];
+  let h = '';
+  const s = 11, x0 = 56, y0 = 50;
+  rows.forEach((r, y) => [...r].forEach((c, x) => { if (c !== '.') h += `<rect x="${x0 + x * s}" y="${y0 + y * s}" width="${s - 1}" height="${s - 1}" rx="2" fill="${C[c]}"/><rect x="${x0 + x * s + 2}" y="${y0 + y * s + 2}" width="4" height="2" rx="1" fill="#fff6"/>`; }));
+  for (let k = 0; k < 4; k++) h += `<rect x="${x0 + 8 * s}" y="${8 + k * s}" width="${s - 1}" height="${s - 1}" rx="2" fill="${C.I}"/><rect x="${x0 + 8 * s}" y="${y0 + k * s}" width="${s - 1}" height="${s - 1}" rx="2" fill="none" stroke="${C.I}" stroke-opacity=".5" stroke-dasharray="2 2"/>`;
+  return `<svg viewBox="0 0 200 145" class="art-tetris" aria-hidden="true"><rect x="54" y="4" width="103" height="94" rx="5" fill="#0d1f16" stroke="#ffffff1a"/>${h}
+    <text x="100" y="124" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="800" font-size="13" fill="#f5c542">TETRIS !</text><text x="100" y="139" text-anchor="middle" font-family="Rubik, sans-serif" font-weight="700" font-size="9.5" fill="#cfe0d5">infini ou challenge</text></svg>`;
 }
 export function demineurArtSVG() {
   const g = ['1.  2', '11 2*', ' 1*21', '11 1.', '*1  .'];

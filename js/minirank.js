@@ -53,6 +53,9 @@ export const MINI_GAMES = [
   { k: 'snake', name: 'Snake', cols: [rounds('snake'), ['Bananes / partie', (s) => (S(s, 'snakeRounds') ? S(s, 'snakeBananas') / S(s, 'snakeRounds') : 0), (s) => (S(s, 'snakeRounds') ? n1(S(s, 'snakeBananas') / S(s, 'snakeRounds')) : '—'), 1],
     recCol('snake'),
     ['Bananes mangées', (s) => S(s, 'snakeBananas'), (s) => fmt(S(s, 'snakeBananas')), 1], gains('snake')] },
+  { k: 'tetris', name: 'Tetris', cols: [rounds('tetris'), ['Lignes / partie', (s) => (S(s, 'tetrisRounds') ? S(s, 'tetrisLines') / S(s, 'tetrisRounds') : 0), (s) => (S(s, 'tetrisRounds') ? n1(S(s, 'tetrisLines') / S(s, 'tetrisRounds')) : '—'), 1],
+    ['Tetris', (s) => S(s, 'tetrisTetris'), (s) => fmt(S(s, 'tetrisTetris')), 1], ['Niveau max', (s) => S(s, 'tetrisLv'), (s) => (S(s, 'tetrisLv') ? String(S(s, 'tetrisLv')) : '—'), 1],
+    recCol('tetris'), ['Lignes', (s) => S(s, 'tetrisLines'), (s) => fmt(S(s, 'tetrisLines')), 1], gains('tetris')] },
   { k: 'breaker', name: 'Casse-briques', cols: [['Niveaux cassés', (s) => S(s, 'breakerLevels'), (s) => fmt(S(s, 'breakerLevels')), 1], gains('breaker')] },
 ];
 
